@@ -8,7 +8,7 @@ app_license = "mit"
 # Apps
 # ------------------
 
-# required_apps = []
+required_apps = ["erpnext"]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
@@ -20,6 +20,24 @@ app_license = "mit"
 # 		"has_permission": "erpnext_trackerx_customization.api.permission.has_app_permission"
 # 	}
 # ]
+
+
+#Fuxtures
+fixtures = [
+    {
+        "dt": "Client Script",
+        "filters": [
+            ["dt", "in", ["Item"]]
+        ]
+    },
+    {
+        "dt": "Custom Field",
+        "filters": [
+            ["dt", "in", ["Item"]]
+        ]
+    },
+    {"dt": "Property Setter", "filters": [["doc_type", "in", ["Sales Order Item"]]]},
+]
 
 # Includes in <head>
 # ------------------

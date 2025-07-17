@@ -1,0 +1,53 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-07-17 16:08:19.591706",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "component_name",
+  "parent_component",
+  "tracking_required",
+  "is_main_component"
+ ],
+ "fields": [
+  {
+   "fieldname": "component_name",
+   "fieldtype": "Data",
+   "label": "Component Name"
+  },
+  {
+   "fieldname": "parent_component",
+   "fieldtype": "Link",
+   "label": "Parent Component",
+   "options": "FG Components"
+  },
+  {
+   "default": "0",
+   "fieldname": "tracking_required",
+   "fieldtype": "Check",
+   "label": "Tracking required?"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_main_component",
+   "fieldtype": "Check",
+   "label": "Is Main Component?"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-07-17 16:10:44.845431",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "FG Components",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
