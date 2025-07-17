@@ -36,7 +36,8 @@ fixtures = [
             ["dt", "in", ["Item"]]
         ]
     },
-    {"dt": "Property Setter", "filters": [["doc_type", "in", ["Sales Order Item"]]]},
+    {"dt": "Property Setter", "filters": [["doc_type", "in", ["Item"]]]},
+    {"dt": "Item Group", "filters": [["name","in",["All Item Groups","Trims","Raw Materials","Fabrics","Knitted Fabrics","Single Jersey","Rib Knit","Interlock","Pique Knit","Fleece","Jacquard Knit","Mesh Knit","French Terry","Trims and Accessories","Finished Goods"]]]}
 ]
 
 # Includes in <head>
