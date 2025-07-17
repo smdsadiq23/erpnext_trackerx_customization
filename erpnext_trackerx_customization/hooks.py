@@ -36,8 +36,18 @@ fixtures = [
             ["dt", "in", ["Item"]]
         ]
     },
-    {"dt": "Property Setter", "filters": [["doc_type", "in", ["Item"]]]},
-    {"dt": "Item Group", "filters": [["name","in",["All Item Groups","Trims","Raw Materials","Fabrics","Knitted Fabrics","Single Jersey","Rib Knit","Interlock","Pique Knit","Fleece","Jacquard Knit","Mesh Knit","French Terry","Trims and Accessories","Finished Goods"]]]}
+    {
+        "dt": "Property Setter", 
+        "filters": [
+            ["doc_type", "in", ["Item"]]
+        ]
+    }
+    # {
+    #     "dt": "Item Group", 
+    #     "filters": [
+    #         ["name","in",["All Item Groups","Raw Materials","Finished Goods","Trims","Fabrics","Knitted Fabrics","Single Jersey","Rib Knit","Interlock","Pique Knit","Fleece","Jacquard Knit","Mesh Knit","French Terry"]]
+    #     ]
+    # }
 ]
 
 # Includes in <head>
@@ -163,6 +173,11 @@ fixtures = [
 # 		"on_trash": "method"
 # 	}
 # }
+doc_events= {
+    "Item Group": {
+        "on_trash": "erpnext_trackerx_customization.erpnextdoctypehooks.item_group_hooks.prevent_item_group_deletion"
+    }
+}
 
 # Scheduled Tasks
 # ---------------
