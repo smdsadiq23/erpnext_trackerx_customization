@@ -15,11 +15,13 @@
   {
    "fieldname": "component_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Component Name"
   },
   {
    "fieldname": "parent_component",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Parent Component",
    "options": "FG Components"
   },
@@ -27,12 +29,14 @@
    "default": "0",
    "fieldname": "tracking_required",
    "fieldtype": "Check",
+   "in_list_view": 1,
    "label": "Tracking required?"
   },
   {
    "default": "0",
    "fieldname": "is_main_component",
    "fieldtype": "Check",
+   "in_list_view": 1,
    "label": "Is Main Component?"
   }
  ],
@@ -40,7 +44,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-07-17 16:10:44.845431",
+ "modified": "2025-07-17 17:52:14.108076",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "FG Components",
