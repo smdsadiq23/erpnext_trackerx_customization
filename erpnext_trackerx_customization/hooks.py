@@ -37,13 +37,13 @@ fixtures = [
         ]
     },
     {
-        "dt": "Property Setter", 
+        "dt": "Property Setter",
         "filters": [
             ["doc_type", "in", ["Item"]]
         ]
     }
     # {
-    #     "dt": "Item Group", 
+    #     "dt": "Item Group",
     #     "filters": [
     #         ["name","in",["All Item Groups","Raw Materials","Finished Goods","Trims","Fabrics","Knitted Fabrics","Single Jersey","Rib Knit","Interlock","Pique Knit","Fleece","Jacquard Knit","Mesh Knit","French Terry"]]
     #     ]
@@ -153,6 +153,9 @@ fixtures = [
 # has_permission = {
 # 	"Event": "frappe.desk.doctype.event.event.has_permission",
 # }
+permission_query_conditions = {
+    "Item": "erpnext_trackerx_customization.erpnextdoctypehooks.item_group_hooks.get_item_permission_query_conditions"
+}
 
 # DocType Class
 # ---------------
