@@ -3,7 +3,7 @@
   "construction_type": "Sewing",
   "docstatus": 0,
   "doctype": "Construction Type",
-  "item_type": "Finished Goods",
+  "item_type": "Style",
   "modified": "2025-07-18 09:22:58.052396",
   "name": "Sewing"
  },
@@ -11,7 +11,7 @@
   "construction_type": "Sewing and Bonding",
   "docstatus": 0,
   "doctype": "Construction Type",
-  "item_type": "Finished Goods",
+  "item_type": "Style",
   "modified": "2025-07-18 09:24:04.278475",
   "name": "Sewing and Bonding"
  },
@@ -19,7 +19,7 @@
   "construction_type": "Seam Sealing",
   "docstatus": 0,
   "doctype": "Construction Type",
-  "item_type": "Finished Goods",
+  "item_type": "Style",
   "modified": "2025-07-18 09:24:23.601150",
   "name": "Seam Sealing"
  },
@@ -27,7 +27,7 @@
   "construction_type": "Upper",
   "docstatus": 0,
   "doctype": "Construction Type",
-  "item_type": "Finished Goods",
+  "item_type": "Style",
   "modified": "2025-07-18 09:24:42.610831",
   "name": "Upper"
  },
@@ -35,7 +35,7 @@
   "construction_type": "Cemented",
   "docstatus": 0,
   "doctype": "Construction Type",
-  "item_type": "Finished Goods",
+  "item_type": "Style",
   "modified": "2025-07-18 09:25:05.700066",
   "name": "Cemented"
  },
@@ -43,7 +43,7 @@
   "construction_type": "Welted",
   "docstatus": 0,
   "doctype": "Construction Type",
-  "item_type": "Finished Goods",
+  "item_type": "Style",
   "modified": "2025-07-18 09:25:29.301181",
   "name": "Welted"
  },

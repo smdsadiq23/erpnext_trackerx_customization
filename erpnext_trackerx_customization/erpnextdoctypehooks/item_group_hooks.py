@@ -54,7 +54,7 @@ def get_item_permission_query_conditions(user):
 
     # Rule 1: Finished Goods Manager sees only 'Finished Goods'
     if any(role in finished_goods_roles for role in user_roles):
-        conditions.append("`tabItem`.`custom_select_master` = 'Finished Goods'")
+        conditions.append("`tabItem`.`custom_select_master` = 'Style'")
         frappe.log_error("Item Permission Check", "Applied filter for Finished Goods Manager.")
 
     # Rule 2: Fabrics Manager sees only 'Fabrics' (Example, add if you have this role)
