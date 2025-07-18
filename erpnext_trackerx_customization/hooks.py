@@ -154,7 +154,7 @@ fixtures = [
 # 	"Event": "frappe.desk.doctype.event.event.has_permission",
 # }
 permission_query_conditions = {
-    "Item": "erpnext_trackerx_customization.erpnextdoctypehooks.item_group_hooks.get_item_permission_query_conditions"
+    "Item": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.get_item_permission_query_conditions"
 }
 
 # DocType Class
@@ -178,7 +178,7 @@ permission_query_conditions = {
 # }
 doc_events= {
     "Item Group": {
-        "on_trash": "erpnext_trackerx_customization.erpnextdoctypehooks.item_group_hooks.prevent_item_group_deletion"
+        "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_group_hooks.prevent_item_group_deletion"
     }
 }
 
