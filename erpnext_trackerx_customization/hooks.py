@@ -24,12 +24,7 @@ required_apps = ["erpnext"]
 
 #Fuxtures
 fixtures = [
-    {
-        "dt": "Client Script",
-        "filters": [
-            ["dt", "in", ["Item"]]
-        ]
-    },
+
     {
         "dt": "Custom Field",
         "filters": [
@@ -72,7 +67,7 @@ fixtures = [
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {"Item" : "public/js/item.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -179,6 +174,10 @@ permission_query_conditions = {
 doc_events= {
     "Item Group": {
         "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_group_hooks.prevent_item_group_deletion"
+    },
+	"Item": {
+        "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.set_item_code_before_insert",
+        "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.validate_item"
     }
 }
 
