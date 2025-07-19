@@ -300,16 +300,16 @@ function filterCustomSelectMasterOptionsBasedOnRole(frm) {
         ],
         "Fabrics": [
             "Fabrics Manager", "Fabrics", "Fabrics Supervisor", "Fabrics User",
-            "Fabric Manager", "Fabric", "Fabric Supervisor", "Fabric User"
+            "Fabric Manager", "Fabric", "Fabric Supervisor", "Fabric User", "Fabrics Master"
         ],
         "Trims": [
-            "Trims Manager", "Trims", "Trims Supervisor", "Trims User"
+            "Trims Manager", "Trims", "Trims Supervisor", "Trims User", "Trims Master"
         ],
         "Accessories": [
-            "Accessories Manager", "Accessories", "Accessories Supervisor", "Accessories User"
+            "Accessories Manager", "Accessories", "Accessories Supervisor", "Accessories User", "Accessories Master"
         ],
         "Machine": [
-            "Machine Manager", "Machine", "Machine User", "Machine Supervisor"
+            "Machine Manager", "Machine", "Machine User", "Machine Supervisor", "Machine Master"
         ]
     };
 
