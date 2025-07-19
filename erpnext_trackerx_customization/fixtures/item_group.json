@@ -51,19 +51,6 @@
     "parent_item_group": "Raw Materials",
     "taxes": []
   },
-   {
-    "docstatus": 0,
-    "doctype": "Item Group",
-    "image": null,
-    "is_group": 0,
-    "item_group_defaults": [],
-    "item_group_name": "Fabric",
-    "modified": "2025-07-15 17:03:36.527437",
-    "name": "Fabric",
-    "old_parent": "Raw Material",
-    "parent_item_group": "Raw Material",
-    "taxes": []
-  },
   {
     "docstatus": 0,
     "doctype": "Item Group",
