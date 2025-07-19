@@ -4,7 +4,7 @@ import frappe
 from frappe import _
 
 # Define the list of protected Item Group names that should not be deleted
-PROTECTED_ITEM_GROUPS = ["All Item Groups","Trims","Raw Materials","Fabrics","Knitted Fabrics","Single Jersey","Rib Knit","Interlock","Pique Knit","Fleece","Jacquard Knit","Mesh Knit","French Terry","Finished Goods"]
+PROTECTED_ITEM_GROUPS = ["All Item Groups","Raw Materials","Fabrics","Knitted Fabrics","Finished Goods", "Trims", "Accessories", "Machine"]
 
 def prevent_item_group_deletion(doc, method):
     """

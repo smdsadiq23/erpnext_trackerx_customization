@@ -31,6 +31,12 @@ frappe.ui.form.on('Item', {
     },
 
     refresh: function(frm) {
+
+
+        
+        
+        
+
         // Always remove stray dropdowns first
         $('#custom-master-type-select').remove();
 
@@ -50,6 +56,8 @@ frappe.ui.form.on('Item', {
         setTimeout(function() {
             updateItemLabels(frm);
         }, 300);
+
+        filterCustomSelectMasterOptionsBasedOnRole(frm);
         
         // --- New Logic: Filter 'construction_type' Link field ---
         // This function will be called on refresh and when custom_select_master changes
@@ -79,7 +87,11 @@ frappe.ui.form.on('Item', {
                 });
         }, 100);
 
+        
+
         setItemGroupFilter(frm);
+
+        
 
     },
     custom_select_master: function(frm) {
@@ -172,7 +184,7 @@ function insertDropdownInHeading(frm, options) {
 
 // --- Label Update Logic (only change heading in new mode) ---
 function updateItemLabels(frm) {
-    let masterLabel = (frm.doc.custom_select_master || $('#custom-master-type-select').val() || "Item").trim();
+    let masterLabel = ( $('#custom-master-type-select').val() || frm.doc.custom_select_master || "Item").trim();
     let wordBoundaryRegex = /\bItem\b/gi;
 
     // 1. For normal fields (control-label)
@@ -276,3 +288,73 @@ function setItemGroupFilter(frm) {
     console.log(`Applied item_group filter: descendants of (inclusive) '${root_group}'`);
 }
 
+
+
+
+function filterCustomSelectMasterOptionsBasedOnRole(frm) {
+    const role_map = {
+        "Style": [
+            "Finished Goods Manager", "Finished Goods", "FG Manager", "Finished Goods User", "FG User",
+            "FG Supervisor", "Finished Goods Supervisor", "Style Master", "Style User",
+            "Style Manager", "Style Master Manager"
+        ],
+        "Fabrics": [
+            "Fabrics Manager", "Fabrics", "Fabrics Supervisor", "Fabrics User",
+            "Fabric Manager", "Fabric", "Fabric Supervisor", "Fabric User"
+        ],
+        "Trims": [
+            "Trims Manager", "Trims", "Trims Supervisor", "Trims User"
+        ],
+        "Accessories": [
+            "Accessories Manager", "Accessories", "Accessories Supervisor", "Accessories User"
+        ],
+        "Machine": [
+            "Machine Manager", "Machine", "Machine User", "Machine Supervisor"
+        ]
+    };
+
+    frappe.roles = frappe.roles || [];
+
+    // Always show full list for privileged users
+    if (frappe.user_roles.includes("Administrator") || frappe.user_roles.includes("System Manager")) {
+      
+        return;
+    }
+
+    // Find allowed options
+    const allowed_options = [];
+    for (let option in role_map) {
+        const roles = role_map[option];
+        if (roles.some(role => frappe.user_roles.includes(role))) {
+            allowed_options.push(option);
+        }
+    }
+
+    if (allowed_options.length > 0) {
+        updateInjectedDropdown(allowed_options);
+    } else {
+        // No match: show all
+     
+    }
+
+    updateItemLabels(frm);
+    
+    
+}
+
+function updateInjectedDropdown(options) {
+    const $dropdown = $('#custom-master-type-select');
+    const $dropdownOld = $('#custom_select_master');
+
+
+    if (!$dropdown.length) return;
+
+    const currentVal = $dropdown.val();
+
+    let html = options.map(opt => {
+        const selected = (opt === currentVal) ? ' selected' : '';
+        return `<option value="${opt}"${selected}>${opt}</option>`;
+    }).join('');
+
+    $dropdown.html(html);
+}
