@@ -23,11 +23,11 @@ def get_item_permission_query_conditions(user):
 
     conditions = []
 
-    finished_goods_roles = ["Finished Goods Manager", "Finished Goods", "FG Manager", "Finished Goods User", "FG User", "FG Supervisor", "Finished Goods Supervisor"]
-    fabrics_roles = ["Fabrics Manager", "Fabrics", "Fabrics Supervisor", "Fabrics User","Fabric Manager", "Fabric", "Fabric Supervisor", "Fabric User"]
-    trims_roles = ["Trims Manager", "Trims", "Trims Supervisor", "Trims User"]
-    accessories_roles = ["Accessories Manager", "Accessories", "Accessories Supervisor", "Accessories User"]
-    machine_roles = ["Machine Manager", "Machine", "Machine User", "Machine Supervisor"]
+    finished_goods_roles = ["Finished Goods Manager", "Finished Goods", "FG Manager", "Finished Goods User", "FG User", "FG Supervisor", "Finished Goods Supervisor", "Style Master", "Style User", "Style Manager", "Style User", "Style Master Manager"]
+    fabrics_roles = ["Fabrics Manager", "Fabrics", "Fabrics Supervisor", "Fabrics User","Fabric Manager", "Fabric", "Fabric Supervisor", "Fabric User", "Fabrics Master"]
+    trims_roles = ["Trims Manager", "Trims", "Trims Supervisor", "Trims User", "Trims Master"]
+    accessories_roles = ["Accessories Manager", "Accessories", "Accessories Supervisor", "Accessories User", "Accessories Master"]
+    machine_roles = ["Machine Manager", "Machine", "Machine User", "Machine Supervisor", "Machine Master"]
 
 
 
