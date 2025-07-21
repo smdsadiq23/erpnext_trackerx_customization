@@ -91,7 +91,7 @@ frappe.ui.form.on('Item', {
 
         setItemGroupFilter(frm);
 
-        
+        setFieldsToReadyOnly(frm);
 
     },
     custom_select_master: function(frm) {
@@ -103,10 +103,28 @@ frappe.ui.form.on('Item', {
         setConstructionTypeFilter(frm);
         setItemGroupFilter(frm);
     },
+
     
     
     
 });
+
+function setFieldsToReadyOnly(frm) {
+    if (!frm.is_new()) {
+            const locked_fields = [
+                "custom_select_master",
+                "item_group",
+                "item_name",
+                "custom_colour_name",
+                "custom_colour_code",
+                "custom_item_number"
+            ]
+
+            locked_fields.forEach(field => {
+                frm.set_df_property(field, "read_only", 1);
+            });
+        }
+}
 
 // Helper function to set the filter for 'construction_type'
 function setConstructionTypeFilter(frm) {
