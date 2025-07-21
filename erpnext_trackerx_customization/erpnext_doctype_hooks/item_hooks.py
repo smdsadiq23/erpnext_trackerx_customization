@@ -157,7 +157,8 @@ def generate_item_code(doc):
     return f"{base_code}-{next_seq:06d}"
 
 def validate_item(doc, method):
-    validate_for_fg_components(doc, method)
+    if doc.custom_select_master == "Style":
+        validate_for_fg_components(doc, method)
 
 
 def validate_for_fg_components(doc, method):
