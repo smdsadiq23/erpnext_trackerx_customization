@@ -173,7 +173,10 @@ permission_query_conditions = {
 # }
 doc_events= {
     "Item Group": {
-        "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_group_hooks.prevent_item_group_deletion"
+        "before_delete": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_group_hooks.prevent_item_group_deletion"
+    },
+    "Role": {
+        "before_delete": "erpnext_trackerx_customization.erpnext_doctype_hooks.role_hooks.prevent_role_deletion"
     },
 	"Item": {
         "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.set_item_code_before_insert",
