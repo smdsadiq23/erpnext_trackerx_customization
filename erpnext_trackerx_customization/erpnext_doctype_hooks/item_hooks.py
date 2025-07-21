@@ -68,7 +68,7 @@ def get_item_permission_query_conditions(user):
         # Use ' AND ' to combine multiple conditions.
         # Ensure the table name is explicitly mentioned for custom fields if they exist on standard DocTypes.
         # `tabItem` is the standard table name for the Item DocType.
-        return " AND ".join(conditions)
+        return " OR ".join(conditions)
     else:
         # If no specific role-based filter applies, you might want to:
         # 1. Return "" to show all items (if default permission allows)
