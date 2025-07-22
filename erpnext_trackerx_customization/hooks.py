@@ -67,7 +67,7 @@ fixtures = [
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-doctype_js = {"Item" : "public/js/item.js"}
+doctype_js = {"Item" : "public/js/item.js", "BOM": "public/js/bom.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -284,3 +284,5 @@ doc_events= {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+
+boot_session = "erpnext_trackerx_customization.utils.constants.boot_session"

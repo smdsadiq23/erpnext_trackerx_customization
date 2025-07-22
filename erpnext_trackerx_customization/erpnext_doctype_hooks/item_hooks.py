@@ -1,83 +1,39 @@
-# apps/customize_erpnext_app/customize_erpnext_app/item_hooks.py
+# apps/erpnext_trackerx_customization/erpnext_trackerx_customization/item_hooks.py
 
 import frappe
+from erpnext_trackerx_customization.utils.constants import get_constants 
 
 def get_item_permission_query_conditions(user):
-    """
-    Applies row-level security for the Item DocType based on user roles
-    and the 'custom_select_master' field.
-
-    Args:
-        user (str): The username of the currently logged-in user.
-
-    Returns:
-        str: A SQL WHERE clause fragment to filter Item records,
-             or an empty string if no additional filtering is needed.
-    """
     if not user:
         user = frappe.session.user
 
-    # Get roles of the current user
     user_roles = frappe.get_roles(user)
-    frappe.log_error("Item Permission Check", f"User: {user}, Roles: {user_roles}")
+    constants = get_constants()
 
-    conditions = []
+    role_map = constants.get("item_master_role_map", {})
+    item_types_allowed = set()
 
-    finished_goods_roles = ["Finished Goods Manager", "Finished Goods", "FG Manager", "Finished Goods User", "FG User", "FG Supervisor", "Finished Goods Supervisor", "Style Master", "Style User", "Style Manager", "Style User", "Style Master Manager"]
-    fabrics_roles = ["Fabrics Manager", "Fabrics", "Fabrics Supervisor", "Fabrics User","Fabric Manager", "Fabric", "Fabric Supervisor", "Fabric User", "Fabrics Master"]
-    trims_roles = ["Trims Manager", "Trims", "Trims Supervisor", "Trims User", "Trims Master"]
-    accessories_roles = ["Accessories Manager", "Accessories", "Accessories Supervisor", "Accessories User", "Accessories Master"]
-    machine_roles = ["Machine Manager", "Machine", "Machine User", "Machine Supervisor", "Machine Master"]
+    # Build a set of allowed item types based on role match
+    for item_type, roles in role_map.items():
+        if any(role in roles for role in user_roles):
+            item_types_allowed.add(item_type)
+    
 
-
-
-    # Rule 1: Finished Goods Manager sees only 'Finished Goods'
-    if any(role in finished_goods_roles for role in user_roles):
-        conditions.append("`tabItem`.`custom_select_master` = 'Style'")
-        frappe.log_error("Item Permission Check", "Applied filter for Finished Goods Manager.")
-
-    # Rule 2: Fabrics Manager sees only 'Fabrics' (Example, add if you have this role)
-    if any(role in fabrics_roles for role in user_roles):
-        conditions.append("`tabItem`.`custom_select_master` = 'Fabrics'")
-
-    # Rule 3: Trims Manager sees only 'Trims' (Example)
-    if any(role in trims_roles for role in user_roles):
-        conditions.append("`tabItem`.`custom_select_master` = 'Trims'")
-
-    # Rule 4: Machine Manager sees only 'Machine' (Example)
-    if any(role in machine_roles for role in user_roles):
-        conditions.append("`tabItem`.`custom_select_master` = 'Machine'")
-
-    # Rule 5: Accessories Manager sees only 'Accessories' (Example)
-    if any(role in accessories_roles for role in user_roles):
-        conditions.append("`tabItem`.`custom_select_master` = 'Accessories'")
-
-
-
-    # Add more rules for other specific roles and custom_select_master values
-
-    # Important: If a user has a role that should see ALL items (e.g., System Manager, Administrator)
-    # then we should return an empty string to not apply any additional filter.
-    # This check should typically come *after* specific role checks.
+    # Allow System Manager or Administrator to bypass
     if "System Manager" in user_roles or "Administrator" in user_roles:
-        frappe.log_error("Item Permission Check", "System Manager/Administrator - No additional filter applied.")
+        frappe.log_error("Item Permission Check", "System Manager/Administrator – full access allowed.")
         return ""
 
-    # Combine all applicable conditions with 'AND'
-    if conditions:
-        # Use ' AND ' to combine multiple conditions.
-        # Ensure the table name is explicitly mentioned for custom fields if they exist on standard DocTypes.
-        # `tabItem` is the standard table name for the Item DocType.
-        return " OR ".join(conditions)
+    # Build SQL conditions for allowed item types
+    if item_types_allowed:
+        formatted = "', '".join(item_types_allowed)
+        condition = f"`tabItem`.`custom_select_master` IN ('{formatted}')"
+        frappe.log_error("Item Permission Check", f"Filtered items where custom_select_master in: {item_types_allowed}")
+        return condition
     else:
-        # If no specific role-based filter applies, you might want to:
-        # 1. Return "" to show all items (if default permission allows)
-        # 2. Return "1=0" to show no items (if no specific permission is granted)
-        # For now, let's return "" to allow standard role permissions to take over.
-        # If you want to restrict access to *only* those with specific roles,
-        # you might return "1=0" here.
-        frappe.log_error("Item Permission Check", "No specific role-based filter applied. Returning empty string.")
-        return ""
+        frappe.log_error("Item Permission Check", "No matching roles found — access restricted (1=0)")
+        return "1=0"
+
 
 def set_item_code_before_insert(doc, method):
     """
