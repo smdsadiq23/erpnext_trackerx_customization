@@ -37,12 +37,6 @@ fixtures = [
             ["doc_type", "in", ["Item", "BOM", "BOM Item"]]
         ]
     }
-    # {
-    #     "dt": "Item Group",
-    #     "filters": [
-    #         ["name","in",["All Item Groups","Raw Materials","Finished Goods","Trims","Fabrics","Knitted Fabrics","Single Jersey","Rib Knit","Interlock","Pique Knit","Fleece","Jacquard Knit","Mesh Knit","French Terry"]]
-    #     ]
-    # }
 ]
 
 # Includes in <head>
