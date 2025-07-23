@@ -3,6 +3,9 @@ frappe.ui.form.on('Item', {
     onload: function(frm) {
         console.log("Item form loaded."); // Debugging log
 
+        setItemMasterOptions(frm);
+        
+
         // --- Auto-add row to 'components' child table on new Item creation ---
         if (frm.is_new()) {
             console.log("New Item document created. Adding default row to 'components' child table.");
@@ -33,8 +36,7 @@ frappe.ui.form.on('Item', {
     refresh: function(frm) {
 
 
-        
-        
+        console.log("Item form refreshed.");
         
 
         // Always remove stray dropdowns first
@@ -93,9 +95,12 @@ frappe.ui.form.on('Item', {
 
         setFieldsToReadyOnly(frm);
 
+
     },
     custom_select_master: function(frm) {
-        updateItemLabels(frm);
+        setTimeout(function() {
+            updateItemLabels(frm);
+        }, 300);
         $('#custom-master-type-select').val(frm.doc.custom_select_master);
         
         // --- New Logic: Filter 'construction_type' Link field ---
@@ -280,13 +285,7 @@ frappe.router.on('change', () => {
 function setItemGroupFilter(frm) {
     const master = frm.doc.custom_select_master;
 
-    const root_mapping = {
-        "Style": "Finished Goods",
-        "Fabrics": "Fabrics",
-        "Trims": "Trims",
-        "Accessories": "Accessories",
-        "Machine": "Machine"
-    };
+    const root_mapping = frappe.boot.item_constants.item_master_item_group_filter;
 
     const root_group = root_mapping[master];
 
@@ -310,26 +309,7 @@ function setItemGroupFilter(frm) {
 
 
 function filterCustomSelectMasterOptionsBasedOnRole(frm) {
-    const role_map = {
-        "Style": [
-            "Finished Goods Manager", "Finished Goods", "FG Manager", "Finished Goods User", "FG User",
-            "FG Supervisor", "Finished Goods Supervisor", "Style Master", "Style User",
-            "Style Manager", "Style Master Manager"
-        ],
-        "Fabrics": [
-            "Fabrics Manager", "Fabrics", "Fabrics Supervisor", "Fabrics User",
-            "Fabric Manager", "Fabric", "Fabric Supervisor", "Fabric User", "Fabrics Master"
-        ],
-        "Trims": [
-            "Trims Manager", "Trims", "Trims Supervisor", "Trims User", "Trims Master"
-        ],
-        "Accessories": [
-            "Accessories Manager", "Accessories", "Accessories Supervisor", "Accessories User", "Accessories Master"
-        ],
-        "Machine": [
-            "Machine Manager", "Machine", "Machine User", "Machine Supervisor", "Machine Master"
-        ]
-    };
+    const role_map = frappe.boot.item_constants.item_master_role_map;
 
     frappe.roles = frappe.roles || [];
 
@@ -376,3 +356,19 @@ function updateInjectedDropdown(options) {
 
     $dropdown.html(html);
 }
+
+function setItemMasterOptions(frm){
+    console.log("Getting Item Master from the constants")
+    if (frappe.boot.item_constants && frappe.boot.item_constants.item_master) {
+        const options = frappe.boot.item_constants.item_master.join('\n');
+        console.log("Got Item Master from the constants")
+
+        console.log(options);
+
+        // Dynamically set options for the Select field
+        frm.set_df_property('custom_select_master', 'options', options);
+        frm.refresh_field('custom_select_master');
+    }
+    
+}
+    
