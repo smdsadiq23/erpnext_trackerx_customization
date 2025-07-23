@@ -176,26 +176,28 @@ function calculate_qty(cdt, cdn) {
 
 
 function set_item_code_filters(frm) {
+
+    // Need to change the filter from all the child groups of thes
   const table_field_map = {
-    'custom_fabrics_items': 'Fabrics',
-    'custom_trims_items': 'Trims',
-    'custom_accessories_items': 'Accessories',
-    'custom_labels_items': 'Labels',
-    'custom_packing_materials_items': 'Packing Materials'
+    'custom_fabrics_items': ['Fabrics'],
+    'custom_trims_items': ['Trims'],
+    'custom_accessories_items': ['Accessories'],
+    'custom_labels_items': ['Labels'],
+    'custom_packing_materials_items': ['Packing Materials']
   };
 
-  Object.entries(table_field_map).forEach(([table_fieldname, item_group]) => {
+  Object.entries(table_field_map).forEach(([table_fieldname, item_groups]) => {
     const grid = frm.fields_dict[table_fieldname]?.grid;
     if (!grid) return;
 
     grid.get_field('item_code').get_query = function(doc, cdt, cdn) {
       return {
         
-        filters: {
-          item_group: item_group,
-          is_stock_item: 1,
-          disabled: 0
-        }
+        filters: [
+          ["item_group", "in", [item_groups]],
+          ["is_stock_item", "=", 1],
+          ["disabled", "=", 0]
+        ]
       };
     };
   });
