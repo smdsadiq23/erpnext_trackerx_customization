@@ -174,7 +174,8 @@ doc_events= {
     },
 	"Item": {
         "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.set_item_code_before_insert",
-        "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.validate_item"
+        "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.validate_item",
+        "test": ""
     },
     "BOM": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.validate_bom"
