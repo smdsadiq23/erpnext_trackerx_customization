@@ -36,6 +36,19 @@ frappe.ui.form.on('BOM', {
     },
     onload(frm){
         frm.set_df_property('items', 'hidden', 1);
+
+        //make qty fiedl in the bom item read only 
+        modifyTheBOMItemTableFields(frm);
+
+        set_item_code_filters(frm); 
+
+
+    },
+    custom_net_qty(frm, cdt, cdn) {
+        calculate_qty_based_on_net_and_wastage(frm, cdt, cdn);
+    },
+    custom_wastage_percentage(frm, cdt, cdn) {
+        calculate_qty_based_on_net_and_wastage(frm, cdt, cdn);
     },
     refresh(frm) {
         // Repopulate tables after save
@@ -108,3 +121,82 @@ frappe.ui.form.on('BOM', {
                 new_row.custom_item_type = item_type;
     
  }
+
+
+
+ function modifyTheBOMItemTableFields(frm)
+ {
+     // Make qty read-only in all virtual child tables
+    const tables = [
+      'items',
+      'custom_fabrics_items',
+      'custom_trims_items',
+      'custom_accessories_items',
+      'custom_labels_items',
+      'custom_packing_materials_items'
+    ];
+
+    tables.forEach(tablefield => {
+      const grid = frm.fields_dict[tablefield]?.grid;
+      if (!grid) return;
+
+      frappe.meta.get_docfield('BOM Item', 'qty', frm.doc.name).read_only = 1;
+      frappe.meta.get_docfield('BOM Item', 'item_name', frm.doc.name).read_only = 1;
+      frappe.meta.get_docfield('BOM Item', 'qty', frm.doc.name).label = 'Cons Qty';
+
+      //grid.fields_map['qty'].read_only = 1;
+    });
+ }
+
+// /////////////
+//////////////////
+////////////////
+///////////////
+ // BOM item
+
+ frappe.ui.form.on('BOM Item', {
+  custom_net_qty(frm, cdt, cdn) {
+    calculate_qty(cdt, cdn);
+  },
+  custom_wastage_percentage(frm, cdt, cdn) {
+    calculate_qty(cdt, cdn);
+  }
+});
+
+function calculate_qty(cdt, cdn) {
+  const row = locals[cdt][cdn];
+
+  const net = flt(row.custom_net_qty || 0);
+  const waste = flt(row.custom_wastage_percentage || 0);
+  const qty = net + (net * waste / 100);
+
+  frappe.model.set_value(cdt, cdn, 'qty', qty);
+}
+
+
+
+function set_item_code_filters(frm) {
+  const table_field_map = {
+    'custom_fabrics_items': 'Fabrics',
+    'custom_trims_items': 'Trims',
+    'custom_accessories_items': 'Accessories',
+    'custom_labels_items': 'Labels',
+    'custom_packing_materials_items': 'Packing Materials'
+  };
+
+  Object.entries(table_field_map).forEach(([table_fieldname, item_group]) => {
+    const grid = frm.fields_dict[table_fieldname]?.grid;
+    if (!grid) return;
+
+    grid.get_field('item_code').get_query = function(doc, cdt, cdn) {
+      return {
+        
+        filters: {
+          item_group: item_group,
+          is_stock_item: 1,
+          disabled: 0
+        }
+      };
+    };
+  });
+}
