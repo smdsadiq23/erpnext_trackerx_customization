@@ -116,7 +116,7 @@ frappe.ui.form.on('BOM', {
                 new_row.custom_consremarks = row.custom_consremarks;
                 new_row.custom_artwork_reference = row.custom_artwork_reference;
                 new_row.custom_wastage_percentage = row.custom_wastage_percentage;
-                new_row.custom_gross_qty = row.custom_gross_qty;
+                new_row.custom_net_qty = row.custom_net_qty;
                 new_row.custom_gms = row.custom_gms;
                 new_row.custom_item_type = item_type;
     
