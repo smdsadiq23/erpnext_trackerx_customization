@@ -1,3 +1,11 @@
+let allowed_item_groups_map = {
+  'Fabrics': ["Fabrics"],
+  'Trims': ["Trims"],
+  'Accessories': ["Accessories"],
+  'Labels': ["Labels"],
+  'Packing Materials': ["Packing Materials"]
+};
+
 frappe.ui.form.on('BOM', {
     validate(frm) {
         frappe.model.clear_table(frm.doc, 'items');
@@ -40,7 +48,7 @@ frappe.ui.form.on('BOM', {
         //make qty fiedl in the bom item read only 
         modifyTheBOMItemTableFields(frm);
 
-        set_item_code_filters(frm); 
+        fetch_allowed_item_groups(frm); 
 
 
     },
@@ -160,6 +168,10 @@ frappe.ui.form.on('BOM', {
   },
   custom_wastage_percentage(frm, cdt, cdn) {
     calculate_qty(cdt, cdn);
+  },
+  custom_supplier(frm, cdt, cdn) {
+    frappe.model.set_value(cdt, cdn, 'item_code', '');
+    set_item_code_filters(frm)
   }
 });
 
@@ -176,29 +188,64 @@ function calculate_qty(cdt, cdn) {
 
 
 function set_item_code_filters(frm) {
-
-    // Need to change the filter from all the child groups of thes
   const table_field_map = {
-    'custom_fabrics_items': ['Fabrics'],
-    'custom_trims_items': ['Trims'],
-    'custom_accessories_items': ['Accessories'],
-    'custom_labels_items': ['Labels'],
-    'custom_packing_materials_items': ['Packing Materials']
+    'custom_fabrics_items': 'Fabrics',
+    'custom_trims_items': 'Trims',
+    'custom_accessories_items': 'Accessories',
+    'custom_labels_items': 'Labels',
+    'custom_packing_materials_items': 'Packing Materials'
   };
 
-  Object.entries(table_field_map).forEach(([table_fieldname, item_groups]) => {
+  Object.entries(table_field_map).forEach(([table_fieldname, item_type]) => {
     const grid = frm.fields_dict[table_fieldname]?.grid;
     if (!grid) return;
 
+    const allowed_item_groups = allowed_item_groups_map[item_type] || [];
+
     grid.get_field('item_code').get_query = function(doc, cdt, cdn) {
-      return {
-        
-        filters: [
-          //["item_group", "in", [item_groups]],
-          //["is_stock_item", "=", 1],
-          //["disabled", "=", 0]
-        ]
+      const row = locals[cdt][cdn];
+      const filters = {
+        is_stock_item: 1,
+        disabled: 0,
+        item_group: ['in', allowed_item_groups]
       };
+
+      if (row.custom_supplier) {
+        filters["custom_preferred_supplier"] = row.custom_supplier;
+      }
+
+      return { filters };
     };
   });
 }
+
+
+
+function fetch_allowed_item_groups(frm) {
+  const item_types = Object.keys(allowed_item_groups_map);
+
+  let completed = 0;
+
+  item_types.forEach(type => {
+    frappe.call({
+      method: 'erpnext_trackerx_customization.api.item_groups_filter.get_items_under_group_and_children',
+      args: {
+        item_group: type
+      },
+      callback: function(r) {
+        if (r.message) {
+          allowed_item_groups_map[type] = [type, ...r.message.filter(g => g !== type)];
+        } else {
+          console.warn(`No data for ${type}`);
+        }
+
+        completed += 1;
+        if (completed === item_types.length) {
+          // Once all async calls finish
+          set_item_code_filters(frm);
+        }
+      }
+    });
+  });
+}
+
