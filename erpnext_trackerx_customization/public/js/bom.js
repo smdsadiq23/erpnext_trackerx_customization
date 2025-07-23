@@ -194,9 +194,9 @@ function set_item_code_filters(frm) {
       return {
         
         filters: [
-          ["item_group", "in", [item_groups]],
-          ["is_stock_item", "=", 1],
-          ["disabled", "=", 0]
+          //["item_group", "in", [item_groups]],
+          //["is_stock_item", "=", 1],
+          //["disabled", "=", 0]
         ]
       };
     };
