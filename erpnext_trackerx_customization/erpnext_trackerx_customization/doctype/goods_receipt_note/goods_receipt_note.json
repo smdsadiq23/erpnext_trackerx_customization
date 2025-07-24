@@ -541,7 +541,6 @@
    "print_hide": 1,
    "print_width": "150px",
    "read_only": 1,
-   "reqd": 1,
    "width": "150px"
   },
   {
@@ -1322,7 +1321,7 @@
  "icon": "fa fa-truck",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-24 13:34:53.685944",
+ "modified": "2025-07-24 16:14:49.747084",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Note",
