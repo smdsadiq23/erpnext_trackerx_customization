@@ -11,7 +11,7 @@ frappe.ui.form.on('BOM', {
         frappe.model.clear_table(frm.doc, 'items');
 
         const required_fields = [
-            'custom_fg_link',
+            //'custom_fg_link',
             'custom_supplier',
             'item_code',
             'uom',
@@ -38,6 +38,11 @@ frappe.ui.form.on('BOM', {
                             `Field <b>${frappe.meta.get_docfield(row.doctype, field, frm.doc.name).label}</b> is mandatory in row ${idx + 1} of <b>${item_type}</b> table.`
                         );
                     }
+                }
+
+                // ➕ Additional validation only for Fabrics
+                if (item_type === 'Fabrics' && !row.custom_fg_link) {
+                    frappe.throw(`Field <b>FG Link</b> is mandatory in row ${idx + 1} of <b>Fabrics</b> table.`);
                 }
                 let new_row = frm.add_child('items');
 
