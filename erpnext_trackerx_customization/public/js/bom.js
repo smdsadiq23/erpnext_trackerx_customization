@@ -10,14 +10,36 @@ frappe.ui.form.on('BOM', {
     validate(frm) {
         frappe.model.clear_table(frm.doc, 'items');
 
+        const required_fields = [
+            'custom_fg_link',
+            'custom_supplier',
+            'item_code',
+            'uom',
+            'custom_net_qty',
+            //'custom_wastage_percentage',
+            'qty',
+            //'rate'
+        ];
+
         const merge_items = (source_table, item_type) => {
-            if ((frm.doc[source_table] || []).length < 1) {
-                frappe.throw(`Please add at least 1 row in <b>${item_type}</b> table.`);
+
+            const rows = frm.doc[source_table] || [];
+
+            if (rows.length < 1) {
+            frappe.throw(`Please add at least 1 row in <b>${item_type}</b> table.`);
             }
-            (frm.doc[source_table] || []).forEach(row => {
+
+
+            rows.forEach((row, idx) => {
+
+                for (const field of required_fields) {
+                    if (!row[field]) {
+                        frappe.throw(
+                            `Field <b>${frappe.meta.get_docfield(row.doctype, field, frm.doc.name).label}</b> is mandatory in row ${idx + 1} of <b>${item_type}</b> table.`
+                        );
+                    }
+                }
                 let new_row = frm.add_child('items');
-
-
 
                 copy(new_row, row, item_type);
 
@@ -132,6 +154,7 @@ function copy(new_row, row, item_type) {
     new_row.custom_net_qty = row.custom_net_qty;
     new_row.custom_gms = row.custom_gms;
     new_row.custom_item_type = item_type;
+    new_row.custom_supplier = row.custom_supplier;
 
 }
 
