@@ -189,7 +189,7 @@
    "no_copy": 1,
    "oldfieldname": "naming_series",
    "oldfieldtype": "Select",
-   "options": "MAT-PRE-.YYYY.-\nMAT-PR-RET-.YYYY.-",
+   "options": "GRN-PRE-.YYYY.-\nGRN-PR-RET-.YYYY.-",
    "print_hide": 1,
    "reqd": 1,
    "set_only_once": 1
@@ -1333,7 +1333,7 @@
  "icon": "fa fa-truck",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-24 18:30:12.348249",
+ "modified": "2025-07-24 19:51:23.073990",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Note",
