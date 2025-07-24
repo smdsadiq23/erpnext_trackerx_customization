@@ -53,12 +53,12 @@ frappe.ui.form.on('BOM', {
         merge_items('custom_labels_items', 'Labels');
         merge_items('custom_packing_materials_items', 'Packing Materials');
 
-        // 🔴 Clear the UI-only virtual tables so they don't save to DB
-        frappe.model.clear_table(frm.doc, 'custom_fabrics_items');
-        frappe.model.clear_table(frm.doc, 'custom_trims_items');
-        frappe.model.clear_table(frm.doc, 'custom_accessories_items');
-        frappe.model.clear_table(frm.doc, 'custom_labels_items');
-        frappe.model.clear_table(frm.doc, 'custom_packing_materials_items');
+        // // 🔴 Clear the UI-only virtual tables so they don't save to DB
+        // frappe.model.clear_table(frm.doc, 'custom_fabrics_items');
+        // frappe.model.clear_table(frm.doc, 'custom_trims_items');
+        // frappe.model.clear_table(frm.doc, 'custom_accessories_items');
+        // frappe.model.clear_table(frm.doc, 'custom_labels_items');
+        // frappe.model.clear_table(frm.doc, 'custom_packing_materials_items');
     },
     onload(frm) {
         frm.set_df_property('items', 'hidden', 1);
@@ -90,6 +90,8 @@ frappe.ui.form.on('BOM', {
     },
 
     sync_virtual_tables(frm) {
+        if(true)
+            return;
         frappe.model.clear_table(frm.doc, 'custom_fabrics_items');
         frappe.model.clear_table(frm.doc, 'custom_trims_items');
         frappe.model.clear_table(frm.doc, 'custom_accessories_items');
