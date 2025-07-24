@@ -58,12 +58,16 @@ def generate_item_code(doc):
         "Style": "FG",
         "Fabrics": "FAB",
         "Trims": "TRM",
-        "Accessories": "ACC"
+        "Accessories": "ACC",
+        "Lables": "LBL",
+        "Machines": "MC",
+        "Packing Materials": "PCK_MTL"
     }
 
     prefix = prefix_map.get(master)
     if not prefix:
-        frappe.throw(f"Invalid custom_select_master value: {master}")
+        #frappe.throw(f"Invalid custom_select_master value: {master}")
+        prefix = "ITEM"
 
     # Format item_group conditionally
     item_group = doc.item_group or ""
