@@ -7,13 +7,13 @@ frappe.ui.form.on('Item', {
         
 
         // --- Auto-add row to 'components' child table on new Item creation ---
-        if (frm.is_new()) {
-            console.log("New Item document created. Adding default row to 'components' child table.");
-            let new_component_row = frm.add_child('custom_fg_components'); // 'components' is the fieldname of your child table
-            new_component_row.component_name = frm.doc.item_name; // Set child field from parent's item_name
-            new_component_row.tracking_required=true;
-            frm.refresh_field('custom_fg_components'); // Refresh the child table grid to show the new row
-        }
+        // if (frm.is_new()) {
+        //     console.log("New Item document created. Adding default row to 'components' child table.");
+        //     let new_component_row = frm.add_child('custom_fg_components'); // 'components' is the fieldname of your child table
+        //     new_component_row.component_name = frm.doc.item_name; // Set child field from parent's item_name
+        //     new_component_row.tracking_required=true;
+        //     frm.refresh_field('custom_fg_components'); // Refresh the child table grid to show the new row
+        // }
 
         
     },
@@ -24,13 +24,13 @@ frappe.ui.form.on('Item', {
 
     item_name: function(frm) {
         
-        // This will update the component_name in the first row if item_name changes
-        // after the initial load, or if the user types in item_name first.
-        if (frm.doc.custom_fg_components && frm.doc.custom_fg_components.length > 0) {
-            frm.doc.custom_fg_components[0].component_name = frm.doc.item_name;
-            frm.refresh_field('custom_fg_components');
-            console.log("Component name updated in child table from Item Name.");
-        }
+        // // This will update the component_name in the first row if item_name changes
+        // // after the initial load, or if the user types in item_name first.
+        // if (frm.doc.custom_fg_components && frm.doc.custom_fg_components.length > 0) {
+        //     frm.doc.custom_fg_components[0].component_name = frm.doc.item_name;
+        //     frm.refresh_field('custom_fg_components');
+        //     console.log("Component name updated in child table from Item Name.");
+        // }
     },
 
     refresh: function(frm) {
@@ -65,29 +65,29 @@ frappe.ui.form.on('Item', {
         // This function will be called on refresh and when custom_select_master changes
         setConstructionTypeFilter(frm);
 
-        setTimeout(() => {
-            frm.fields_dict.custom_fg_components.grid.wrapper
-                .on('click', '.grid-remove-rows', function (e) {
-                    const grid = frm.fields_dict.custom_fg_components.grid;
-                    const selected = grid.get_selected();
+        // setTimeout(() => {
+        //     frm.fields_dict.custom_fg_components.grid.wrapper
+        //         .on('click', '.grid-remove-rows', function (e) {
+        //             const grid = frm.fields_dict.custom_fg_components.grid;
+        //             const selected = grid.get_selected();
 
-                    if (selected && selected.length > 0) {
-                        const firstRowName = grid.grid_rows[0]?.doc.name;
-                        if (selected.includes(firstRowName)) {
-                            frappe.msgprint(__('FG cannot be deleted'));
-                            // Stop bubbling
-                            setTimeout(()=>{
-                                let new_component_row = frm.add_child('custom_fg_components'); // 'components' is the fieldname of your child table
-                                new_component_row.component_name = frm.doc.item_name; 
-                                new_component_row.tracking_required=true;
-                                // Set child field from parent's item_name
-                                frm.refresh_field('custom_fg_components'); 
-                            },100)
-                                            // Explicit cancel
-                        }
-                    }
-                });
-        }, 100);
+        //             if (selected && selected.length > 0) {
+        //                 const firstRowName = grid.grid_rows[0]?.doc.name;
+        //                 if (selected.includes(firstRowName)) {
+        //                     frappe.msgprint(__('FG cannot be deleted'));
+        //                     // Stop bubbling
+        //                     setTimeout(()=>{
+        //                         let new_component_row = frm.add_child('custom_fg_components'); // 'components' is the fieldname of your child table
+        //                         new_component_row.component_name = frm.doc.item_name; 
+        //                         new_component_row.tracking_required=true;
+        //                         // Set child field from parent's item_name
+        //                         frm.refresh_field('custom_fg_components'); 
+        //                     },100)
+        //                                     // Explicit cancel
+        //                 }
+        //             }
+        //         });
+        // }, 100);
 
         
 

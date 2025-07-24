@@ -10,17 +10,36 @@ frappe.ui.form.on('BOM', {
     validate(frm) {
         frappe.model.clear_table(frm.doc, 'items');
 
-
-
+        const required_fields = [
+            'custom_fg_link',
+            'custom_supplier',
+            'item_code',
+            'uom',
+            'custom_net_qty',
+            //'custom_wastage_percentage',
+            'qty',
+            //'rate'
+        ];
 
         const merge_items = (source_table, item_type) => {
-            if ((frm.doc[source_table] || []).length < 1) {
-                frappe.throw(`Please add at least 1 row in <b>${item_type}</b> table.`);
+
+            const rows = frm.doc[source_table] || [];
+
+            if (rows.length < 1) {
+            frappe.throw(`Please add at least 1 row in <b>${item_type}</b> table.`);
             }
-            (frm.doc[source_table] || []).forEach(row => {
+
+
+            rows.forEach((row, idx) => {
+
+                for (const field of required_fields) {
+                    if (!row[field]) {
+                        frappe.throw(
+                            `Field <b>${frappe.meta.get_docfield(row.doctype, field, frm.doc.name).label}</b> is mandatory in row ${idx + 1} of <b>${item_type}</b> table.`
+                        );
+                    }
+                }
                 let new_row = frm.add_child('items');
-
-
 
                 copy(new_row, row, item_type);
 
@@ -34,12 +53,12 @@ frappe.ui.form.on('BOM', {
         merge_items('custom_labels_items', 'Labels');
         merge_items('custom_packing_materials_items', 'Packing Materials');
 
-        // 🔴 Clear the UI-only virtual tables so they don't save to DB
-        frappe.model.clear_table(frm.doc, 'custom_fabrics_items');
-        frappe.model.clear_table(frm.doc, 'custom_trims_items');
-        frappe.model.clear_table(frm.doc, 'custom_accessories_items');
-        frappe.model.clear_table(frm.doc, 'custom_labels_items');
-        frappe.model.clear_table(frm.doc, 'custom_packing_materials_items');
+        // // 🔴 Clear the UI-only virtual tables so they don't save to DB
+        // frappe.model.clear_table(frm.doc, 'custom_fabrics_items');
+        // frappe.model.clear_table(frm.doc, 'custom_trims_items');
+        // frappe.model.clear_table(frm.doc, 'custom_accessories_items');
+        // frappe.model.clear_table(frm.doc, 'custom_labels_items');
+        // frappe.model.clear_table(frm.doc, 'custom_packing_materials_items');
     },
     onload(frm) {
         frm.set_df_property('items', 'hidden', 1);
@@ -48,14 +67,6 @@ frappe.ui.form.on('BOM', {
         modifyTheBOMItemTableFields(frm);
 
         fetch_allowed_item_groups(frm);
-
-        frappe.form.link_formatters['Item'] = function(value, doc) {
-            if (doc && doc.custom_preferred_supplier) {
-                return `${value} (${doc.custom_preferred_supplier})`;
-            }
-            return value;
-        };
-
 
     },
     custom_net_qty(frm, cdt, cdn) {
@@ -79,6 +90,8 @@ frappe.ui.form.on('BOM', {
     },
 
     sync_virtual_tables(frm) {
+        if(true)
+            return;
         frappe.model.clear_table(frm.doc, 'custom_fabrics_items');
         frappe.model.clear_table(frm.doc, 'custom_trims_items');
         frappe.model.clear_table(frm.doc, 'custom_accessories_items');
@@ -143,6 +156,7 @@ function copy(new_row, row, item_type) {
     new_row.custom_net_qty = row.custom_net_qty;
     new_row.custom_gms = row.custom_gms;
     new_row.custom_item_type = item_type;
+    new_row.custom_supplier = row.custom_supplier;
 
 }
 
@@ -267,14 +281,3 @@ function fetch_allowed_item_groups(frm) {
         });
     });
 }
-
-
-
-
-// Custom formatter for Item Link field to show preferred supplier in dropdown
-frappe.form.link_formatters['Item'] = function(value, doc) {
-    if (doc && doc.custom_preferred_supplier) {
-        return `${value} (${doc.custom_preferred_supplier})`;
-    }
-    return value;
-};

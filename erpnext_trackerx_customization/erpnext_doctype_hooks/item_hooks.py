@@ -58,12 +58,16 @@ def generate_item_code(doc):
         "Style": "FG",
         "Fabrics": "FAB",
         "Trims": "TRM",
-        "Accessories": "ACC"
+        "Accessories": "ACC",
+        "Labels": "LBL",
+        "Machines": "MC",
+        "Packing Materials": "PM"
     }
 
     prefix = prefix_map.get(master)
     if not prefix:
-        frappe.throw(f"Invalid custom_select_master value: {master}")
+        #frappe.throw(f"Invalid custom_select_master value: {master}")
+        prefix = "ITEM"
 
     # Format item_group conditionally
     item_group = doc.item_group or ""
@@ -85,6 +89,11 @@ def generate_item_code(doc):
     color_name = doc.custom_colour_name or ""
     color_code = doc.custom_colour_code or ""
 
+    if item_group_code == prefix:
+        # set prefix to empty if Group shorthand is same as prefix, eg: PM
+        prefix = ""
+
+    
     parts = [prefix]
     if item_group_code:
         parts.append(item_group_code)
@@ -105,7 +114,12 @@ def generate_item_code(doc):
     """, master, as_dict=True)
 
     if last_doc:
-        last_seq = int(last_doc[0].item_code.rsplit('-', 1)[1])
+        item_code_parts = last_doc[0].item_code.rsplit('-', 1)
+        if len(item_code_parts) > 1 and item_code_parts[1].isdigit():
+            last_seq = int(item_code_parts[1])
+        else:
+            last_seq = 0
+            
         next_seq = last_seq + 1
     else:
         next_seq = 1
@@ -113,8 +127,7 @@ def generate_item_code(doc):
     return f"{base_code}-{next_seq:06d}"
 
 def validate_item(doc, method):
-    if doc.custom_select_master == "Style":
-        validate_for_fg_components(doc, method)
+    pass
 
 
 def validate_for_fg_components(doc, method):
