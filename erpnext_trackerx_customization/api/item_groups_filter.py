@@ -7,8 +7,7 @@ def get_items_under_group_and_children(item_group):
 
     groups = frappe.get_all("Item Group", {
         "lft": (">=", frappe.db.get_value("Item Group", item_group, "lft")),
-        "rgt": ("<=", frappe.db.get_value("Item Group", item_group, "rgt")),
-        "is_group": 0
+        "rgt": ("<=", frappe.db.get_value("Item Group", item_group, "rgt"))
     }, pluck="name")
 
     return groups
