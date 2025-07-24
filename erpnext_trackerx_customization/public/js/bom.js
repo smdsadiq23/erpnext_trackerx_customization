@@ -157,6 +157,8 @@ function copy(new_row, row, item_type) {
     new_row.custom_gms = row.custom_gms;
     new_row.custom_item_type = item_type;
     new_row.custom_supplier = row.custom_supplier;
+    new_row.qty_consumed_per_unit = row.qty_consumed_per_unit;
+    new_row.base_amount = row.base_amount;
 
 }
 
@@ -212,6 +214,8 @@ function calculate_qty(cdt, cdn) {
     const qty = net + (net * waste / 100);
 
     frappe.model.set_value(cdt, cdn, 'qty', qty);
+
+    frappe.model.set_value(cdt, cdn, 'amount', qty * row.rate);
 }
 
 
