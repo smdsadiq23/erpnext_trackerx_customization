@@ -59,9 +59,9 @@ def generate_item_code(doc):
         "Fabrics": "FAB",
         "Trims": "TRM",
         "Accessories": "ACC",
-        "Lables": "LBL",
+        "Labels": "LBL",
         "Machines": "MC",
-        "Packing Materials": "PCK_MTL"
+        "Packing Materials": "PM"
     }
 
     prefix = prefix_map.get(master)
@@ -89,6 +89,11 @@ def generate_item_code(doc):
     color_name = doc.custom_colour_name or ""
     color_code = doc.custom_colour_code or ""
 
+    if item_group_code == prefix:
+        # set prefix to empty if Group shorthand is same as prefix, eg: PM
+        prefix = ""
+
+    
     parts = [prefix]
     if item_group_code:
         parts.append(item_group_code)

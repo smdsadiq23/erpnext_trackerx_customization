@@ -10,9 +10,6 @@ frappe.ui.form.on('BOM', {
     validate(frm) {
         frappe.model.clear_table(frm.doc, 'items');
 
-
-
-
         const merge_items = (source_table, item_type) => {
             if ((frm.doc[source_table] || []).length < 1) {
                 frappe.throw(`Please add at least 1 row in <b>${item_type}</b> table.`);
@@ -48,14 +45,6 @@ frappe.ui.form.on('BOM', {
         modifyTheBOMItemTableFields(frm);
 
         fetch_allowed_item_groups(frm);
-
-        frappe.form.link_formatters['Item'] = function(value, doc) {
-            if (doc && doc.custom_preferred_supplier) {
-                return `${value} (${doc.custom_preferred_supplier})`;
-            }
-            return value;
-        };
-
 
     },
     custom_net_qty(frm, cdt, cdn) {
@@ -267,14 +256,3 @@ function fetch_allowed_item_groups(frm) {
         });
     });
 }
-
-
-
-
-// Custom formatter for Item Link field to show preferred supplier in dropdown
-frappe.form.link_formatters['Item'] = function(value, doc) {
-    if (doc && doc.custom_preferred_supplier) {
-        return `${value} (${doc.custom_preferred_supplier})`;
-    }
-    return value;
-};
