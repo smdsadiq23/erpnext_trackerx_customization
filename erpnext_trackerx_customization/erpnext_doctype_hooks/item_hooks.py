@@ -114,7 +114,12 @@ def generate_item_code(doc):
     """, master, as_dict=True)
 
     if last_doc:
-        last_seq = int(last_doc[0].item_code.rsplit('-', 1)[1])
+        item_code_parts = last_doc[0].item_code.rsplit('-', 1)
+        if len(item_code_parts) > 1 and item_code_parts[1].isdigit():
+            last_seq = int(item_code_parts[1])
+        else:
+            last_seq = 0
+            
         next_seq = last_seq + 1
     else:
         next_seq = 1
@@ -122,8 +127,7 @@ def generate_item_code(doc):
     return f"{base_code}-{next_seq:06d}"
 
 def validate_item(doc, method):
-    if doc.custom_select_master == "Style":
-        validate_for_fg_components(doc, method)
+    pass
 
 
 def validate_for_fg_components(doc, method):
