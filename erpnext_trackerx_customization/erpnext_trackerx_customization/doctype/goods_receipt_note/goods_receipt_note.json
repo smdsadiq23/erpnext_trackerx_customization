@@ -1313,7 +1313,7 @@
    "fieldname": "purchase_order",
    "fieldtype": "Link",
    "label": "Purchase Order",
-   "link_filters": "[[\"Purchase Order\",\"status\",\"=\",\"Completed\"]]",
+   "link_filters": "[[\"Purchase Order\",\"status\",\"in\",[\"Draft\",\"On Hold\",\"To Receive\",\"To Receive and Bill\",null]]]",
    "options": "Purchase Order",
    "reqd": 1
   }
@@ -1322,7 +1322,7 @@
  "icon": "fa fa-truck",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-23 20:18:55.375965",
+ "modified": "2025-07-24 13:34:53.685944",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Note",
