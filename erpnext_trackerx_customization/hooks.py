@@ -28,13 +28,13 @@ fixtures = [
     {
         "dt": "Custom Field",
         "filters": [
-            ["dt", "in", ["Item", "BOM", "BOM Item", "Supplier"]]
+            ["dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item"]]
         ]
     },
     {
         "dt": "Property Setter",
         "filters": [
-            ["doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier"]]
+            ["doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item"]]
         ]
     }
 ]
