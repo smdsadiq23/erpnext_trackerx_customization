@@ -58,7 +58,10 @@ def generate_item_code(doc):
         "Style": "FG",
         "Fabrics": "FAB",
         "Trims": "TRM",
-        "Accessories": "ACC"
+        "Accessories": "ACC",
+        "Lables": "LBL",
+        "Machines": "MC",
+        "Packing Materials": "PCK_MTL"
     }
 
     prefix = prefix_map.get(master)
