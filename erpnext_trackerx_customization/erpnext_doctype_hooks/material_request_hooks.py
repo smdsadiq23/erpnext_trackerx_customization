@@ -17,6 +17,7 @@ def get_mr_items_from_sales_order(sales_order):
         else:
             # Fallback: Direct copy (without custom_size)
             items.append({
+                "sales_order": so_item.parent,           # Link to Sales Order
                 "item_code": so_item.item_code,
                 "qty": so_item.qty,
                 "uom": so_item.uom,
@@ -47,6 +48,7 @@ def _get_items_from_bom_for_so_item(so_item):
         required_qty = bom_item.qty * so_qty
 
         items.append({
+            "sales_order": so_item.parent,           # Link to Sales Order
             "item_code": bom_item.item_code,
             "qty": required_qty,
             "uom": bom_item.uom,
