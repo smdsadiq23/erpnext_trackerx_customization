@@ -1,5 +1,3 @@
-console.log("material_request.js loaded");
-
 frappe.ui.form.on('Material Request', {
     refresh(frm) {
         if (frm.doc.docstatus === 0 && frm.has_perm("submit")) {
@@ -79,7 +77,65 @@ frappe.ui.form.on('Material Request', {
                     dialog.show();
                 },
                 __('Get Items From')
-            );
+            );                     
         }
+
+        // Update summary
+        frm.trigger('update_item_summary');
     }
 });
+
+// Extend to update summary whenever items change
+
+frappe.ui.form.on('Material Request Item', {
+    item_code(frm, cdt, cdn) {
+        frm.trigger('update_item_summary');
+    },
+    qty(frm, cdt, cdn) {
+        frm.trigger('update_item_summary');
+    },    
+    items_add: function(frm, cdt, cdn) { 
+        frm.trigger('update_item_summary');
+        // Your logic here
+    },
+    items_remove: function(frm, cdt, cdn) { 
+        frm.trigger('update_item_summary');
+        // Your logic here
+    }
+});
+
+
+// Custom method to update summary
+$.extend(cur_frm.cscript, {
+    update_item_summary: function() {
+        const frm = cur_frm;
+        if (!frm.doc.items) return;
+
+        // Group by Item Code and sum Quantity
+        const summary = {};
+        frm.doc.items.forEach(item => {
+            if (!item.item_code) return;
+
+            if (!summary[item.item_code]) {
+                summary[item.item_code] = {
+                    item_code: item.item_code,
+                    quantity: 0
+                };
+            }
+            summary[item.item_code].quantity += flt(item.qty);
+        });
+
+        // Set to summary table
+        frm.set_value('custom_items_summary', []);
+
+        Object.values(summary).forEach(row => {
+            const child = frm.add_child('custom_items_summary');
+            frappe.model.set_value(child.doctype, child.name, 'item_code', row.item_code);
+            frappe.model.set_value(child.doctype, child.name, 'quantity', row.quantity);
+        });
+
+        frm.refresh_field('custom_items_summary');
+    }
+});
+
+
