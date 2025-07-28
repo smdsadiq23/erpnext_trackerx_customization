@@ -24,17 +24,16 @@ required_apps = ["erpnext"]
 
 #Fuxtures
 fixtures = [
-
     {
         "dt": "Custom Field",
         "filters": [
-            ["dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item"]]
+            ["dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Material Request"]]
         ]
     },
     {
         "dt": "Property Setter",
         "filters": [
-            ["doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item"]]
+            ["doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Material Request", "Material Request Item"]]
         ]
     }
 ]
@@ -61,7 +60,7 @@ fixtures = [
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-doctype_js = {"Item" : "public/js/item.js", "BOM": "public/js/bom.js"}
+doctype_js = {"Item" : "public/js/item.js", "BOM": "public/js/bom.js", "Material Request": "public/js/material_request.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}

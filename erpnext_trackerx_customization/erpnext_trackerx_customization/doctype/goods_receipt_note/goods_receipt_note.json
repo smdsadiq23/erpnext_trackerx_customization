@@ -96,6 +96,8 @@
   "column_break_44",
   "additional_discount_percentage",
   "discount_amount",
+  "section_break_qfsn",
+  "document_checklist",
   "sec_tax_breakup",
   "other_charges_calculation",
   "pricing_rule_details",
@@ -187,7 +189,7 @@
    "no_copy": 1,
    "oldfieldname": "naming_series",
    "oldfieldtype": "Select",
-   "options": "MAT-PRE-.YYYY.-\nMAT-PR-RET-.YYYY.-",
+   "options": "GRN-PRE-.YYYY.-\nGRN-PR-RET-.YYYY.-",
    "print_hide": 1,
    "reqd": 1,
    "set_only_once": 1
@@ -541,7 +543,6 @@
    "print_hide": 1,
    "print_width": "150px",
    "read_only": 1,
-   "reqd": 1,
    "width": "150px"
   },
   {
@@ -1316,13 +1317,23 @@
    "link_filters": "[[\"Purchase Order\",\"status\",\"in\",[\"Draft\",\"On Hold\",\"To Receive\",\"To Receive and Bill\",null]]]",
    "options": "Purchase Order",
    "reqd": 1
+  },
+  {
+   "fieldname": "section_break_qfsn",
+   "fieldtype": "Section Break",
+   "label": "Document Checklist"
+  },
+  {
+   "fieldname": "document_checklist",
+   "fieldtype": "Table",
+   "options": "Goods Receipt Document Checklist"
   }
  ],
  "grid_page_length": 50,
  "icon": "fa fa-truck",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-24 13:34:53.685944",
+ "modified": "2025-07-24 19:51:23.073990",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Note",
