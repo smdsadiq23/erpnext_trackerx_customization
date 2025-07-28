@@ -24,7 +24,8 @@ def get_mr_items_from_sales_order(sales_order):
                 "stock_uom": so_item.stock_uom,
                 "conversion_factor": so_item.conversion_factor,
                 "description": so_item.description,
-                "sales_order_item": so_item.name
+                "sales_order_item": so_item.name,
+                "size": so_item.custom_size
             })
 
     return items
@@ -56,8 +57,11 @@ def _get_items_from_bom_for_so_item(so_item):
             "conversion_factor": bom_item.conversion_factor,
             "description": bom_item.description,
             "bom_no": bom.name,
-            "sales_order_item": so_item.name
+            "sales_order_item": so_item.name,
+            "custom_size": so_item.custom_size
             # ❌ custom_size is NOT included
+
+            # In Sales Order item table include Line Item column
         })
 
     return items

@@ -111,27 +111,58 @@ $.extend(cur_frm.cscript, {
         const frm = cur_frm;
         if (!frm.doc.items) return;
 
-        // Group by Item Code and sum Quantity
+        // Group by Item Code
         const summary = {};
+        let has_warning = false;
+
         frm.doc.items.forEach(item => {
             if (!item.item_code) return;
 
             if (!summary[item.item_code]) {
                 summary[item.item_code] = {
                     item_code: item.item_code,
-                    quantity: 0
+                    quantity: 0,
+                    custom_size: item.custom_size || null,
+                    custom_uom: item.uom || null,
+                    uom_mismatch: false,
+                    size_mismatch: false
                 };
+            } else {
+                // Check for UOM mismatch
+                if (item.uom && summary[item.item_code].custom_uom !== item.uom) {
+                    summary[item.item_code].uom_mismatch = true;
+                }
+                // Check for Size mismatch
+                if (item.custom_size && summary[item.item_code].custom_size !== item.custom_size) {
+                    summary[item.item_code].size_mismatch = true;
+                }
             }
+
             summary[item.item_code].quantity += flt(item.qty);
         });
 
-        // Set to summary table
+        // Clear and repopulate summary
         frm.set_value('custom_items_summary', []);
 
         Object.values(summary).forEach(row => {
             const child = frm.add_child('custom_items_summary');
             frappe.model.set_value(child.doctype, child.name, 'item_code', row.item_code);
             frappe.model.set_value(child.doctype, child.name, 'quantity', row.quantity);
+            frappe.model.set_value(child.doctype, child.name, 'custom_uom', row.custom_uom);
+
+            // Show size only if no conflict
+            const size_value = row.size_mismatch ? 'Mixed Sizes' : (row.custom_size || '');
+            frappe.model.set_value(child.doctype, child.name, 'custom_size', size_value);
+
+            // Optional: Warn if UOM or Size is mixed
+            if (row.uom_mismatch && !has_warning) {
+                has_warning = true;
+                frappe.msgprint({
+                    title: __('Warning'),
+                    indicator: 'orange',
+                    message: __('Some items with the same Item Code have different UOMs. Only the first UOM is shown in summary.')
+                });
+            }
         });
 
         frm.refresh_field('custom_items_summary');
