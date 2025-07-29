@@ -22,7 +22,7 @@ required_apps = ["erpnext"]
 # ]
 
 
-#Fuxtures
+#Fixtures
 fixtures = [
     {
         "dt": "Custom Field",
@@ -41,6 +41,9 @@ fixtures = [
         ]
     }
 ]
+
+
+after_migrate = ["erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute", "erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure"]
 
 # Includes in <head>
 # ------------------
