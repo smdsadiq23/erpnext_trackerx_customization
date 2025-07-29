@@ -141,7 +141,7 @@ $.extend(cur_frm.cscript, {
             summary[item.item_code].quantity += flt(item.qty);
         });
 
-        // Clear and repopulate summary
+        //// Clear and repopulate summary
         // frm.set_value('custom_items_summary', []);
 
         // Object.values(summary).forEach(row => {
