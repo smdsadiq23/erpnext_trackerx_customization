@@ -1005,6 +1005,6 @@
   "property": "depends_on",
   "property_type": "Data",
   "row_name": null,
-  "value": "eval:doc.custom_costing_formula=='Sum of All Items'"
+  "value": "eval: !['Highest by Sizes', 'Average by Sizes'].includes(doc.custom_costing_formula)"
  }
 ]
