@@ -999,12 +999,12 @@
   "doctype_or_field": "DocField",
   "field_name": "raw_material_cost",
   "is_system_generated": 0,
-  "modified": "2025-07-30 14:12:39.704805",
+  "modified": "2025-07-30 16:58:09.925563",
   "module": null,
   "name": "BOM-raw_material_cost-depends_on",
   "property": "depends_on",
   "property_type": "Data",
   "row_name": null,
-  "value": "eval: !['Highest by Sizes', 'Average by Sizes'].includes(doc.custom_costing_formula)"
+  "value": ""
  }
 ]
