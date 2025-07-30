@@ -152,6 +152,9 @@ permission_query_conditions = {
 # override_doctype_class = {
 # 	"ToDo": "custom_app.overrides.CustomToDo"
 # }
+override_doctype_class = {
+    "BOM": "erpnext_trackerx_customization.overrides.bom.CustomBOM"
+}
 
 # Document Events
 # ---------------
@@ -176,7 +179,8 @@ doc_events= {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.validate_item"
     },
     "BOM": {
-        "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.validate_bom"
+        "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.validate_bom",
+        "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.before_save_bom"
     }
 }
 
