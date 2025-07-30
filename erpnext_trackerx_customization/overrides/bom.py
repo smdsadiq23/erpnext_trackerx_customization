@@ -1,0 +1,73 @@
+from erpnext.manufacturing.doctype.bom.bom import BOM as BaseBOM
+from collections import defaultdict
+import frappe
+from frappe.utils import flt
+
+class CustomBOM(BaseBOM):
+    def calculate_cost(self, *args, **kwargs):
+        # Step 1: Standard ERPNext costing logic
+        super().calculate_cost(*args, **kwargs)
+
+        # Step 2: Custom BOM Item Costing Logic
+        self.calculate_custom_table_costs()
+        self.calculate_custom_material_costs()
+
+    def calculate_custom_table_costs(self):
+        custom_tables = [
+            "custom_fabrics_items",
+            "custom_trims_items",
+            "custom_accessories_items",
+            "custom_labels_items",
+            "custom_packing_materials_items"
+        ]
+
+        for table in custom_tables:
+            for d in self.get(table):
+                old_rate = d.rate
+
+                # Optionally fetch rate like standard BOM items
+                if not self.bom_creator and getattr(d, "is_stock_item", 1):  # fallback to 1
+                    d.rate = self.get_rm_rate(
+                        {
+                            "company": self.company,
+                            "item_code": d.item_code,
+                            "bom_no": getattr(d, "bom_no", None),
+                            "qty": d.qty,
+                            "uom": d.uom,
+                            "stock_uom": d.stock_uom,
+                            "conversion_factor": getattr(d, "conversion_factor", 1),
+                            "sourced_by_supplier": getattr(d, "sourced_by_supplier", 0),
+                        }
+                    )
+
+                d.base_rate = flt(d.rate) * flt(self.conversion_rate)
+                d.amount = flt(d.rate, d.precision("rate")) * flt(d.qty, d.precision("qty"))
+                d.base_amount = d.amount * flt(self.conversion_rate)
+                d.qty_consumed_per_unit = (
+                    flt(getattr(d, "stock_qty", d.qty), d.precision("stock_qty"))
+                    / flt(self.quantity, self.precision("quantity"))
+                )
+
+
+
+    def calculate_custom_material_costs(self):
+        size_cost_map = defaultdict(list)
+
+        for item in self.items:
+            key = (item.item_code, item.custom_size)
+            size_cost_map[key].append(item.amount or 0)
+
+        total_avg = 0
+        max_cost = 0
+        grouped_items = defaultdict(list)
+
+        for (item_code, size), costs in size_cost_map.items():
+            group_cost = sum(costs)
+            grouped_items[item_code].append(group_cost)
+
+        for item_code, cost_list in grouped_items.items():
+            total_avg += sum(cost_list) / len(cost_list)
+            max_cost += max(cost_list)
+
+        self.custom_raw_material_cost_avg = total_avg
+        self.custom_raw_material_cost_highest = max_cost
