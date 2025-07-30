@@ -12,12 +12,6 @@ class CustomBOM(BaseBOM):
         self.calculate_custom_table_costs()
         self.calculate_custom_material_costs()
 
-        # Replace raw_material_cost based on custom_costing_formula
-        if self.custom_costing_formula == "Average by Sizes":
-            self.raw_material_cost = self.custom_raw_material_cost_avg
-        elif self.custom_costing_formula == "Highest by Sizes":
-            self.raw_material_cost = self.custom_raw_material_cost_highest
-        # else: use default sum of all items, do nothing (already computed)
 
         # Recalculate total_cost after modifying raw_material_cost
         self.total_cost = (
@@ -69,28 +63,33 @@ class CustomBOM(BaseBOM):
 
         for item in self.items:
             key = (item.item_code, item.custom_size)
-            size_cost_map[key].append(item.amount or 0)
+            size_cost_map[key].append(flt(item.amount or 0))
 
         total_avg = 0
         max_cost = 0
         grouped_items = defaultdict(list)
+        all_amount = 0
 
         for (item_code, size), costs in size_cost_map.items():
             group_cost = sum(costs)
             grouped_items[item_code].append(group_cost)
+            all_amount += group_cost
 
         for item_code, cost_list in grouped_items.items():
             total_avg += sum(cost_list) / len(cost_list)
             max_cost += max(cost_list)
-
-        self.custom_raw_material_cost_avg = total_avg
-        self.custom_raw_material_cost_highest = max_cost
 
         formula = self.custom_costing_formula or "Sum of all Items"
         if formula == "Average by Sizes":
             self.raw_material_cost = total_avg
         elif formula == "Highest by Sizes":
             self.raw_material_cost = max_cost
+        elif formula == "By Size":
+            size_selected = self.custom_costing_size
+            size_cost = 0
+            for item in self.items:
+                if item.custom_size == size_selected:
+                    size_cost += flt(item.amount or 0)
+            self.raw_material_cost = size_cost
         else:
-            # Default to sum of individual items (already computed by ERPNext before)
-            self.raw_material_cost = sum(flt(item.amount or 0) for item in self.items)
+            self.raw_material_cost = all_amount
