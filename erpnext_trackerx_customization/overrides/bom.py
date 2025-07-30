@@ -23,8 +23,7 @@ class CustomBOM(BaseBOM):
         self.total_cost = (
             flt(self.raw_material_cost)
             + flt(self.operating_cost)
-            + flt(self.factory_overhead_cost)
-            + flt(self.subcontracting_cost)
+            + flt(self.scrap_material_cost)
         )
 
     def calculate_custom_table_costs(self):
