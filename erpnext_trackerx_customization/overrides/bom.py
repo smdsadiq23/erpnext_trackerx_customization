@@ -12,6 +12,21 @@ class CustomBOM(BaseBOM):
         self.calculate_custom_table_costs()
         self.calculate_custom_material_costs()
 
+        # Replace raw_material_cost based on custom_costing_formula
+        if self.custom_costing_formula == "Average by Sizes":
+            self.raw_material_cost = self.custom_raw_material_cost_avg
+        elif self.custom_costing_formula == "Highest by Sizes":
+            self.raw_material_cost = self.custom_raw_material_cost_highest
+        # else: use default sum of all items, do nothing (already computed)
+
+        # Recalculate total_cost after modifying raw_material_cost
+        self.total_cost = (
+            flt(self.raw_material_cost)
+            + flt(self.operating_cost)
+            + flt(self.factory_overhead_cost)
+            + flt(self.subcontracting_cost)
+        )
+
     def calculate_custom_table_costs(self):
         custom_tables = [
             "custom_fabrics_items",
@@ -71,3 +86,12 @@ class CustomBOM(BaseBOM):
 
         self.custom_raw_material_cost_avg = total_avg
         self.custom_raw_material_cost_highest = max_cost
+
+        formula = self.custom_costing_formula or "Sum of all Items"
+        if formula == "Average by Sizes":
+            self.raw_material_cost = total_avg
+        elif formula == "Highest by Sizes":
+            self.raw_material_cost = max_cost
+        else:
+            # Default to sum of individual items (already computed by ERPNext before)
+            self.raw_material_cost = sum(flt(item.amount or 0) for item in self.items)

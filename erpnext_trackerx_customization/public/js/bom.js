@@ -136,6 +136,36 @@ frappe.ui.form.on('BOM', {
         frm.refresh_field('custom_accessories_items');
         frm.refresh_field('custom_labels_items');
         frm.refresh_field('custom_packing_materials_items');
+    },
+    custom_costing_formula(frm) {
+        // if (frm.doc.__unsaved) {
+        //     frappe.msgprint(__('Please save the BOM first to calculate cost.'));
+        //     return;
+        // }
+
+
+        let formula = frm.doc.custom_costing_formula;
+        let selected_cost = 0;
+
+        if (formula === "Average by Sizes") {
+            selected_cost = frm.doc.custom_raw_material_cost_avg || 10;
+        } else if (formula === "Highest by Sizes") {
+            selected_cost = frm.doc.custom_raw_material_cost_highest || 100;
+        } else {
+            selected_cost = frm.doc.raw_material_cost || 0;
+        }
+
+        // Update raw_material_cost field in UI only
+        frm.set_value("raw_material_cost", selected_cost);
+        frm.set_df_property("raw_material_cost", "description", `Displayed as per "${formula}"`);
+
+        // Recalculate total cost in UI (raw_material + operational + scrap)
+        const operational_cost = frm.doc.operating_cost || 0;
+        const scrap_cost = frm.doc.scrap_material_cost || 0;
+        const total_cost = selected_cost + operational_cost + scrap_cost;
+
+        frm.set_value("total_cost", total_cost);
+        frm.refresh_fields(["raw_material_cost", "total_cost"]);
     }
 
 
