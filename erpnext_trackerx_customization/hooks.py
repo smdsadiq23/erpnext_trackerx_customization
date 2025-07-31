@@ -195,6 +195,10 @@ doc_events= {
     "Sales Order": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.validate",
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.on_submit"
+    },
+     "Work Order": {
+        "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.validate",
+        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_submit"
     }
 }
 
