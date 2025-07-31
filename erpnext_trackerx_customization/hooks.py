@@ -27,13 +27,17 @@ fixtures = [
     {
         "dt": "Custom Field",
         "filters": [
-            ["dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary"]]
+            ["dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
+                          "Work Order", "Work Order Item"
+                          ]]
         ]
     },
     {
         "dt": "Property Setter",
         "filters": [
-            ["doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary"]]
+            ["doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
+                          "Work Order", "Work Order Item"      
+                            ]]
         ]
     }
 ]
@@ -60,7 +64,13 @@ fixtures = [
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-doctype_js = {"Item" : "public/js/item.js", "BOM": "public/js/bom.js", "Material Request": "public/js/material_request.js","Sales Order": "public/js/sales_order.js"}
+doctype_js = {
+    "Item" : "public/js/item.js", 
+    "BOM": "public/js/bom.js", 
+    "Material Request": "public/js/material_request.js",
+    "Sales Order": "public/js/sales_order.js",
+    "Work Order": "public/js/work_order.js"
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -181,6 +191,10 @@ doc_events= {
     "BOM": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.validate_bom",
         "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.before_save_bom"
+    },
+    "Sales Order": {
+        "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.validate",
+        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.on_submit"
     }
 }
 
