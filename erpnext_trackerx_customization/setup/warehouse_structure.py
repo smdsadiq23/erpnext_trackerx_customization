@@ -89,7 +89,7 @@ def create_fabric_zones(company_name, abbr):
             warehouse.save()
 
         # Racks, Levels, Bins
-        for rack in range(1, 11):
+        for rack in range(1, 3):
             rack_warehouse = f"{zone_warehouse}-R{rack:02}"
             rack_warehouse_full = f"{rack_warehouse} - {abbr}"
             if not frappe.db.exists("Warehouse", rack_warehouse_full):
@@ -102,7 +102,7 @@ def create_fabric_zones(company_name, abbr):
                 })
                 warehouse.insert(ignore_permissions=True, ignore_mandatory=True)
 
-            for level in range(1, 6):
+            for level in range(1, 4):
                 level_warehouse = f"{rack_warehouse}-L{level}"
                 level_warehouse_full = f"{level_warehouse} - {abbr}"
                 if not frappe.db.exists("Warehouse", level_warehouse_full):

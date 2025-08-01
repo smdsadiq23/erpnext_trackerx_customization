@@ -4,13 +4,13 @@
 frappe.ui.form.on("Goods Receipt Note", {
     refresh(frm) {
         // Only run for new documents
-        if (frm.doc.__islocal && frm.doc.document_checklist.length === 0) {
-            const standard_docs = [         
+        if (frm.doc.__islocal && (frm.doc.document_checklist?.length || 0) === 0) {
+            const standard_docs = [
                 'Delivery Challan / Invoice',
                 'Packing List',
                 'Material Test Certificate (MTC)',
                 'Inspection Report',
-                'Gate Entry Register / Inward Register'                
+                'Gate Entry Register / Inward Register'
             ];
 
             const optional_docs = [
@@ -25,7 +25,7 @@ frappe.ui.form.on("Goods Receipt Note", {
             standard_docs.forEach(doc => {
                 const row = frm.add_child('document_checklist');
                 frappe.model.set_value(row.doctype, row.name, 'document_type', doc);
-                frappe.model.set_value(row.doctype, row.name, 'is_required', 1); // Mark as required
+                frappe.model.set_value(row.doctype, row.name, 'is_required', 1);
             });
 
             // Add optional documents (not mandatory)
@@ -37,10 +37,10 @@ frappe.ui.form.on("Goods Receipt Note", {
 
             frm.refresh_field('document_checklist');
         }
+        set_item_code_query(frm);
     },
 
-    //Validate Document checklist Received and Received Date
-    validate: function(frm) {
+    validate(frm) {
         const missing_required = [];
         const missing_date = [];
 
@@ -74,60 +74,103 @@ frappe.ui.form.on("Goods Receipt Note", {
             callback(r) {
                 if (r.message) {
                     const po = r.message;
-                    const items = po.items || [];
+                    const po_items = po.items || [];
 
-                    // Clear existing items
                     frm.clear_table('items');
 
-                    items.forEach(item => {
-                        const row = frm.add_child('items');
-                        frappe.model.set_value(row.doctype, row.name, 'item_code', item.item_code);
-                        frappe.model.set_value(row.doctype, row.name, 'item_name', item.item_name);
-                        frappe.model.set_value(row.doctype, row.name, 'ordered_quantity', item.qty);
-                        frappe.model.set_value(row.doctype, row.name, 'amount', item.rate);
-                        frappe.model.set_value(row.doctype, row.name, 'material_type', item.item_group);
-                        frappe.model.set_value(row.doctype, row.name, 'uom', item.uom);
-                        frappe.model.set_value(row.doctype, row.name, 'color', item.custom_colour_name);
-                        // Set accepted_warehouse from parent if available
-                        if (frm.doc.set_warehouse) {
-                            frappe.model.set_value(row.doctype, row.name, 'accepted_warehouse', frm.doc.set_warehouse);
-                        }
+                    // Build a promise for each item fetch from Item master
+                    let promises = po_items.map(po_item => {
+                        return frappe.db.get_doc('Item', po_item.item_code)
+                            .then(item_doc => {
+                                const row = frm.add_child('items');
+                                frappe.model.set_value(row.doctype, row.name, 'item_code', po_item.item_code);
+                                frappe.model.set_value(row.doctype, row.name, 'item_name', po_item.item_name);
+                                frappe.model.set_value(row.doctype, row.name, 'ordered_quantity', po_item.qty);
+                                frappe.model.set_value(row.doctype, row.name, 'amount', po_item.rate);
+                                frappe.model.set_value(row.doctype, row.name, 'uom', po_item.uom);
+
+                                // Fetch from Item doctype (custom field)
+                                frappe.model.set_value(row.doctype, row.name, 'color', item_doc.custom_colour_name);
+                                frappe.model.set_value(row.doctype, row.name, 'composition', item_doc.custom_material_composition);
+                                frappe.model.set_value(row.doctype, row.name, 'material_type', item_doc.custom_select_master);
+
+                                // You can fetch other fields similarly, e.g.:
+                                // frappe.model.set_value(row.doctype, row.name, 'your_field', item_doc.your_field);
+
+                                if (frm.doc.set_warehouse) {
+                                    frappe.model.set_value(row.doctype, row.name, 'accepted_warehouse', frm.doc.set_warehouse);
+                                }
+                            });
                     });
 
-                    frm.refresh_field('items');
+                    // After all items are added
+                    Promise.all(promises).then(() => {
+                        frm.refresh_field('items');
+                        set_item_code_query(frm);
+                    });
                 }
             }
         });
     },
 
-    // When Accepted Warehouse (set_warehouse) is changed
     set_warehouse(frm) {
         if (!frm.doc.set_warehouse) return;
 
-        // Update all existing rows
         (frm.doc.items || []).forEach(row => {
             frappe.model.set_value(row.doctype, row.name, 'accepted_warehouse', frm.doc.set_warehouse);
         });
 
-        // Refresh the table
         frm.refresh_field('items');
     },
 
     before_save(frm) {
-        // Iterate through all checklist rows
-        frm.doc.document_checklist.forEach(row => {
+        (frm.doc.document_checklist || []).forEach(row => {
             if (row.photo_upload && row.document_type === 'Photo Evidence') {
-                // Ensure files are linked to the parent document
                 frappe.model.set_value(row.doctype, row.name, 'attached_to_doctype', 'Goods Receipt Note');
                 frappe.model.set_value(row.doctype, row.name, 'attached_to_name', frm.doc.name);
             }
         });
-    }    
+    },
+
+    items_add(frm, cdt, cdn) {
+        if (frm.doc.set_warehouse) {
+            frappe.model.set_value(cdt, cdn, 'accepted_warehouse', frm.doc.set_warehouse);
+        }
+        set_item_code_query(frm);
+    }
 });
 
+// Only allow PO items as item_code
+function set_item_code_query(frm) {
+    let po = frm.doc.purchase_order;
+    if (!po) {
+        frm.fields_dict['items'].grid.get_field('item_code').get_query = function() { return {}; };
+        return;
+    }
+    frappe.call({
+        method: "frappe.client.get",
+        args: {
+            doctype: "Purchase Order",
+            name: po
+        },
+        callback: function(r) {
+            if (r.message) {
+                let valid_items = (r.message.items || []).map(item => item.item_code);
+                frm.fields_dict['items'].grid.get_field('item_code').get_query = function(doc, cdt, cdn) {
+                    return {
+                        filters: [
+                            ['Item', 'item_code', 'in', valid_items]
+                        ]
+                    };
+                };
+                frm.refresh_field('items');
+            }
+        }
+    });
+}
 
+// --- Goods Receipt Item Child Table Events ---
 frappe.ui.form.on("Goods Receipt Item", {
-// When received_quantity or rate changes → recalculate amount
     received_quantity(frm, cdt, cdn) {
         const row = locals[cdt][cdn];
         const amount = (row.received_quantity || 0) * (row.rate || 0);
@@ -137,28 +180,20 @@ frappe.ui.form.on("Goods Receipt Item", {
         const row = locals[cdt][cdn];
         const amount = (row.received_quantity || 0) * (row.rate || 0);
         frappe.model.set_value(cdt, cdn, 'amount', amount);
-    },
-
-    // When a new row is added → set accepted_warehouse from parent
-    items_add(frm, cdt, cdn) {
-        if (frm.doc.set_warehouse) {
-            frappe.model.set_value(cdt, cdn, 'accepted_warehouse', frm.doc.set_warehouse);
-        }
     }
+    // items_add is handled in parent
 });
 
-// Handle actions on each row in the checklist
+// --- Checklist Table Events ---
 frappe.ui.form.on('Goods Receipt Document Checklist', {
     received(frm, cdt, cdn) {
         const row = locals[cdt][cdn];
         if (row.received) {
-            // Auto-fill today's date (or transaction_date)
             const default_date = frm.doc.transaction_date || frappe.datetime.nowdate();
             if (!row.received_date) {
                 frappe.model.set_value(cdt, cdn, 'received_date', default_date);
             }
         } else {
-            // Optional: Clear date if unchecked
             if (row.received_date) {
                 frappe.model.set_value(cdt, cdn, 'received_date', '');
             }
@@ -171,5 +206,5 @@ frappe.ui.form.on('Goods Receipt Document Checklist', {
             frappe.msgprint(__('Received Date is mandatory when document is marked as received.'));
             frappe.model.set_value(cdt, cdn, 'received', 0);
         }
-    }  
+    }
 });
