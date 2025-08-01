@@ -201,7 +201,6 @@ def create_purchase_receipt(doc):
 
     pr.flags.ignore_permissions = True
     pr.insert()
-    pr.submit()
 
     # Update Fabric Roll PR ref
     frappe.db.sql("""
