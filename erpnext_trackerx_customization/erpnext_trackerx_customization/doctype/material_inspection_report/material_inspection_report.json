@@ -1,0 +1,92 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "MIR-.YYYY.-.#####",
+ "creation": "2025-07-30 17:14:32.259985",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "goods_receipt_note",
+  "inspection_status",
+  "supplier",
+  "mir_items",
+  "rejection_remarks",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "goods_receipt_note",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Goods Receipt Note",
+   "options": "Goods Receipt Note",
+   "reqd": 1
+  },
+  {
+   "fieldname": "inspection_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Inspection Status",
+   "options": "\nPending\nAccepted\nRejected\nPartial",
+   "reqd": 1
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier",
+   "options": "Supplier"
+  },
+  {
+   "columns": 11,
+   "fieldname": "mir_items",
+   "fieldtype": "Table",
+   "label": "MIR Items",
+   "options": "Material Inspection Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "rejection_remarks",
+   "fieldtype": "Small Text",
+   "label": "Rejection Remarks"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Material Inspection Report",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-07-30 23:53:42.071171",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Material Inspection Report",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

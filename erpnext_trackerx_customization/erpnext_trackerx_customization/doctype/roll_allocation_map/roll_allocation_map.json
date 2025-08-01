@@ -1,0 +1,46 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-08-01 10:37:44.281345",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_n0qh"
+ ],
+ "fields": [
+  {"fieldname": "work_order", "fieldtype": "Link", "options": "Work Order", "label": "Work Order ID"},
+  {"fieldname": "style_po", "fieldtype": "Data", "label": "Style / PO"},
+  {"fieldname": "item_code", "fieldtype": "Link", "options": "Item", "label": "Item Code"},
+  {"fieldname": "roll_no", "fieldtype": "Data", "label": "Roll No."},
+  {"fieldname": "shade_code", "fieldtype": "Link", "options": "Shade Code", "label": "Shade Code"},
+  {"fieldname": "allocated_length", "fieldtype": "Float", "label": "Allocated Length (m)"},
+  {"fieldname": "remaining_length", "fieldtype": "Float", "label": "Remaining Length (m)"},
+  {"fieldname": "allocation_date", "fieldtype": "Date", "label": "Allocation Date"}
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-08-01 10:37:44.281345",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Roll Allocation Map",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

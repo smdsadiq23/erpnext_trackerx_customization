@@ -1,0 +1,96 @@
+{
+ "doctype": "DocType",
+ "name": "Fabric Roll",
+ "module": "Erpnext Trackerx Customization",
+ "custom": 1,
+ "is_submittable": 0,
+ "autoname": "FR-.YYYY.-.#####",
+ "fields": [
+  {
+    "fieldname": "roll_id",
+    "label": "Roll ID (Serial No.)",
+    "fieldtype": "Data",
+    "read_only": 1,
+    "reqd": 1,
+    "default": "New"
+  },
+  {
+    "fieldname": "item_code",
+    "label": "Item Code",
+    "fieldtype": "Link",
+    "options": "Item",
+    "reqd": 1
+  },
+  {
+    "fieldname": "supplier",
+    "label": "Supplier",
+    "fieldtype": "Link",
+    "options": "Supplier"
+  },
+  {
+    "fieldname": "width",
+    "label": "Width (inches)",
+    "fieldtype": "Float"
+  },
+  {
+    "fieldname": "length",
+    "label": "Length (meters)",
+    "fieldtype": "Float"
+  },
+  {"fieldname": "shade_code", "fieldtype": "Link", "options": "Shade Code", "label": "Shade Code"},
+  {
+    "fieldname": "lot_no",
+    "label": "Lot No.",
+    "fieldtype": "Data"
+  },
+  {
+    "fieldname": "gsm",
+    "label": "GSM",
+    "fieldtype": "Float"
+  },
+  {
+    "fieldname": "inspection_status",
+    "label": "Inspection Status",
+    "fieldtype": "Select",
+    "options": "\nPending\nPassed\nRejected\nPartial"
+  },
+  {
+    "fieldname": "linked_purchase_receipt",
+    "label": "Linked Purchase Receipt",
+    "fieldtype": "Link",
+    "options": "Purchase Receipt"
+  },
+  {
+    "fieldname": "current_warehouse",
+    "label": "Current Warehouse",
+    "fieldtype": "Link",
+    "options": "Warehouse"
+  },
+  {
+    "fieldname": "is_allocated",
+    "label": "Is Allocated",
+    "fieldtype": "Check"
+  },
+  {
+    "fieldname": "grn",
+    "label": "Goods Receipt Note",
+    "fieldtype": "Link",
+    "options": "Goods Receipt Note"
+  },
+  {
+    "fieldname": "mir",
+    "label": "Material Inspection Report",
+    "fieldtype": "Link",
+    "options": "Material Inspection Report"
+  }
+ ],
+ "permissions": [
+  {
+   "role": "Stock Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  }
+ ]
+}
