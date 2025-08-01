@@ -11,7 +11,8 @@
   "qty",
   "already_allocated_qty",
   "work_order_allocated_qty",
-  "pending_qty"
+  "pending_qty",
+  "sales_order_item"
  ],
  "fields": [
   {
@@ -62,13 +63,20 @@
    "in_list_view": 1,
    "label": "Pending Qty",
    "read_only": 1
+  },
+  {
+   "fieldname": "sales_order_item",
+   "fieldtype": "Link",
+   "label": "Sales Order Item",
+   "options": "Sales Order Item",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-07-31 21:24:17.231240",
+ "modified": "2025-08-01 18:22:03.320173",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Work Order Line Item",
