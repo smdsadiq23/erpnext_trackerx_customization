@@ -80,8 +80,8 @@ def generate_panel_code(doc, method):
                 parts.append(item_number)
             if color_code:
                 parts.append(color_code)
-            if size:
-                parts.append(size)
+            # if size:
+            #     parts.append(size)
 
             base_code = "-".join(parts)
     
