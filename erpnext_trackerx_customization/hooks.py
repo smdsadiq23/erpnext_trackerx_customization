@@ -43,7 +43,11 @@ fixtures = [
 ]
 
 
-after_migrate = ["erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute", "erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure"]
+after_migrate = [
+    "erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute", 
+    "erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure",
+    "erpnext_trackerx_customization.setup.purchase_receipt_custom_fields.execute"
+    ]
 
 # Includes in <head>
 # ------------------
@@ -202,6 +206,18 @@ doc_events= {
      "Work Order": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.validate",
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_submit"
+    },
+     "Goods Receipt Note": {
+        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_submit_grn",
+        "on_cancel": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_cancel_grn",
+        "before_cancel": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.before_cancel_grn"
+        
+    },
+    "Material Inspection Report": {
+        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_submit_mir"
+    },
+    "Roll Allocation Map": {
+        "validate": "erpnext_trackerx_customization.roll_allocation_map.roll_allocation_map.validate"
     }
 }
 

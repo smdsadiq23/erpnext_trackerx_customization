@@ -1,0 +1,80 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-07-30 19:01:25.433528",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_6zpo"
+ ],
+ "fields": [
+  {
+    "fieldname": "item_code",
+    "fieldtype": "Link",
+    "label": "Item",
+    "options": "Item",
+    "reqd": 1
+  },
+  {
+    "fieldname": "supplier",
+    "fieldtype": "Link",
+    "label": "Supplier",
+    "options": "Supplier"
+  },
+  {
+    "fieldname": "length",
+    "fieldtype": "Float",
+    "label": "Length (meters)"
+  },
+  {
+    "fieldname": "width",
+    "fieldtype": "Float",
+    "label": "Width (inches)"
+  },
+  {
+    "fieldname": "grn",
+    "fieldtype": "Link",
+    "label": "Goods Receipt Note",
+    "options": "Goods Receipt Note"
+  },
+  {
+    "fieldname": "mir",
+    "fieldtype": "Link",
+    "label": "Material Inspection Report",
+    "options": "Material Inspection Report"
+  },
+  {
+    "fieldname": "status",
+    "fieldtype": "Select",
+    "label": "Status",
+    "options": "\nPending Inspection\nPassed\nRejected"
+  }
+],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-07-30 19:01:25.433528",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Fabric Roll",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "FR-.YYYY.-.#####"
+}
