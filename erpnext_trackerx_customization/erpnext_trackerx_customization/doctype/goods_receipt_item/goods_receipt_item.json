@@ -7,13 +7,27 @@
  "engine": "InnoDB",
  "field_order": [
   "item_code",
-  "item_name",
-  "ordered_quantity",
-  "received_quantity",
+  "color",
+  "composition",
   "uom",
-  "rate",
+  "roll_no",
+  "no_of_boxespacks",
+  "received_quantity",
+  "fabric_length",
+  "fabric_width",
+  "shade",
+  "batch_no",
+  "lot_no",
+  "size_spec",
+  "consumption",
+  "material_type",
+  "ordered_quantity",
+  "supplier_part_no__code",
+  "accepted_warehouse",
   "amount",
-  "accepted_warehouse"
+  "shelf_life_months",
+  "expiration_date",
+  "remarks"
  ],
  "fields": [
   {
@@ -21,15 +35,10 @@
    "fieldname": "item_code",
    "fieldtype": "Data",
    "in_list_view": 1,
+   "in_preview": 1,
    "label": "Item Code",
    "read_only": 1,
    "reqd": 1
-  },
-  {
-   "fieldname": "item_name",
-   "fieldtype": "Data",
-   "label": "Item Name",
-   "read_only": 1
   },
   {
    "columns": 1,
@@ -44,16 +53,9 @@
    "fieldname": "received_quantity",
    "fieldtype": "Int",
    "in_list_view": 1,
+   "in_preview": 1,
    "label": "Received Quantity",
    "reqd": 1
-  },
-  {
-   "columns": 1,
-   "fieldname": "rate",
-   "fieldtype": "Int",
-   "in_list_view": 1,
-   "label": "Rate",
-   "read_only": 1
   },
   {
    "columns": 1,
@@ -74,17 +76,120 @@
   {
    "columns": 1,
    "fieldname": "uom",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "label": "UOM",
+   "options": "UOM",
    "read_only": 1
+  },
+  {
+   "fieldname": "color",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Color",
+   "read_only": 1
+  },
+  {
+   "fieldname": "material_type",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Material Type",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.material_type!=='Fabric'",
+   "fieldname": "size_spec",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Size/Spec"
+  },
+  {
+   "fieldname": "consumption",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Consumption"
+  },
+  {
+   "depends_on": "eval: doc.material_type !='Fabric'",
+   "fieldname": "no_of_boxespacks",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "No Of Boxes/Packs"
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Batch No"
+  },
+  {
+   "fieldname": "lot_no",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Lot No"
+  },
+  {
+   "fieldname": "supplier_part_no__code",
+   "fieldtype": "Data",
+   "label": "Supplier Part No / Code"
+  },
+  {
+   "fieldname": "shelf_life_months",
+   "fieldtype": "Int",
+   "label": "Shelf Life (Months)"
+  },
+  {
+   "fieldname": "expiration_date",
+   "fieldtype": "Date",
+   "label": "Expiration Date"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "depends_on": "eval: doc.material_type=='Fabric'",
+   "fieldname": "roll_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Roll No",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval: doc.material_type=='Fabric'",
+   "fieldname": "fabric_length",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Length",
+   "mandatory_depends_on": "eval: doc.material_type=='Fabric'"
+  },
+  {
+   "fieldname": "fabric_width",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Width",
+   "mandatory_depends_on": "eval: doc.material_type=='Fabric'"
+  },
+  {
+   "fieldname": "composition",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Composition",
+   "read_only": 1
+  },
+  {
+   "fieldname": "shade",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Shade"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-07-24 10:39:30.913379",
+ "modified": "2025-07-30 23:58:50.063852",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Item",

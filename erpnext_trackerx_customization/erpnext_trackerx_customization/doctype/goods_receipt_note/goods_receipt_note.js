@@ -84,9 +84,10 @@ frappe.ui.form.on("Goods Receipt Note", {
                         frappe.model.set_value(row.doctype, row.name, 'item_code', item.item_code);
                         frappe.model.set_value(row.doctype, row.name, 'item_name', item.item_name);
                         frappe.model.set_value(row.doctype, row.name, 'ordered_quantity', item.qty);
-                        frappe.model.set_value(row.doctype, row.name, 'rate', item.rate);
+                        frappe.model.set_value(row.doctype, row.name, 'amount', item.rate);
+                        frappe.model.set_value(row.doctype, row.name, 'material_type', item.item_group);
                         frappe.model.set_value(row.doctype, row.name, 'uom', item.uom);
-
+                        frappe.model.set_value(row.doctype, row.name, 'color', item.custom_colour_name);
                         // Set accepted_warehouse from parent if available
                         if (frm.doc.set_warehouse) {
                             frappe.model.set_value(row.doctype, row.name, 'accepted_warehouse', frm.doc.set_warehouse);

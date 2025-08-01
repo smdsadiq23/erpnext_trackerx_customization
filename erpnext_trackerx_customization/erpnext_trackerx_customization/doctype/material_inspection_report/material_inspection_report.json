@@ -1,82 +1,74 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "MIR-.YYYY.-.#####",
  "creation": "2025-07-30 17:14:32.259985",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "section_break_zgch",
+  "goods_receipt_note",
+  "inspection_status",
+  "supplier",
+  "mir_items",
+  "rejection_remarks",
   "amended_from"
  ],
  "fields": [
   {
-    "fieldname": "grn",
-    "fieldtype": "Link",
-    "label": "Goods Receipt Note",
-    "options": "Goods Receipt Note",
-    "reqd": 1
+   "fieldname": "goods_receipt_note",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Goods Receipt Note",
+   "options": "Goods Receipt Note",
+   "reqd": 1
   },
   {
-    "fieldname": "grn_item",
-    "fieldtype": "Link",
-    "label": "GRN Item Row",
-    "options": "Goods Receipt Item"
+   "fieldname": "inspection_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Inspection Status",
+   "options": "\nPending\nAccepted\nRejected\nPartial",
+   "reqd": 1
   },
   {
-    "fieldname": "item_code",
-    "fieldtype": "Link",
-    "label": "Item",
-    "options": "Item",
-    "reqd": 1
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier",
+   "options": "Supplier"
   },
   {
-    "fieldname": "qty",
-    "fieldtype": "Float",
-    "label": "Quantity",
-    "reqd": 1
+   "columns": 11,
+   "fieldname": "mir_items",
+   "fieldtype": "Table",
+   "label": "MIR Items",
+   "options": "Material Inspection Item",
+   "reqd": 1
   },
   {
-    "fieldname": "accepted_qty",
-    "fieldtype": "Float",
-    "label": "Accepted Qty"
+   "fieldname": "rejection_remarks",
+   "fieldtype": "Small Text",
+   "label": "Rejection Remarks"
   },
   {
-    "fieldname": "rejected_qty",
-    "fieldtype": "Float",
-    "label": "Rejected Qty"
-  },
-  {
-    "fieldname": "result",
-    "fieldtype": "Select",
-    "label": "Result",
-    "options": "\nPass\nFail"
-  },
-  {
-    "fieldname": "remarks",
-    "fieldtype": "Small Text",
-    "label": "Remarks"
-  },
-  {
-    "fieldname": "supplier",
-    "fieldtype": "Link",
-    "label": "Supplier",
-    "options": "Supplier"
-  },
-  {
-    "fieldname": "status",
-    "fieldtype": "Select",
-    "label": "Status",
-    "options": "\nDraft\nSubmitted"
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Material Inspection Report",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
-],
+ ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-30 17:14:32.259985",
+ "modified": "2025-07-30 23:53:42.071171",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Material Inspection Report",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -96,6 +88,5 @@
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
- "autoname": "MIR-.YYYY.-.#####"
+ "states": []
 }
