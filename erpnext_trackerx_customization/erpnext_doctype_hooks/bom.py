@@ -45,6 +45,16 @@ def generate_panel_code(doc, method):
         "custom_packing_materials_items"
     ]
 
+    item_tables_to_name = {
+        "custom_fabrics_items": "Fabrics",
+        "custom_trims_items": "Trims",
+        "custom_accessories_items": "Accessories",
+        "custom_labels_items": "Labels",
+        "custom_packing_materials_items": "Packing Materials"
+    }
+
+    panel_code_map = {}
+
     global_index = 1
 
     for table_name in item_tables:
@@ -97,3 +107,15 @@ def generate_panel_code(doc, method):
             global_index += 1
 
             item.custom_panel_code = f"{base_code}-{suffix}"
+
+            key = f"{item_tables_to_name.get(table_name)}||{item.item_code}||{(item.custom_size or '').strip().lower()}||{item.custom_article_no}||{item.qty}"
+
+            panel_code_map[key]=item.custom_panel_code 
+
+
+    # copy panel code for items
+    for item in doc.items:
+        key = f"{item.custom_item_type}||{item.item_code}||{(item.custom_size or '').strip().lower()}||{item.custom_article_no}||{item.qty}"
+        item.custom_panel_code = panel_code_map[key] or "XX"
+
+
