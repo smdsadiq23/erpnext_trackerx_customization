@@ -108,14 +108,14 @@ def generate_panel_code(doc, method):
 
             item.custom_panel_code = f"{base_code}-{suffix}"
 
-            key = f"{item_tables_to_name.get(table_name)}||{item.item_code}||{(item.custom_size or '').strip().lower()}||{item.custom_article_no or ''}||{item.qty}"
+            key = item.custom_item_uuid
 
             panel_code_map[key]=item.custom_panel_code 
 
 
     # copy panel code for items
     for item in doc.items:
-        key = f"{item.custom_item_type}||{item.item_code}||{(item.custom_size or '').strip().lower()}||{item.custom_article_no or ''}||{item.qty}"
+        key = item.custom_item_uuid
         panel_code_from_other_item = panel_code_map.get(key, "")
         if(panel_code_from_other_item):
             item.custom_panel_code = panel_code_from_other_item
