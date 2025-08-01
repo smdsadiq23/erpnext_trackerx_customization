@@ -116,6 +116,8 @@ def generate_panel_code(doc, method):
     # copy panel code for items
     for item in doc.items:
         key = f"{item.custom_item_type}||{item.item_code}||{(item.custom_size or '').strip().lower()}||{item.custom_article_no or ''}||{item.qty}"
-        item.custom_panel_code = panel_code_map[key] or "XX"
+        panel_code_from_other_item = panel_code_map.get(key, "")
+        if(panel_code_from_other_item):
+            item.custom_panel_code = panel_code_from_other_item
 
 
