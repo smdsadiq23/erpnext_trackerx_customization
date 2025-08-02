@@ -6,150 +6,182 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "section_break_mhgo"
+  "item_code",
+  "color",
+  "composition",
+  "uom",
+  "roll_no",
+  "no_of_boxespacks",
+  "received_quantity",
+  "fabric_length",
+  "fabric_width",
+  "shade",
+  "size_spec",
+  "consumption",
+  "material_type",
+  "ordered_quantity",
+  "batch_no",
+  "lot_no",
+  "accepted_qty",
+  "rejected_qty",
+  "reason_for_rejection",
+  "accepted_warehouse",
+  "remarks"
  ],
  "fields": [
-   {
+  {
+   "allow_in_quick_entry": 1,
    "fieldname": "item_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Item Code",
-   "fieldtype": "Data",
-   "reqd": 1,
-   "in_list_view": 1
-  },
-  {
-   "fieldname": "color",
-   "label": "Color",
-   "fieldtype": "Data",
-   "in_list_view": 1
-  },
-  {
-   "fieldname": "composition",
-   "label": "Composition",
-   "fieldtype": "Data"
-  },
-  {
-   "fieldname": "uom",
-   "label": "UOM",
-   "fieldtype": "Link",
-   "options": "UOM",
-   "in_list_view": 1
-  },
-  {
-   "fieldname": "roll_no",
-   "label": "Roll No",
-   "fieldtype": "Data",
-   "depends_on": "eval: doc.material_type=='Fabric'",
    "reqd": 1
   },
   {
+   "allow_in_quick_entry": 1,
+   "fieldname": "color",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Color"
+  },
+  {
+   "fieldname": "composition",
+   "fieldtype": "Data",
+   "label": "Composition"
+  },
+  {
+   "fieldname": "uom",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "UOM",
+   "options": "UOM"
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "depends_on": "eval: doc.material_type=='Fabrics'",
+   "fieldname": "roll_no",
+   "fieldtype": "Data",
+   "label": "Roll No",
+   "reqd": 1
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "depends_on": "eval: doc.material_type!='Fabric'",
    "fieldname": "no_of_boxespacks",
-   "label": "No Of Boxes/Packs",
-   "fieldtype": "Float",
-   "depends_on": "eval: doc.material_type!='Fabric'",
-   "in_list_view": 1
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "No Of Boxes/Packs"
   },
   {
+   "allow_in_quick_entry": 1,
    "fieldname": "received_quantity",
+   "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Received Quantity",
-   "fieldtype": "Float",
-   "reqd": 1,
-   "in_list_view": 1
+   "reqd": 1
   },
   {
+   "allow_in_quick_entry": 1,
+   "depends_on": "eval: doc.material_type=='Fabrics'",
    "fieldname": "fabric_length",
+   "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Length",
-   "fieldtype": "Float",
-   "depends_on": "eval: doc.material_type=='Fabric'",
-   "mandatory_depends_on": "eval: doc.material_type=='Fabric'",
-   "in_list_view": 1
+   "mandatory_depends_on": "eval: doc.material_type=='Fabric'"
   },
   {
+   "allow_in_quick_entry": 1,
+   "depends_on": "eval: doc.material_type=='Fabrics'",
    "fieldname": "fabric_width",
+   "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Width",
-   "fieldtype": "Float",
-   "depends_on": "eval: doc.material_type=='Fabric'",
-   "mandatory_depends_on": "eval: doc.material_type=='Fabric'",
-   "in_list_view": 1
+   "mandatory_depends_on": "eval: doc.material_type=='Fabric'"
   },
   {
+   "depends_on": "eval: doc.material_type=='Fabrics'",
    "fieldname": "shade",
-   "label": "Shade",
    "fieldtype": "Data",
-   "depends_on": "eval: doc.material_type=='Fabric'"
+   "label": "Shade"
   },
   {
+   "depends_on": "eval: doc.material_type!='Fabrics'",
    "fieldname": "size_spec",
-   "label": "Size/Spec",
    "fieldtype": "Data",
-   "depends_on": "eval: doc.material_type!='Fabric'",
-   "in_list_view": 1
+   "in_list_view": 1,
+   "label": "Size/Spec"
   },
   {
    "fieldname": "consumption",
-   "label": "Consumption",
    "fieldtype": "Float",
-   "in_list_view": 1
+   "in_list_view": 1,
+   "label": "Consumption"
   },
   {
    "fieldname": "material_type",
-   "label": "Material Type",
    "fieldtype": "Data",
    "in_list_view": 1,
+   "label": "Material Type",
    "reqd": 1
   },
   {
    "fieldname": "ordered_quantity",
+   "fieldtype": "Int",
    "label": "Ordered Quantity",
-   "fieldtype": "Float",
    "read_only": 1
   },
   {
    "fieldname": "batch_no",
-   "label": "Batch No",
-   "fieldtype": "Data"
+   "fieldtype": "Data",
+   "label": "Batch No"
   },
   {
    "fieldname": "lot_no",
-   "label": "Lot No",
-   "fieldtype": "Data"
+   "fieldtype": "Data",
+   "label": "Lot No"
   },
   {
+   "allow_in_quick_entry": 1,
    "fieldname": "accepted_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Accepted Qty",
-   "fieldtype": "Float",
-   "reqd": 1,
-   "in_list_view": 1
+   "reqd": 1
   },
   {
+   "allow_in_quick_entry": 1,
    "fieldname": "rejected_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
    "label": "Rejected Qty",
-   "fieldtype": "Float",
-   "reqd": 1,
-   "in_list_view": 1
+   "reqd": 1
   },
   {
+   "allow_in_quick_entry": 1,
    "fieldname": "reason_for_rejection",
-   "label": "Reason for Rejection",
-   "fieldtype": "Small Text"
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Reason for Rejection"
   },
   {
+   "allow_in_quick_entry": 1,
    "fieldname": "accepted_warehouse",
-   "label": "Accepted Warehouse",
    "fieldtype": "Link",
-   "options": "Warehouse",
-   "in_list_view": 1
+   "in_list_view": 1,
+   "label": "Accepted Warehouse",
+   "options": "Warehouse"
   },
   {
    "fieldname": "remarks",
-   "label": "Remarks",
-   "fieldtype": "Small Text"
+   "fieldtype": "Small Text",
+   "label": "Remarks"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-07-30 23:42:56.072812",
+ "modified": "2025-08-02 13:05:47.241654",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Material Inspection Item",
