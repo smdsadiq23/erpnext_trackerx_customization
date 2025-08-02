@@ -170,7 +170,8 @@ permission_query_conditions = {
 # 	"ToDo": "custom_app.overrides.CustomToDo"
 # }
 override_doctype_class = {
-    "BOM": "erpnext_trackerx_customization.overrides.bom.CustomBOM"
+    "BOM": "erpnext_trackerx_customization.overrides.bom.CustomBOM",
+    "Pick List": "erpnext_trackerx_customization.overrides.picklist.CustomPickList"
 }
 
 # Document Events
@@ -253,6 +254,9 @@ doc_events= {
 # override_whitelisted_methods = {
 # 	"frappe.desk.doctype.event.event.get_events": "erpnext_trackerx_customization.event.get_events"
 # }
+override_whitelisted_methods = {
+    "erpnext.manufacturing.doctype.work_order.work_order.create_pick_list": "erpnext_trackerx_customization.api.custom_pick_list.custom_create_pick_list"
+}
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
