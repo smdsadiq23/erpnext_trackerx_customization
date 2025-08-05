@@ -28,7 +28,7 @@ fixtures = [
         "dt": "Custom Field",
         "filters": [
             ["dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
-                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt"
+                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item"
                           ]]
         ]
     },
@@ -36,18 +36,18 @@ fixtures = [
         "dt": "Property Setter",
         "filters": [
             ["doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
-                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt"    
+                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item"
                             ]]
         ]
     }
 ]
 
 
-# after_migrate = [
-#     "erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute", 
-#     "erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure",
-#     "erpnext_trackerx_customization.setup.purchase_receipt_custom_fields.execute"
-#     ]
+after_migrate = [
+    #"erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute", 
+    "erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure"
+   # "erpnext_trackerx_customization.setup.purchase_receipt_custom_fields.execute"
+    ]
 
 # Includes in <head>
 # ------------------
@@ -170,7 +170,8 @@ permission_query_conditions = {
 # 	"ToDo": "custom_app.overrides.CustomToDo"
 # }
 override_doctype_class = {
-    "BOM": "erpnext_trackerx_customization.overrides.bom.CustomBOM"
+    "BOM": "erpnext_trackerx_customization.overrides.bom.CustomBOM",
+    "Pick List": "erpnext_trackerx_customization.overrides.picklist.CustomPickList"
 }
 
 # Document Events
@@ -253,6 +254,9 @@ doc_events= {
 # override_whitelisted_methods = {
 # 	"frappe.desk.doctype.event.event.get_events": "erpnext_trackerx_customization.event.get_events"
 # }
+override_whitelisted_methods = {
+    "erpnext.manufacturing.doctype.work_order.work_order.create_pick_list": "erpnext_trackerx_customization.api.custom_pick_list.custom_create_pick_list"
+}
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
