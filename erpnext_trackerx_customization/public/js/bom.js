@@ -130,7 +130,7 @@ function merge_custom_items_into_items(frm)
             if (!row.custom_item_uuid) {
                 row.custom_item_uuid = generate_uuid();
             }
-
+            row.custom_item_type = label;
             desired_item_map[row.custom_item_uuid] = row;
         });
     }
