@@ -5,6 +5,12 @@ def validate(doc, method):
     calculate_total_qty(doc)
     validate_and_update_sales_order_items(doc)
 
+    #copy sales orders to sales order
+    if doc.custom_work_order_line_items:
+        if doc.custom_work_order_line_items[0].sales_order:
+            doc.sales_order = doc.custom_work_order_line_items[0].sales_order
+        
+
 def on_submit(doc, method):
     pass
 
