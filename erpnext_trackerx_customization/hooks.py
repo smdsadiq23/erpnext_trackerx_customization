@@ -206,7 +206,8 @@ doc_events= {
     },
      "Work Order": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.validate",
-        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_submit"
+        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_submit",
+        "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_trash"
     },
     "Goods Receipt Note": {
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_submit_grn",

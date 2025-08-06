@@ -12,7 +12,8 @@
   "already_allocated_qty",
   "work_order_allocated_qty",
   "pending_qty",
-  "sales_order_item"
+  "sales_order_item",
+  "sales_order"
  ],
  "fields": [
   {
@@ -32,7 +33,9 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "columns": 1,
+   "fetch_from": "sales_order_item.qty",
    "fieldname": "qty",
    "fieldtype": "Float",
    "in_list_view": 1,
@@ -49,6 +52,7 @@
   {
    "allow_on_submit": 1,
    "columns": 1,
+   "fetch_from": "sales_order_item.custom_allocated_qty_for_work_order",
    "fieldname": "already_allocated_qty",
    "fieldtype": "Float",
    "in_list_view": 1,
@@ -58,6 +62,7 @@
   {
    "allow_on_submit": 1,
    "columns": 1,
+   "fetch_from": "sales_order_item.custom_pending_qty_for_work_order",
    "fieldname": "pending_qty",
    "fieldtype": "Float",
    "in_list_view": 1,
@@ -70,13 +75,20 @@
    "label": "Sales Order Item",
    "options": "Sales Order Item",
    "read_only": 1
+  },
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-08-01 18:22:03.320173",
+ "modified": "2025-08-06 13:29:20.422100",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Work Order Line Item",
