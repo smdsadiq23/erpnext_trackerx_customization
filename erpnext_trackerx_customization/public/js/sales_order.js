@@ -5,9 +5,9 @@ frappe.ui.form.on('Sales Order', {
         // frm.page.clear_primary_action();
         // frm.page.clear_actions();
 
-        setTimeout(() => {
-          frm.remove_custom_button('Work Order', 'Create');
-        }, 1000); 
+        // setTimeout(() => {
+        //   frm.remove_custom_button('Work Order', 'Create');
+        // }, 1000); 
         
         // Now re-add your own custom button
         if (frm.doc.docstatus === 1 && frm.doc.status !== "Closed") {
