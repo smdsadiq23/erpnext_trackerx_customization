@@ -1,0 +1,65 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{from_qty}-{to_qty}",
+ "creation": "2025-08-07 20:18:41.321225",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "from_qty",
+  "to_qty",
+  "sampling_plan",
+  "lot_size_mappings"
+ ],
+ "fields": [
+  {
+   "fieldname": "from_qty",
+   "fieldtype": "Int",
+   "label": "From Quantity"
+  },
+  {
+   "fieldname": "to_qty",
+   "fieldtype": "Int",
+   "label": "To Quantity"
+  },
+  {
+   "fieldname": "sampling_plan",
+   "fieldtype": "Link",
+   "label": "Sampling Plan",
+   "options": "Sampling Plan"
+  },
+  {
+   "fieldname": "lot_size_mappings",
+   "fieldtype": "Table",
+   "label": "Lot Size Inspection Level Mappings",
+   "options": "Lot Size Inspection Level Mapping"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-08-07 21:16:35.708665",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Lot Size Range",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
