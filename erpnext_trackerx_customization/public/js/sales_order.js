@@ -68,7 +68,21 @@ function open_custom_work_order_dialog(frm) {
           'Separate Work Order per Size'
         ],
         default: 'Single Work Order for All',
-        reqd: 1
+        reqd: 1,
+        change: function() {
+          const mode = this.get_value();
+          let button_text = 'Create Work Order(s)';
+          
+          if (mode === 'Single Work Order for All') {
+            button_text = 'Create Single Work Order';
+          } else if (mode === 'Separate Work Order per Line Item') {
+            button_text = 'Create Work Orders by Line Item';
+          } else if (mode === 'Separate Work Order per Size') {
+            button_text = 'Create Work Orders by Size';
+          }
+          
+          dialog.set_primary_action(button_text);
+        }
       },
       {
         fieldtype: 'Section Break'
@@ -113,7 +127,7 @@ function open_custom_work_order_dialog(frm) {
         ]
       }
     ],
-    primary_action_label: 'Create Work Order(s)',
+    primary_action_label: 'Create Single Work Order',
     primary_action(values) {
       const selected_items = dialog.fields_dict.items_table.grid.get_selected_children();
       if (selected_items.length === 0) {
@@ -263,14 +277,30 @@ function create_single_work_order(frm, items, source_warehouse, wip_warehouse, f
 }
 
 function create_work_orders_by_line_item(frm, items, source_warehouse, wip_warehouse, fg_warehouse) {
-  items.forEach(async item => {
+
+  const grouped_by_lineitem = {};
+
+    // Group the items
+  items.forEach(item => {
+    const lineitem_key = item.custom_lineitem;
+    if (!grouped_by_lineitem[lineitem_key]) {
+      grouped_by_lineitem[lineitem_key] = [];
+    }
+    grouped_by_lineitem[lineitem_key].push(item);
+  });
+
+  Object.keys(grouped_by_lineitem).forEach(lineitem => {
+    const group = grouped_by_lineitem[lineitem];
+    const first = group[0];
+    const total_qty = group.reduce((sum, item) => sum + item.qty, 0);
+
     // Get BOM for each item
     frappe.call({
       method: 'frappe.client.get_list',
       args: {
         doctype: 'BOM',
         filters: {
-          item: item.item_code,
+          item: first.item_code,
           is_active: 1,
           is_default: 1
         },
@@ -285,11 +315,11 @@ function create_work_orders_by_line_item(frm, items, source_warehouse, wip_wareh
           
           try {
             // Get required items from BOM
-            required_items = await get_bom_required_items(bom_no, item.qty, source_warehouse);
+            required_items = await get_bom_required_items(bom_no, total_qty.qty, source_warehouse);
           } catch (error) {
             frappe.msgprint({
               title: 'Error',
-              message: `Failed to fetch BOM items for ${item.item_code}: ${error.message}`,
+              message: `Failed to fetch BOM items for ${first.item_code}: ${error.message}`,
               indicator: 'red'
             });
             return;
@@ -301,9 +331,9 @@ function create_work_orders_by_line_item(frm, items, source_warehouse, wip_wareh
           args: {
             doc: {
               doctype: 'Work Order',
-              production_item: item.item_code,
+              production_item: first.item_code,
               company: frm.doc.company,
-              qty: item.qty,
+              qty: total_qty,
               bom_no: bom_no,
               source_warehouse: source_warehouse,
               wip_warehouse: wip_warehouse,
@@ -312,14 +342,13 @@ function create_work_orders_by_line_item(frm, items, source_warehouse, wip_wareh
               custom_sales_orders: [{
                             sales_order: frm.doc.name,
                         }],
-              sales_order_item: item.so_detail,
-              custom_work_order_line_items: [{
-                work_order_allocated_qty: item.qty,
-                sales_order: frm.doc.name,
-                sales_order_item: item.so_detail,
-                size: item.custom_size,
-                line_item_no: item.custom_lineitem
-              }],
+              custom_work_order_line_items: group.map(i => ({
+                            work_order_allocated_qty: i.qty,
+                            sales_order: frm.doc.name,
+                            sales_order_item: i.so_detail,
+                            size: i.custom_size,
+                            line_item_no: i.custom_lineitem
+                        })),
               required_items: required_items // Now using BOM Items
             }
           },
