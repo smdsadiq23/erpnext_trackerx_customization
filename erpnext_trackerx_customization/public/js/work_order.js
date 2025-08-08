@@ -27,16 +27,13 @@ frappe.ui.form.on('Work Order', {
     },
     sync_work_order_line_items(frm) {
         const selected_sales_orders = frm.doc.custom_sales_orders.map(row => row.sales_order);
-        if (!selected_sales_orders.length || !frm.doc.production_item)
-        {
+        if (!selected_sales_orders.length || !frm.doc.production_item) {
             frm.clear_table("custom_work_order_line_items")
             frm.refresh_field("custom_work_order_line_items");
             recalculate_total_qty(frm);
-
             return;
         } 
 
-        
         frappe.call({
             method: "erpnext_trackerx_customization.api.sales_order.get_sales_order_items",
             args: {
@@ -51,12 +48,19 @@ frappe.ui.form.on('Work Order', {
                 console.log(so_items);
                 console.log("existing so item ids")
                 console.log(existing_so_item_ids);
-                // Add new ones
+                
+                // Add new ones or update existing ones
                 so_items.forEach(item => {
                     console.log("In loop");
                     console.log(item);
-                    if (!existing_so_item_ids.includes(item.name)) {
-                        console.log("Doenst exists and adding new row")
+                    
+                    const existing_row_index = frm.doc.custom_work_order_line_items.findIndex(
+                        row => row.sales_order_item === item.name
+                    );
+                    
+                    if (existing_row_index === -1) {
+                        // Add new row
+                        console.log("Doesn't exist and adding new row")
                         let child = frm.add_child("custom_work_order_line_items");
                         child.sales_order_item = item.name;
                         child.line_item_no = item.custom_lineitem;
@@ -65,10 +69,19 @@ frappe.ui.form.on('Work Order', {
                         child.already_allocated_qty = item.custom_allocated_qty_for_work_order;
                         child.pending_qty = item.custom_pending_qty_for_work_order;
                         child.work_order_allocated_qty = 1.0;
-                        child.sales_order =  item.parent;
+                        child.sales_order = item.parent;
+                    } else {
+                        // Update existing row with fresh data
+                        let existing_row = frm.doc.custom_work_order_line_items[existing_row_index];
+                        // Preserve the work_order_allocated_qty but update other fields
+                        existing_row.line_item_no = item.custom_lineitem;
+                        existing_row.size = item.custom_size;
+                        existing_row.qty = item.qty;
+                        existing_row.already_allocated_qty = item.custom_allocated_qty_for_work_order;
+                        existing_row.pending_qty = item.custom_pending_qty_for_work_order;
+                        existing_row.sales_order = item.parent;
                     }
                 });
-                
 
                 // Remove items from deselected sales orders
                 frm.doc.custom_work_order_line_items = frm.doc.custom_work_order_line_items.filter(item =>
@@ -88,8 +101,8 @@ frappe.ui.form.on('Work Order', {
 
                 recalculate_total_qty(frm);
             }
-        });
-    }
+    });
+}
 
 });
 
