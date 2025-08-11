@@ -22,6 +22,13 @@
   "ordered_quantity",
   "batch_no",
   "lot_no",
+  "column_break_aql",
+  "sample_size",
+  "defects_found",
+  "acceptance_number",
+  "rejection_number",
+  "inspection_result",
+  "section_break_result",
   "accepted_qty",
   "rejected_qty",
   "reason_for_rejection",
@@ -139,6 +146,47 @@
    "fieldname": "lot_no",
    "fieldtype": "Data",
    "label": "Lot No"
+  },
+  {
+   "fieldname": "column_break_aql",
+   "fieldtype": "Column Break",
+   "label": "AQL Inspection"
+  },
+  {
+   "fieldname": "sample_size",
+   "fieldtype": "Int",
+   "label": "Sample Size",
+   "read_only": 1
+  },
+  {
+   "fieldname": "defects_found",
+   "fieldtype": "Int",
+   "label": "Defects Found",
+   "default": "0"
+  },
+  {
+   "fieldname": "acceptance_number",
+   "fieldtype": "Int",
+   "label": "Acceptance Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rejection_number",
+   "fieldtype": "Int",
+   "label": "Rejection Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "inspection_result",
+   "fieldtype": "Select",
+   "label": "Inspection Result",
+   "options": "\nAccepted\nRejected\nRe-inspect",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_result",
+   "fieldtype": "Section Break",
+   "label": "Inspection Results"
   },
   {
    "allow_in_quick_entry": 1,

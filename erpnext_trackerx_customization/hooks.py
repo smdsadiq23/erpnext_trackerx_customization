@@ -47,7 +47,6 @@ after_migrate = [
     #"erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute", 
     #"erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure"
    # "erpnext_trackerx_customization.setup.purchase_receipt_custom_fields.execute"
-   "erpnext_trackerx_customization.scripts.insert_sampling_plan_data.run"
     ]
 
 # Includes in <head>
