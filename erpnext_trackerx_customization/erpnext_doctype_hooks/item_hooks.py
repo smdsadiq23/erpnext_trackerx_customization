@@ -92,9 +92,12 @@ def generate_item_code(doc):
     if item_group_code == prefix:
         # set prefix to empty if Group shorthand is same as prefix, eg: PM
         prefix = ""
+        parts = []
+    else:
+        parts = [prefix]
 
     
-    parts = [prefix]
+
     if item_group_code:
         parts.append(item_group_code)
     if item_name:
