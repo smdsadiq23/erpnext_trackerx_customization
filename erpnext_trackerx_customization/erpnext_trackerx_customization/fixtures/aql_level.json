@@ -1,0 +1,58 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "AQL Level",
+  "level_code": "1",
+  "level_type": "General",
+  "description": "General Inspection Level I - Reduced discrimination. Use when less discrimination is needed or when testing is destructive.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Level",
+  "level_code": "2",
+  "level_type": "General",
+  "description": "General Inspection Level II - Standard discrimination. Most commonly used general inspection level for routine inspections.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Level",
+  "level_code": "3",
+  "level_type": "General",
+  "description": "General Inspection Level III - Increased discrimination. Use when greater discrimination is needed for critical items.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Level",
+  "level_code": "S1",
+  "level_type": "Special",
+  "description": "Special Inspection Level S-1 - Very small sample sizes. Used for expensive or destructive testing where minimum sample size is required.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Level",
+  "level_code": "S2",
+  "level_type": "Special", 
+  "description": "Special Inspection Level S-2 - Small sample sizes. Used for costly or destructive testing with slightly larger samples than S-1.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Level",
+  "level_code": "S3",
+  "level_type": "Special",
+  "description": "Special Inspection Level S-3 - Medium sample sizes. Used for moderately destructive testing or when S-1/S-2 are insufficient.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Level",
+  "level_code": "S4",
+  "level_type": "Special",
+  "description": "Special Inspection Level S-4 - Large sample sizes for special cases. Used when larger samples are needed for special destructive testing.",
+  "is_active": 1
+ }
+]
