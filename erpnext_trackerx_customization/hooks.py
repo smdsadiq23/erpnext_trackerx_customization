@@ -202,7 +202,8 @@ doc_events= {
     },
     "BOM": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.validate_bom",
-        "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.before_save_bom"
+        "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.before_save_bom",
+        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.on_submit"
     },
     "Sales Order": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.validate",
