@@ -27,17 +27,28 @@ fixtures = [
     {
         "dt": "Custom Field",
         "filters": [
-            ["dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
+            [
+                "dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
                           "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item"
-                          ]]
+                          ],
+            ],
+            [
+                "module", "=", "Erpnext Trackerx Customization"
+            ]
+            
         ]
     },
     {
         "dt": "Property Setter",
         "filters": [
-            ["doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
+            [ 
+                "doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
                           "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item"
-                            ]]
+                            ]
+            ],
+            [ 
+                "module", "=", "Erpnext Trackerx Customization"
+            ]
         ]
     }
 ]
@@ -76,7 +87,9 @@ doctype_js = {
     "BOM": "public/js/bom.js", 
     "Material Request": "public/js/material_request.js",
     "Sales Order": "public/js/sales_order.js",
-    "Work Order": "public/js/work_order.js"
+    "Work Order": "public/js/work_order.js",
+    "Pick List": "public/js/pick_list.js",
+    "Trims Order": "public/js/trims_order.js"
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 
@@ -175,7 +188,7 @@ permission_query_conditions = {
 # }
 override_doctype_class = {
     "BOM": "erpnext_trackerx_customization.overrides.bom.CustomBOM",
-    "Pick List": "erpnext_trackerx_customization.overrides.picklist.CustomPickList"
+    "Pick List": "erpnext_trackerx_customization.overrides.pick_list.CustomPickList"
 }
 
 # Document Events
