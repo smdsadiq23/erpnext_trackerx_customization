@@ -11,6 +11,26 @@ def before_save_bom(doc, method):
     #calculate_custom_material_costs(doc);
     pass
 
+def on_submit(doc,method):
+    item_tables = [
+        "custom_fabrics_items",
+        "custom_trims_items",
+        "custom_accessories_items",
+        "custom_labels_items",
+        "custom_packing_materials_items"
+    ]
+    item_tables_to_name = {
+        "custom_fabrics_items": "Fabrics",
+        "custom_trims_items": "Trims",
+        "custom_accessories_items": "Accessories",
+        "custom_labels_items": "Labels",
+        "custom_packing_materials_items": "Packing Materials"
+    }
+
+    for table_name in item_tables:
+        child_items = getattr(doc, table_name, [])
+        if not child_items:
+            frappe.throw(f"Atleast 1 {item_tables_to_name[table_name]} required")
 
 
 
