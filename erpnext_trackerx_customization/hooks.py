@@ -76,7 +76,8 @@ doctype_js = {
     "BOM": "public/js/bom.js", 
     "Material Request": "public/js/material_request.js",
     "Sales Order": "public/js/sales_order.js",
-    "Work Order": "public/js/work_order.js"
+    "Work Order": "public/js/work_order.js",
+    "Pick List": "public/js/pick_list.js"
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 
@@ -175,7 +176,7 @@ permission_query_conditions = {
 # }
 override_doctype_class = {
     "BOM": "erpnext_trackerx_customization.overrides.bom.CustomBOM",
-    "Pick List": "erpnext_trackerx_customization.overrides.picklist.CustomPickList"
+    "Pick List": "erpnext_trackerx_customization.overrides.pick_list.CustomPickList"
 }
 
 # Document Events
