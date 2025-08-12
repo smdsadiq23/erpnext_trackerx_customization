@@ -32,6 +32,16 @@ class CustomPickList(PickList):
         """Validate Trims Order selection and populate items"""
         if not self.custom_trims_order:
             frappe.throw(_("Please select a Trims Order"))
+
+        # check if the pick list already created for this Trims order?
+        # Block if a non-cancelled Pick List already exists
+        existing = frappe.db.exists(
+            "Pick List",
+            {"custom_trims_order": self.custom_trims_order, "docstatus": ("!=", 2)}  # 2 = Cancelled
+        )
+        if existing:
+            frappe.throw(f"A Pick List already exists for Trims Order {self.custom_trims_order}: {existing}")
+
         
         # Validate if Trims Order exists and is valid
         trims_order_doc = frappe.get_doc("Trims Order", self.custom_trims_order)
