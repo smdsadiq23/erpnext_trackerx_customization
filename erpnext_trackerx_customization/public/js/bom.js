@@ -43,52 +43,14 @@ frappe.ui.form.on('BOM', {
     },
 
     validate(frm) {
-        frappe.model.clear_table(frm.doc, 'items');
-
-        const required_fields = [
-            'custom_supplier',
-            'item_code',
-            'uom',
-            'custom_net_qty',
-            'qty'
-        ];
-
-        const merge_items = (source_table, item_type) => {
-            const rows = frm.doc[source_table] || [];
-
-            if (rows.length < 1) {
-                frappe.throw(`Please add at least 1 row in <b>${item_type}</b> table.`);
-            }
-
-            rows.forEach((row, idx) => {
-                for (const field of required_fields) {
-                    if (!row[field]) {
-                        frappe.throw(
-                            `Field <b>${frappe.meta.get_docfield(row.doctype, field, frm.doc.name).label}</b> is mandatory in row ${idx + 1} of <b>${item_type}</b> table.`
-                        );
-                    }
-                }
-
-                if (item_type === 'Fabrics' && !row.custom_fg_link) {
-                    frappe.throw(`Field <b>FG Link</b> is mandatory in row ${idx + 1} of <b>Fabrics</b> table.`);
-                }
-
-                let new_row = frm.add_child('items');
-                copy(new_row, row, item_type);
-            });
-        };
-
-        merge_items('custom_fabrics_items', 'Fabrics');
-        merge_items('custom_trims_items', 'Trims');
-        merge_items('custom_accessories_items', 'Accessories');
-        merge_items('custom_labels_items', 'Labels');
-        merge_items('custom_packing_materials_items', 'Packing Materials');
+        merge_custom_items_into_items(frm);
     },
 
     onload(frm) {
         frm.set_df_property('items', 'hidden', 1);
         modifyTheBOMItemTableFields(frm);
         fetch_allowed_item_groups(frm);
+        set_item_filter(frm);
     },
 
     custom_net_qty(frm, cdt, cdn) {
@@ -100,8 +62,9 @@ frappe.ui.form.on('BOM', {
     },
 
     refresh(frm) {
-        frm.events.sync_virtual_tables(frm);
+        
         maybe_update_costing_size_options(frm);
+        set_item_filter(frm);
     },
 
     custom_costing_formula(frm) {
@@ -113,49 +76,106 @@ frappe.ui.form.on('BOM', {
         frm.trigger("calculate_total_cost");
     },
 
-    after_save(frm) {
-        frm.reload_doc().then(() => {
-            frm.events.sync_virtual_tables(frm);
-        });
-    },
-
-    onload_post_render(frm) {
-        frm.events.sync_virtual_tables(frm);
-    },
-
-    sync_virtual_tables(frm) {
-        if (true) return;
-
-        frappe.model.clear_table(frm.doc, 'custom_fabrics_items');
-        frappe.model.clear_table(frm.doc, 'custom_trims_items');
-        frappe.model.clear_table(frm.doc, 'custom_accessories_items');
-        frappe.model.clear_table(frm.doc, 'custom_labels_items');
-        frappe.model.clear_table(frm.doc, 'custom_packing_materials_items');
-
-        (frm.doc.items || []).forEach(row => {
-            let target_table = {
-                'Fabrics': 'custom_fabrics_items',
-                'Trims': 'custom_trims_items',
-                'Accessories': 'custom_accessories_items',
-                'Labels': 'custom_labels_items',
-                'Packing Materials': 'custom_packing_materials_items'
-            }[row.custom_item_type];
-
-            if (target_table) {
-                let new_row = frm.add_child(target_table);
-                copy(new_row, row, row.custom_item_type);
-            }
-        });
-
-        frm.refresh_fields([
-            'custom_fabrics_items',
-            'custom_trims_items',
-            'custom_accessories_items',
-            'custom_labels_items',
-            'custom_packing_materials_items'
-        ]);
-    }
 });
+
+
+function set_item_filter(frm) {
+    // Get Style item group details first
+   
+   // Set filter for item_code field in BOM Item child table
+   item_groups = ["Finished Goods"]
+    frm.set_query( 'item', function() {
+        return {
+            filters: {
+                'item_group': ['in', item_groups],
+                'disabled': 0
+            }
+        };
+    });                         
+}
+
+
+
+function generate_uuid() {
+  return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+  );
+}
+
+function merge_custom_items_into_items(frm)
+{
+    const source_tables = [
+        { table: 'custom_fabrics_items', label: 'Fabrics' },
+        { table: 'custom_trims_items', label: 'Trims' },
+        { table: 'custom_accessories_items', label: 'Accessories' },
+        { table: 'custom_labels_items', label: 'Labels' },
+        { table: 'custom_packing_materials_items', label: 'Packing Materials' }
+    ];
+
+    const required_fields = [
+        'custom_supplier',
+        'item_code',
+        'uom',
+        'custom_net_qty',
+        'qty'
+    ];
+
+    const desired_item_map = {};
+
+    for (const { table, label } of source_tables) {
+        const rows = frm.doc[table] || [];
+
+        // if ( frm.doc.docstatus == 1 && rows.length < 1) {
+        //     frappe.throw(`Please add at least 1 row in <b>${label}</b> table.`);
+        // }
+
+        rows.forEach((row, idx) => {
+            for (const field of required_fields) {
+                if (!row[field]) {
+                    const label_text = frappe.meta.get_docfield(row.doctype, field, frm.docname).label;
+                    frappe.throw(`Field <b>${label_text}</b> is mandatory in row ${idx + 1} of <b>${label}</b> table.`);
+                }
+            }
+
+            if (label === 'Fabrics' && !row.custom_fg_link) {
+                frappe.throw(`Field <b>Panel Type</b> is mandatory in row ${idx + 1} of <b>Fabrics</b> table.`);
+            }
+
+            // Generate UUID if missing
+            if (!row.custom_item_uuid) {
+                row.custom_item_uuid = generate_uuid();
+            }
+            row.custom_item_type = label;
+            desired_item_map[row.custom_item_uuid] = row;
+        });
+    }
+
+    const existing_items_map = {};
+    (frm.doc.items || []).forEach(item => {
+        if (item.custom_item_uuid) {
+            existing_items_map[item.custom_item_uuid] = item;
+            copy(item, desired_item_map[item.custom_item_uuid], item.custom_item_type);
+        }
+    });
+
+    // Remove items no longer present
+    frm.doc.items = frm.doc.items.filter(item => {
+        return item.custom_item_uuid && desired_item_map[item.custom_item_uuid];
+    });
+
+    // Add missing items
+    for (const uuid in desired_item_map) {
+        if (!existing_items_map[uuid]) {
+            const source = desired_item_map[uuid];
+            const new_row = frm.add_child('items');
+            copy(new_row, source, source.custom_item_type);
+            new_row.custom_item_uuid = uuid;
+        }
+    }
+
+    frm.refresh_field('items');
+
+}
 
 function maybe_update_costing_size_options(frm) {
     if (frm.doc.custom_costing_formula === 'By Size') {
@@ -194,6 +214,7 @@ function copy(new_row, row, item_type) {
     new_row.custom_supplier = row.custom_supplier;
     new_row.qty_consumed_per_unit = row.qty_consumed_per_unit;
     new_row.base_amount = row.base_amount;
+    new_row.custom_item_uuid = row.custom_item_uuid;
 }
 
 function modifyTheBOMItemTableFields(frm) {

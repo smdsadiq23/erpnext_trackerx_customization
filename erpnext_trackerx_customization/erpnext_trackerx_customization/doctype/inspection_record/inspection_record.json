@@ -1,0 +1,233 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-08-07 19:47:19.566381",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_zxd1",
+  "amended_from",
+  "naming_series",
+  "inspection_date",
+  "inspection_time",
+  "inspector",
+  "inspection_stage",
+  "inspection_type",
+  "reference_type",
+  "reference_name",
+  "supplier",
+  "material_type",
+  "item_code",
+  "item_name",
+  "batch_no",
+  "lot_size",
+  "aql_level",
+  "aql_inspection_type",
+  "aql_inspection_level",
+  "severity_mode",
+  "sample_code_letter",
+  "sample_size",
+  "acceptable_limit",
+  "rejection_limit",
+  "final_result",
+  "inspection_items",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_zxd1",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Inspection Record",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Naming Series",
+   "options": "INSP-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "inspection_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Inspection Date",
+   "reqd": 1
+  },
+  {
+   "default": "now",
+   "fieldname": "inspection_time",
+   "fieldtype": "Time",
+   "label": "Inspection Time"
+  },
+  {
+   "fieldname": "inspector",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Inspector",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "inspection_stage",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Inspection Stage",
+   "options": "\nRaw Material\nCutting\nProduction Roaming QC\nFinished Goods\nShipment",
+   "reqd": 1
+  },
+  {
+   "fieldname": "inspection_type",
+   "fieldtype": "Select",
+   "label": "Inspection Type",
+   "options": "\nAQL\n100%",
+   "reqd": 1
+  },
+  {
+   "fieldname": "reference_type",
+   "fieldtype": "Link",
+   "label": "Reference Document Type",
+   "link_filters": "[[\"DocType\",\"name\",\"in\",[\"Goods Receipt Note\",\"Purchase Order\",\"Cut Order\",\"Item\"]]]",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Document",
+   "options": "reference_type"
+  },
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier",
+   "options": "Supplier"
+  },
+  {
+   "fieldname": "material_type",
+   "fieldtype": "Select",
+   "label": "Material Type",
+   "options": "\nFabric\nTrims\nAccessories\nLabels\nPacking Materials"
+  },
+  {
+   "fieldname": "item_code",
+   "fieldtype": "Link",
+   "label": "Item Code",
+   "options": "Item"
+  },
+  {
+   "fetch_from": "item_code.item_name",
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item Name"
+  },
+  {
+   "fieldname": "batch_no",
+   "fieldtype": "Data",
+   "label": "Batch No"
+  },
+  {
+   "fieldname": "lot_size",
+   "fieldtype": "Int",
+   "label": "Lot Size"
+  },
+  {
+   "fieldname": "aql_level",
+   "fieldtype": "Select",
+   "label": "AQL Level"
+  },
+  {
+   "fieldname": "aql_inspection_type",
+   "fieldtype": "Select",
+   "label": "AQL Inspection Type",
+   "options": "General\nSpecial"
+  },
+  {
+   "fieldname": "aql_inspection_level",
+   "fieldtype": "Select",
+   "label": "AQL Inspection Level",
+   "options": "1\n2\n3\nS1\nS2\nS3\nS4"
+  },
+  {
+   "fieldname": "severity_mode",
+   "fieldtype": "Select",
+   "label": "Severity Mode",
+   "options": "Normal\nReduced\nTightened"
+  },
+  {
+   "fieldname": "sample_code_letter",
+   "fieldtype": "Data",
+   "label": "Sample Code Letter"
+  },
+  {
+   "fieldname": "sample_size",
+   "fieldtype": "Int",
+   "label": "Sample Size"
+  },
+  {
+   "fieldname": "acceptable_limit",
+   "fieldtype": "Int",
+   "label": "Accept"
+  },
+  {
+   "fieldname": "rejection_limit",
+   "fieldtype": "Int",
+   "label": "Reject"
+  },
+  {
+   "fieldname": "final_result",
+   "fieldtype": "Select",
+   "label": "Final Result",
+   "options": "Pass\nFail\nHold"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "inspection_items",
+   "fieldtype": "Table",
+   "label": "Inspection Items",
+   "options": "Inspection Record Item"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-08-07 20:47:32.708577",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Inspection Record",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

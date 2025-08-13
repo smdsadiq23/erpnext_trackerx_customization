@@ -199,7 +199,7 @@ warehouse_configs = [
     {
         "warehouse_name": "ACC-WH",
         "custom_warehouse_name": "Accessories Storage",
-        "is_group": 1
+        "is_group": 1,
         "zones": {
             "A": {"type": "Labels", "capacity": 500},
             "B": {"type": "Elastic", "capacity": 500}
@@ -214,7 +214,7 @@ warehouse_configs = [
     {
         "warehouse_name": "MCH-WH",
         "custom_warehouse_name": "Machinery Storage",
-        "is_group": 1
+        "is_group": 1,
         "zones": {
             "A": {"type": "Pressing", "capacity": 500},
             "B": {"type": "Cutting", "capacity": 500}

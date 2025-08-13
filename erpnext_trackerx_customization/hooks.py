@@ -27,17 +27,28 @@ fixtures = [
     {
         "dt": "Custom Field",
         "filters": [
-            ["dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
-                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt"
-                          ]]
+            [
+                "dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
+                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item"
+                          ],
+            ],
+            [
+                "module", "=", "Erpnext Trackerx Customization"
+            ]
+            
         ]
     },
     {
         "dt": "Property Setter",
         "filters": [
-            ["doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
-                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt"    
-                            ]]
+            [ 
+                "doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
+                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item"
+                            ]
+            ],
+            [ 
+                "module", "=", "Erpnext Trackerx Customization"
+            ]
         ]
     }
 ]
@@ -78,12 +89,14 @@ doctype_js = {
     "BOM": "public/js/bom.js", 
     "Material Request": "public/js/material_request.js",
     "Sales Order": "public/js/sales_order.js",
-    "Work Order": "public/js/work_order.js"
+    "Work Order": "public/js/work_order.js",
+    "Pick List": "public/js/pick_list.js",
+    "Trims Order": "public/js/trims_order.js"
 }
-
 # include js in doctype list views
 doctype_list_js = {
-    "Fabric Inspection": "public/js/fabric_inspection_list.js"
+    "Fabric Inspection": "public/js/fabric_inspection_list.js",
+    "Sales Order": "public/js/sales_order_list.js"
 }
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -176,7 +189,8 @@ permission_query_conditions = {
 # 	"ToDo": "custom_app.overrides.CustomToDo"
 # }
 override_doctype_class = {
-    "BOM": "erpnext_trackerx_customization.overrides.bom.CustomBOM"
+    "BOM": "erpnext_trackerx_customization.overrides.bom.CustomBOM",
+    "Pick List": "erpnext_trackerx_customization.overrides.pick_list.CustomPickList"
 }
 
 # Document Events
@@ -203,7 +217,8 @@ doc_events= {
     },
     "BOM": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.validate_bom",
-        "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.before_save_bom"
+        "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.before_save_bom",
+        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.on_submit"
     },
     "Sales Order": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.validate",
@@ -211,7 +226,8 @@ doc_events= {
     },
      "Work Order": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.validate",
-        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_submit"
+        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_submit",
+        "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_trash"
     },
     "Goods Receipt Note": {
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_submit_grn",
@@ -259,6 +275,9 @@ doc_events= {
 # override_whitelisted_methods = {
 # 	"frappe.desk.doctype.event.event.get_events": "erpnext_trackerx_customization.event.get_events"
 # }
+override_whitelisted_methods = {
+    "erpnext.manufacturing.doctype.work_order.work_order.create_pick_list": "erpnext_trackerx_customization.api.custom_pick_list.custom_create_pick_list"
+}
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,

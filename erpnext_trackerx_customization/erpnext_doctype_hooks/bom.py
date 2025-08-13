@@ -11,6 +11,26 @@ def before_save_bom(doc, method):
     #calculate_custom_material_costs(doc);
     pass
 
+def on_submit(doc,method):
+    item_tables = [
+        "custom_fabrics_items",
+        "custom_trims_items",
+        "custom_accessories_items",
+        "custom_labels_items",
+        "custom_packing_materials_items"
+    ]
+    item_tables_to_name = {
+        "custom_fabrics_items": "Fabrics",
+        "custom_trims_items": "Trims",
+        "custom_accessories_items": "Accessories",
+        "custom_labels_items": "Labels",
+        "custom_packing_materials_items": "Packing Materials"
+    }
+
+    for table_name in item_tables:
+        child_items = getattr(doc, table_name, [])
+        if not child_items:
+            frappe.throw(f"Atleast 1 {item_tables_to_name[table_name]} required")
 
 
 
@@ -44,6 +64,16 @@ def generate_panel_code(doc, method):
         "custom_labels_items",
         "custom_packing_materials_items"
     ]
+
+    item_tables_to_name = {
+        "custom_fabrics_items": "Fabrics",
+        "custom_trims_items": "Trims",
+        "custom_accessories_items": "Accessories",
+        "custom_labels_items": "Labels",
+        "custom_packing_materials_items": "Packing Materials"
+    }
+
+    panel_code_map = {}
 
     global_index = 1
 
@@ -97,3 +127,17 @@ def generate_panel_code(doc, method):
             global_index += 1
 
             item.custom_panel_code = f"{base_code}-{suffix}"
+
+            key = item.custom_item_uuid
+
+            panel_code_map[key]=item.custom_panel_code 
+
+
+    # copy panel code for items
+    for item in doc.items:
+        key = item.custom_item_uuid
+        panel_code_from_other_item = panel_code_map.get(key, "")
+        if(panel_code_from_other_item):
+            item.custom_panel_code = panel_code_from_other_item
+
+
