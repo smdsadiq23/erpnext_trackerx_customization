@@ -23,6 +23,7 @@
   "batch_no",
   "lot_no",
   "column_break_aql",
+  "lot_size_range",
   "sample_size",
   "defects_found",
   "acceptance_number",
@@ -151,6 +152,12 @@
    "fieldname": "column_break_aql",
    "fieldtype": "Column Break",
    "label": "AQL Inspection"
+  },
+  {
+   "fieldname": "lot_size_range",
+   "fieldtype": "Data",
+   "label": "Lot Size Range",
+   "read_only": 1
   },
   {
    "fieldname": "sample_size",

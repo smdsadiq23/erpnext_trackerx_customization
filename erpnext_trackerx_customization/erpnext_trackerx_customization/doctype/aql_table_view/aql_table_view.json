@@ -1,0 +1,164 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:view_name",
+ "creation": "2025-08-11 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "view_name",
+  "description",
+  "column_break_1",
+  "inspection_regime",
+  "inspection_levels",
+  "section_break_1",
+  "aql_values_selection",
+  "selected_aql_values",
+  "section_break_2",
+  "display_options",
+  "show_lot_size_ranges",
+  "show_sample_sizes",
+  "show_acceptance_rejection",
+  "column_break_2",
+  "table_style",
+  "is_default_view",
+  "is_public"
+ ],
+ "fields": [
+  {
+   "fieldname": "view_name",
+   "fieldtype": "Data",
+   "label": "View Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "inspection_regime",
+   "fieldtype": "Select",
+   "label": "Inspection Regime",
+   "options": "Normal\nTightened\nReduced\nAll",
+   "reqd": 1,
+   "default": "Normal"
+  },
+  {
+   "fieldname": "inspection_levels",
+   "fieldtype": "Check",
+   "label": "Show All Inspection Levels",
+   "default": 1
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break",
+   "label": "AQL Values"
+  },
+  {
+   "fieldname": "aql_values_selection",
+   "fieldtype": "Select",
+   "label": "AQL Values Selection",
+   "options": "Common Values Only\nAll Values\nCustom Selection",
+   "default": "Common Values Only"
+  },
+  {
+   "fieldname": "selected_aql_values",
+   "fieldtype": "Text",
+   "label": "Selected AQL Values",
+   "description": "Comma-separated list of AQL values (e.g., 0.65,1.0,1.5,2.5,4.0)"
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break",
+   "label": "Display Options"
+  },
+  {
+   "fieldname": "display_options",
+   "fieldtype": "Heading",
+   "label": "Display Options"
+  },
+  {
+   "fieldname": "show_lot_size_ranges",
+   "fieldtype": "Check",
+   "label": "Show Lot Size Ranges",
+   "default": 1
+  },
+  {
+   "fieldname": "show_sample_sizes",
+   "fieldtype": "Check",
+   "label": "Show Sample Sizes",
+   "default": 1
+  },
+  {
+   "fieldname": "show_acceptance_rejection",
+   "fieldtype": "Check",
+   "label": "Show Acceptance/Rejection Numbers",
+   "default": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "table_style",
+   "fieldtype": "Select",
+   "label": "Table Style",
+   "options": "Standard\nCompact\nDetailed",
+   "default": "Standard"
+  },
+  {
+   "fieldname": "is_default_view",
+   "fieldtype": "Check",
+   "label": "Is Default View"
+  },
+  {
+   "fieldname": "is_public",
+   "fieldtype": "Check",
+   "label": "Is Public View",
+   "default": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-08-11 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "AQL Table View",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Quality Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

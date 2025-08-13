@@ -54,7 +54,9 @@ after_migrate = [
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
-# app_include_js = "/assets/erpnext_trackerx_customization/js/erpnext_trackerx_customization.js"
+app_include_js = [
+    "/assets/erpnext_trackerx_customization/js/fabric_inspection_routes.js"
+]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
@@ -78,7 +80,11 @@ doctype_js = {
     "Sales Order": "public/js/sales_order.js",
     "Work Order": "public/js/work_order.js"
 }
-# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
+
+# include js in doctype list views
+doctype_list_js = {
+    "Fabric Inspection": "public/js/fabric_inspection_list.js"
+}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 

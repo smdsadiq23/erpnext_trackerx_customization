@@ -1,6 +1,7 @@
 import frappe
 from frappe.utils import nowdate
 from frappe import _
+# from erpnext_trackerx_customization.hooks.grn_inspection_hook import create_inspection_from_grn
 
 # --- 1. On GRN submit: create MIR and Fabric Rolls ---
 def on_submit_grn(doc, method):
@@ -35,6 +36,16 @@ def on_submit_grn(doc, method):
 
         mir.insert(ignore_permissions=True)
         frappe.msgprint(_("Material Inspection Report {0} created").format(mir.name))
+        
+        # 2. Create Quality Inspections based on material type
+        try:
+            # Import here to avoid circular imports during app loading
+            from erpnext_trackerx_customization.hooks.grn_inspection_hook import create_inspection_from_grn
+            create_inspection_from_grn(doc, method)
+        except Exception as insp_error:
+            frappe.log_error(_("Inspection Creation Error"), f"GRN: {doc.name}\nError: {str(insp_error)}")
+            # Don't throw - let MIR creation succeed even if inspection fails
+            frappe.msgprint(_("Warning: Could not create inspections. See error log."))
         
     except Exception as e:
         frappe.log_error(_("GRN Submit Error"), f"GRN: {doc.name}\nError: {str(e)}")

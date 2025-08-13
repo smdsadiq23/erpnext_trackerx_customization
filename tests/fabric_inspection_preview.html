@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Four-Point Fabric Inspection - Preview</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root { --gap: 12px; }
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #f8f9fa; }
+    .container { max-width: 1200px; margin: 0 auto; display: grid; gap: var(--gap); }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
+    .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; background:#fff; margin-bottom: 20px; }
+    .section-title { font-weight: 700; margin: 4px 0 8px; }
+    .row { display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .muted { color:#6b7280; font-size: 12px; }
+    .roll { border: 1px solid #d1d5db; border-radius: 10px; overflow: hidden; background:#fff; margin-bottom: 15px; }
+    .roll__head { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:#f8fafc; cursor:pointer; }
+    .roll__body { display:none; padding: 12px 14px; }
+    .roll[data-open="true"] .roll__body { display:block; }
+    .pill { padding: 4px 8px; border-radius: 999px; background:#eef2ff; font-size: 12px; margin-left: 10px; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #eef2f7; padding: 8px; text-align: left; }
+    tfoot td { font-weight: 700; }
+    .actions { display:flex; gap:8px; flex-wrap: wrap; }
+    .btn { padding: 8px 12px; border:1px solid #d1d5db; border-radius: 8px; background:#fff; cursor:pointer; }
+    .summary { display:grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }
+    .status--ok { background:#ecfdf5; color:#065f46; }
+    .status--warn { background:#fff7ed; color:#9a3412; }
+    .status--bad { background:#fef2f2; color:#991b1b; }
+    .defect-category { margin-bottom: 20px; }
+    .category-header { background: #f1f3f4; padding: 10px 15px; border-bottom: 1px solid #e9ecef; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Four-Point Fabric Inspection Preview</h1>
+    <div class="alert alert-info">
+      <strong>This is a preview of what your Fabric Inspection UI should look like.</strong><br>
+      If you don't see this in your Frappe application, follow the troubleshooting steps below.
+    </div>
+
+    <!-- General Details -->
+    <section class="card">
+      <h2 class="section-title">General Details</h2>
+      <div class="grid-2">
+        <div class="row"><label>Buyer</label><input type="text" class="form-control" value="Sample Buyer" readonly /></div>
+        <div class="row"><label>Style No</label><input type="text" class="form-control" value="ST001" readonly /></div>
+        <div class="row"><label>Reference No</label><input type="text" class="form-control" value="REF001" readonly /></div>
+        <div class="row"><label>Date</label><input type="date" class="form-control" value="2025-08-13" readonly /></div>
+        <div class="row"><label>Colour</label><input type="text" class="form-control" value="Navy Blue" readonly /></div>
+        <div class="row"><label>Item Name</label><input type="text" class="form-control" value="Cotton Fabric" readonly /></div>
+        <div class="row"><label>Inspector</label><input type="text" class="form-control" value="Inspector Name" readonly /></div>
+        <div class="row">
+          <label>Fabric Type</label>
+          <select class="form-control">
+            <option value="open">Open Width</option>
+            <option value="tubular">Tubular</option>
+          </select>
+        </div>
+      </div>
+      <p class="muted">Points per 100 sqm threshold for pass: <strong>25</strong></p>
+    </section>
+
+    <!-- Rolls Section -->
+    <section class="card">
+      <div class="actions">
+        <button class="btn btn-primary" onclick="expandAll()">Expand All</button>
+        <button class="btn btn-secondary" onclick="collapseAll()">Collapse All</button>
+      </div>
+
+      <!-- Sample Roll -->
+      <article class="roll" data-open="true">
+        <header class="roll__head" onclick="toggleRoll(this)">
+          <div>
+            <strong>Roll: <span class="roll__label">ROLL001</span></strong>
+            <span class="pill">Compact#: <span class="roll__compact">CR001</span></span>
+            <span class="pill">Dia: <span class="roll__dia">58</span>"</span>
+            <span class="pill">GSM: <span class="roll__gsm">180</span></span>
+          </div>
+          <div class="actions">
+            <button class="btn btn-sm">Edit</button>
+            <button class="btn btn-sm">Duplicate</button>
+            <button class="btn btn-sm">Remove</button>
+          </div>
+        </header>
+
+        <div class="roll__body">
+          <!-- Roll meta inputs -->
+          <div class="grid-2 card" style="background: #f8f9fa;">
+            <div class="row"><label>Compact Roll No</label><input type="text" class="form-control" value="CR001" /></div>
+            <div class="row"><label>Dia (inches)</label><input type="number" step="0.1" class="form-control" value="58" /></div>
+            <div class="row"><label>Actual GSM</label><input type="number" step="0.1" class="form-control" value="180" /></div>
+            <div class="row"><label>Total Inspected (m)</label><input type="number" step="0.1" class="form-control" value="100" /></div>
+          </div>
+
+          <!-- Defect Category 1 -->
+          <section class="card defect-category">
+            <div class="category-header">
+              <h3 class="section-title">Defect Category 1 — Holes & Yarn Defects</h3>
+            </div>
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Defect</th>
+                  <th>Size (m)</th>
+                  <th>Points (auto)</th>
+                  <th>Total Points (auto)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Holes</td>
+                  <td><input type="number" step="0.1" class="form-control form-control-sm" placeholder="0.0" /></td>
+                  <td>4</td>
+                  <td>0</td>
+                </tr>
+                <tr>
+                  <td>Processing Holes</td>
+                  <td><input type="number" step="0.1" class="form-control form-control-sm" placeholder="0.0" /></td>
+                  <td>4</td>
+                  <td>0</td>
+                </tr>
+                <tr>
+                  <td>Thin Yarn</td>
+                  <td><input type="number" step="0.1" class="form-control form-control-sm" placeholder="0.0" /></td>
+                  <td>2</td>
+                  <td>0</td>
+                </tr>
+                <tr>
+                  <td>Thick Yarn</td>
+                  <td><input type="number" step="0.1" class="form-control form-control-sm" placeholder="0.0" /></td>
+                  <td>2</td>
+                  <td>0</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td><strong>Total</strong></td>
+                  <td><strong>0.0</strong></td>
+                  <td class="muted">sum of point rates</td>
+                  <td><strong>0</strong></td>
+                </tr>
+              </tfoot>
+            </table>
+          </section>
+
+          <!-- Defect Category 2 -->
+          <section class="card defect-category">
+            <div class="category-header">
+              <h3 class="section-title">Defect Category 2 — Stains & Marks</h3>
+            </div>
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Defect</th>
+                  <th>Size (m)</th>
+                  <th>Points (auto)</th>
+                  <th>Total Points (auto)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Black Dot Oil Stain</td>
+                  <td><input type="number" step="0.1" class="form-control form-control-sm" placeholder="0.0" /></td>
+                  <td>3</td>
+                  <td>0</td>
+                </tr>
+                <tr>
+                  <td>Grease Mark</td>
+                  <td><input type="number" step="0.1" class="form-control form-control-sm" placeholder="0.0" /></td>
+                  <td>3</td>
+                  <td>0</td>
+                </tr>
+                <tr>
+                  <td>Rust Stain</td>
+                  <td><input type="number" step="0.1" class="form-control form-control-sm" placeholder="0.0" /></td>
+                  <td>3</td>
+                  <td>0</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td><strong>Total</strong></td>
+                  <td><strong>0.0</strong></td>
+                  <td class="muted">sum of point rates</td>
+                  <td><strong>0</strong></td>
+                </tr>
+              </tfoot>
+            </table>
+          </section>
+
+          <!-- Roll Summary -->
+          <section class="card">
+            <h4 class="section-title">Roll Summary</h4>
+            <div class="summary">
+              <div class="card"><div class="muted">Total Size (m)</div><div>0.0</div></div>
+              <div class="card"><div class="muted">Total Penalty Points</div><div>0</div></div>
+              <div class="card"><div class="muted">Status</div><div class="pill status--ok">First Quality</div></div>
+            </div>
+          </section>
+        </div>
+      </article>
+    </section>
+
+    <!-- Final Results -->
+    <section class="card">
+      <h2 class="section-title">Final Inspection Results</h2>
+      <div class="grid-2">
+        <div class="row"><label>Total Penalty Points (All Rolls)</label><output>0</output></div>
+        <div class="row"><label>Total Inspected (m) — All Rolls</label><output>0</output></div>
+        <div class="row"><label>Average Dia (inches) — All Rolls</label><output>0</output></div>
+        <div class="row"><label>Penalty Points per 100 sq m</label><output>0</output></div>
+      </div>
+      <p class="muted">
+        Formula: <code>Penalty per 100 sqm = (Total Penalty Points × 39 × 100) ÷ (Total Inspected (m) × Dia × (2 if Tubular else 1))</code>
+      </p>
+      <div class="card">
+        <div class="muted">Decision (≤ <span>25</span> passes)</div>
+        <div class="pill status--ok">Accepted</div>
+      </div>
+    </section>
+
+    <!-- Troubleshooting Guide -->
+    <section class="card">
+      <h2 class="section-title">Troubleshooting Steps</h2>
+      <div class="alert alert-warning">
+        <h5>If you don't see this UI in your Frappe application:</h5>
+        <ol>
+          <li><strong>Clear Browser Cache:</strong> Press Ctrl+F5 (Windows) or Cmd+Shift+R (Mac)</li>
+          <li><strong>Restart Bench Server:</strong> Run <code>bench restart</code> from your frappe-bench directory</li>
+          <li><strong>Check Fabric Rolls:</strong> Ensure your document has fabric rolls in the "Fabric Rolls" table</li>
+          <li><strong>Check Console:</strong> Press F12 and look for JavaScript errors in the console</li>
+          <li><strong>Clear Frappe Cache:</strong> Run <code>bench clear-cache</code></li>
+          <li><strong>Check Field Names:</strong> Verify the section "Defect Inspection by Roll" exists in your form</li>
+        </ol>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    function toggleRoll(header) {
+      const roll = header.closest('.roll');
+      const body = roll.querySelector('.roll__body');
+      const isOpen = roll.getAttribute('data-open') === 'true';
+      
+      if (isOpen) {
+        body.style.display = 'none';
+        roll.setAttribute('data-open', 'false');
+      } else {
+        body.style.display = 'block';
+        roll.setAttribute('data-open', 'true');
+      }
+    }
+
+    function expandAll() {
+      document.querySelectorAll('.roll').forEach(roll => {
+        roll.querySelector('.roll__body').style.display = 'block';
+        roll.setAttribute('data-open', 'true');
+      });
+    }
+
+    function collapseAll() {
+      document.querySelectorAll('.roll').forEach(roll => {
+        roll.querySelector('.roll__body').style.display = 'none';
+        roll.setAttribute('data-open', 'false');
+      });
+    }
+  </script>
+</body>
+</html>

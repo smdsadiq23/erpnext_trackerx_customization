@@ -1,32 +1,41 @@
-# ERPNext TrackerX Customization Documentation
+### Erpnext Trackerx Customization
 
-This directory contains comprehensive documentation for the ERPNext TrackerX Customization app.
+Customization for ERPNext
 
-## Directory Structure
+### Installation
 
-```
-docs/
-├── README.md                    # This file
-├── api/                         # API documentation
-│   ├── aql_system.md           # AQL System API reference
-│   └── quality_management.md   # Quality management APIs
-├── examples/                    # Code examples and tutorials
-│   ├── aql_setup.md            # Setting up AQL system
-│   └── integration_examples.py # Integration examples
-└── guides/                      # User guides and workflows
-    ├── aql_workflow.md         # AQL inspection workflow
-    └── quality_control.md     # Quality control processes
+You can install this app using the [bench](https://github.com/frappe/bench) CLI:
+
+```bash
+cd $PATH_TO_YOUR_BENCH
+bench get-app $URL_OF_THIS_REPO --branch develop
+bench install-app erpnext_trackerx_customization
 ```
 
-## Quick Start
+### Contributing
 
-1. **AQL System Setup**: See [AQL Setup Guide](examples/aql_setup.md)
-2. **API Reference**: Check [AQL System API](api/aql_system.md)  
-3. **Workflow Guide**: Follow [AQL Workflow](guides/aql_workflow.md)
+This app uses `pre-commit` for code formatting and linting. Please [install pre-commit](https://pre-commit.com/#installation) and enable it for this repository:
 
-## Key Features
+```bash
+cd apps/erpnext_trackerx_customization
+pre-commit install
+```
 
-- **Industry Standard AQL**: ISO 2859-1 compliant quality control
-- **Automated Calculations**: Sample sizes and acceptance criteria
-- **Integrated Workflow**: Seamless ERPNext integration
-- **Comprehensive Testing**: Unit, integration, and functional tests
+Pre-commit is configured to use the following tools for checking and formatting your code:
+
+- ruff
+- eslint
+- prettier
+- pyupgrade
+
+### CI
+
+This app can use GitHub Actions for CI. The following workflows are configured:
+
+- CI: Installs this app and runs unit tests on every push to `develop` branch.
+- Linters: Runs [Frappe Semgrep Rules](https://github.com/frappe/semgrep-rules) and [pip-audit](https://pypi.org/project/pip-audit/) on every pull request.
+
+
+### License
+
+mit
