@@ -1,0 +1,460 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="text-center mb-4">{{ _("AQL Grid - Editable Table") }}</h1>
+            <p class="text-center text-muted">{{ _("Click any cell to edit values directly") }}</p>
+        </div>
+    </div>
+    
+    <!-- Controls -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <label class="form-label"><strong>Inspection Regime:</strong></label>
+            <select class="form-select" id="regime-selector">
+                {% for regime in inspection_regimes %}
+                <option value="{{ regime }}" {% if regime == default_regime %}selected{% endif %}>
+                    {{ regime }} Inspection
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label"><strong>Inspection Level:</strong></label>
+            <select class="form-select" id="level-selector">
+                {% for level in inspection_levels %}
+                <option value="{{ level.level_code }}" {% if level.level_code == default_level %}selected{% endif %}>
+                    Level {{ level.level_code }} ({{ level.level_type }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <button class="btn btn-primary me-2" id="refresh-grid">
+                <i class="fa fa-refresh"></i> Refresh Grid
+            </button>
+            <button class="btn btn-success" id="save-changes" style="display: none;">
+                <i class="fa fa-save"></i> Save Changes
+            </button>
+        </div>
+    </div>
+    
+    <!-- AQL Grid Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fa fa-table"></i> 
+                        AQL Grid - <span id="current-regime">{{ default_regime }}</span> 
+                        Level <span id="current-level">{{ default_level }}</span>
+                    </h4>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered aql-grid-table" id="aql-grid">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th class="sticky-column">Code</th>
+                                    <th class="sticky-column">Sample Size</th>
+                                    <th class="sticky-column">Lot Size Range</th>
+                                    {% for standard in aql_standards %}
+                                    <th class="text-center aql-header" data-aql="{{ standard.aql_value }}">
+                                        {{ standard.aql_value }}%
+                                    </th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody id="grid-tbody">
+                                {% for grid_code, grid_data in aql_grid_data.items() %}
+                                <tr data-code="{{ grid_code }}">
+                                    <td class="sticky-column code-cell">
+                                        <strong>{{ grid_code }}</strong>
+                                    </td>
+                                    <td class="sticky-column size-cell">
+                                        {{ grid_data.sample_size }}
+                                    </td>
+                                    <td class="sticky-column range-cell">
+                                        {{ grid_data.lot_size_range }}
+                                    </td>
+                                    {% for standard in aql_standards %}
+                                    {% set flat_key = grid_code ~ "_" ~ standard.aql_value %}
+                                    <td class="text-center editable-cell" 
+                                        data-code="{{ grid_code }}" 
+                                        data-aql="{{ standard.aql_value }}"
+                                        data-doc-name="{% if flat_key in aql_flat_data %}{{ aql_flat_data[flat_key]['doc_name'] }}{% endif %}">
+                                        {% if flat_key in aql_flat_data %}
+                                        <div class="aql-cell-content">
+                                            <span class="acceptance-number" 
+                                                  data-field="acceptance_number">{{ aql_flat_data[flat_key]['acceptance'] }}</span>
+                                            <br>
+                                            <span class="rejection-number" 
+                                                  data-field="rejection_number">({{ aql_flat_data[flat_key]['rejection'] }})</span>
+                                        </div>
+                                        {% else %}
+                                        <div class="aql-cell-content">
+                                            <span class="text-muted">-</span>
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                                
+                                {% if aql_grid_data.items() | length == 0 %}
+                                <tr>
+                                    <td colspan="{{ aql_standards | length + 3 }}" class="text-center text-muted">
+                                        No AQL data available for {{ default_regime }} Level {{ default_level }}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Legend -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5><i class="fa fa-info-circle"></i> How to Use</h5>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Edit Values:</strong> Click any cell to edit
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Green Number:</strong> Acceptance count
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Red Number:</strong> Rejection count
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Save:</strong> Use Save Changes button
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit AQL Values</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-form">
+                    <div class="mb-3">
+                        <label class="form-label">Sample Code: <strong id="edit-code"></strong></label>
+                        <input type="hidden" id="edit-doc-name">
+                        <input type="hidden" id="edit-code-input">
+                        <input type="hidden" id="edit-aql-input">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-acceptance" class="form-label">Acceptance Number</label>
+                        <input type="number" class="form-control" id="edit-acceptance" min="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-rejection" class="form-label">Rejection Number</label>
+                        <input type="number" class="form-control" id="edit-rejection" min="0" required>
+                    </div>
+                    <div class="alert alert-info">
+                        <small>
+                            <strong>Note:</strong> Rejection number should typically be Acceptance number + 1
+                        </small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-cell-edit">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.aql-grid-table {
+    font-size: 0.9em;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.aql-grid-table th,
+.aql-grid-table td {
+    border: 1px solid #dee2e6;
+    padding: 8px;
+    vertical-align: middle;
+}
+
+.aql-grid-table thead th {
+    background-color: #343a40 !important;
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.sticky-column {
+    background-color: #f8f9fa !important;
+    font-weight: 500;
+    position: sticky;
+    left: 0;
+    z-index: 5;
+}
+
+.sticky-column:nth-child(2) {
+    left: 60px;
+}
+
+.sticky-column:nth-child(3) {
+    left: 140px;
+}
+
+.editable-cell {
+    cursor: pointer;
+    transition: background-color 0.2s;
+    min-width: 80px;
+}
+
+.editable-cell:hover {
+    background-color: #e3f2fd !important;
+    border-color: #2196f3 !important;
+}
+
+.editable-cell.editing {
+    background-color: #fff3e0 !important;
+    border-color: #ff9800 !important;
+    box-shadow: inset 0 0 0 2px #ff9800;
+}
+
+.aql-cell-content {
+    min-height: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.acceptance-number {
+    color: #28a745;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.rejection-number {
+    color: #dc3545;
+    font-size: 0.9em;
+}
+
+.code-cell {
+    width: 60px;
+    text-align: center;
+}
+
+.size-cell {
+    width: 80px;
+    text-align: center;
+}
+
+.range-cell {
+    width: 120px;
+    text-align: center;
+    font-size: 0.85em;
+}
+
+.table-responsive {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.changed-cell {
+    background-color: #fff3cd !important;
+    border-color: #ffc107 !important;
+}
+
+@media (max-width: 768px) {
+    .aql-grid-table {
+        font-size: 0.8em;
+    }
+    
+    .sticky-column:nth-child(2) {
+        left: 50px;
+    }
+    
+    .sticky-column:nth-child(3) {
+        left: 110px;
+    }
+    
+    .editable-cell {
+        min-width: 60px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let changedCells = new Map();
+    let currentEditModal = null;
+    
+    // Initialize grid functionality
+    initializeGrid();
+    
+    function initializeGrid() {
+        // Make cells editable on click
+        document.querySelectorAll('.editable-cell').forEach(cell => {
+            cell.addEventListener('click', function() {
+                if (this.dataset.docName) {
+                    openEditModal(this);
+                }
+            });
+        });
+        
+        // Regime and level change handlers
+        document.getElementById('regime-selector').addEventListener('change', refreshGrid);
+        document.getElementById('level-selector').addEventListener('change', refreshGrid);
+        document.getElementById('refresh-grid').addEventListener('click', refreshGrid);
+        
+        // Save changes handler
+        document.getElementById('save-changes').addEventListener('click', saveAllChanges);
+        
+        // Modal save handler
+        document.getElementById('save-cell-edit').addEventListener('click', saveCellEdit);
+    }
+    
+    function openEditModal(cell) {
+        const code = cell.dataset.code;
+        const aql = cell.dataset.aql;
+        const docName = cell.dataset.docName;
+        
+        const acceptanceSpan = cell.querySelector('.acceptance-number');
+        const rejectionSpan = cell.querySelector('.rejection-number');
+        
+        const currentAcceptance = acceptanceSpan ? acceptanceSpan.textContent : '0';
+        const currentRejection = rejectionSpan ? rejectionSpan.textContent.replace(/[()]/g, '') : '1';
+        
+        // Populate modal
+        document.getElementById('edit-code').textContent = code;
+        document.getElementById('edit-doc-name').value = docName;
+        document.getElementById('edit-code-input').value = code;
+        document.getElementById('edit-aql-input').value = aql;
+        document.getElementById('edit-acceptance').value = currentAcceptance;
+        document.getElementById('edit-rejection').value = currentRejection;
+        
+        currentEditModal = cell;
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('editModal'));
+        modal.show();
+    }
+    
+    function saveCellEdit() {
+        if (!currentEditModal) return;
+        
+        const docName = document.getElementById('edit-doc-name').value;
+        const acceptance = document.getElementById('edit-acceptance').value;
+        const rejection = document.getElementById('edit-rejection').value;
+        const code = document.getElementById('edit-code-input').value;
+        const aql = document.getElementById('edit-aql-input').value;
+        
+        // Update cell display
+        const acceptanceSpan = currentEditModal.querySelector('.acceptance-number');
+        const rejectionSpan = currentEditModal.querySelector('.rejection-number');
+        
+        if (acceptanceSpan) acceptanceSpan.textContent = acceptance;
+        if (rejectionSpan) rejectionSpan.textContent = `(${rejection})`;
+        
+        // Mark cell as changed
+        currentEditModal.classList.add('changed-cell');
+        
+        // Store change for batch save
+        const changeKey = `${code}-${aql}`;
+        changedCells.set(changeKey, {
+            docName: docName,
+            acceptance: parseInt(acceptance),
+            rejection: parseInt(rejection),
+            cell: currentEditModal
+        });
+        
+        // Show save button
+        document.getElementById('save-changes').style.display = 'inline-block';
+        
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+        currentEditModal = null;
+    }
+    
+    function saveAllChanges() {
+        if (changedCells.size === 0) return;
+        
+        const saveBtn = document.getElementById('save-changes');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving...';
+        
+        // Convert map to array for batch update
+        const changes = Array.from(changedCells.values()).map(change => ({
+            name: change.docName,
+            acceptance_number: change.acceptance,
+            rejection_number: change.rejection
+        }));
+        
+        // Send to server
+        frappe.call({
+            method: 'erpnext_trackerx_customization.api.update_aql_table_entries',
+            args: {
+                changes: changes
+            },
+            callback: function(response) {
+                if (response.message && response.message.success) {
+                    // Clear changed status
+                    changedCells.forEach(change => {
+                        change.cell.classList.remove('changed-cell');
+                    });
+                    changedCells.clear();
+                    
+                    // Hide save button
+                    document.getElementById('save-changes').style.display = 'none';
+                    
+                    frappe.show_alert({
+                        message: 'AQL table entries updated successfully',
+                        indicator: 'green'
+                    });
+                } else {
+                    frappe.show_alert({
+                        message: 'Error updating AQL table entries',
+                        indicator: 'red'
+                    });
+                }
+                
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fa fa-save"></i> Save Changes';
+            }
+        });
+    }
+    
+    function refreshGrid() {
+        const regime = document.getElementById('regime-selector').value;
+        const level = document.getElementById('level-selector').value;
+        
+        // Update display
+        document.getElementById('current-regime').textContent = regime;
+        document.getElementById('current-level').textContent = level;
+        
+        // Reload page with new parameters
+        window.location.href = `/aql_grid?regime=${regime}&level=${level}`;
+    }
+});
+</script>
+{% endblock %}

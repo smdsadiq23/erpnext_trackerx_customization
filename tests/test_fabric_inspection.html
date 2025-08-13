@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fabric Inspection Redirection Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: system-ui, sans-serif; padding: 20px; background: #f8f9fa; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
+        .status { padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background: #e3f2fd; color: #0277bd; border: 1px solid #b3e5fc; }
+        .btn { padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; display: inline-block; margin: 5px; }
+        .btn:hover { background: #0056b3; color: white; text-decoration: none; }
+        code { background: #f8f9fa; padding: 2px 5px; border-radius: 3px; }
+        .test-links { display: grid; gap: 10px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Fabric Inspection Redirection Test</h1>
+        
+        <div class="status info">
+            <strong>ℹ️ Test Status:</strong> This page helps verify that the list view redirection is working properly.
+        </div>
+
+        <h2>📋 Test Instructions</h2>
+        <ol>
+            <li><strong>Clear Cache:</strong> Press <code>Ctrl+F5</code> to clear browser cache</li>
+            <li><strong>Go to List View:</strong> <a href="/app/fabric-inspection" class="btn">Open Fabric Inspection List</a></li>
+            <li><strong>Click Any Row:</strong> Should redirect to Four-Point Inspection UI</li>
+            <li><strong>Test Ctrl+Click:</strong> Should open in new tab</li>
+        </ol>
+
+        <h2>🔗 Direct Test Links</h2>
+        <div class="test-links">
+            <a href="/app/fabric-inspection" class="btn">📋 Fabric Inspection List View</a>
+            <a href="/fabric_inspection_ui?name=FINSP-2025-00007" class="btn">🎯 Sample Inspection UI</a>
+            <a href="/app/fabric-inspection/FINSP-2025-00007" class="btn">📝 Sample Form View</a>
+        </div>
+
+        <h2>✅ Expected Behavior</h2>
+        <div class="status success">
+            <ul>
+                <li>🎯 Icon appears on row hover</li>
+                <li>Clicking rows redirects to inspection UI</li>
+                <li>Checkboxes still work for selection</li>
+                <li>Ctrl+Click opens in new tab</li>
+                <li>Loading progress shows during redirect</li>
+            </ul>
+        </div>
+
+        <h2>🛠️ Troubleshooting</h2>
+        <div class="status warning">
+            <strong>If redirection doesn't work:</strong>
+            <ul>
+                <li>Restart bench server: <code>bench restart</code></li>
+                <li>Clear browser cache completely</li>
+                <li>Check browser console for errors (F12)</li>
+                <li>Verify JavaScript files are loaded</li>
+            </ul>
+        </div>
+
+        <h2>🔍 Debug Information</h2>
+        <p><strong>Current URL:</strong> <code id="current-url"></code></p>
+        <p><strong>User Agent:</strong> <code id="user-agent"></code></p>
+        <p><strong>Timestamp:</strong> <code id="timestamp"></code></p>
+
+        <script>
+            document.getElementById('current-url').textContent = window.location.href;
+            document.getElementById('user-agent').textContent = navigator.userAgent;
+            document.getElementById('timestamp').textContent = new Date().toISOString();
+            
+            // Test if the list JS is loaded
+            setTimeout(() => {
+                if (typeof frappe !== 'undefined' && frappe.listview_settings && frappe.listview_settings['Fabric Inspection']) {
+                    const status = document.createElement('div');
+                    status.className = 'status success';
+                    status.innerHTML = '<strong>✅ Success:</strong> Fabric Inspection list view settings detected!';
+                    document.body.appendChild(status);
+                } else {
+                    const status = document.createElement('div');
+                    status.className = 'status warning';
+                    status.innerHTML = '<strong>⚠️ Warning:</strong> Fabric Inspection list view settings not detected. Make sure to restart the server.';
+                    document.body.appendChild(status);
+                }
+            }, 2000);
+        </script>
+    </div>
+</body>
+</html>

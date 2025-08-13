@@ -1,0 +1,476 @@
+import frappe
+from frappe import _
+from frappe.model.document import Document
+from frappe.utils import flt, cint, getdate, now, get_datetime
+import json
+from erpnext_trackerx_customization.api.fabric_inspection import (
+    calculate_defect_points, 
+    calculate_aql_sample_size,
+    validate_inspection_completion
+)
+
+
+class FabricInspection(Document):
+    def validate(self):
+        """Validate fabric inspection before saving"""
+        self.validate_inspection_setup()
+        self.validate_aql_configuration()
+        self.calculate_roll_results()
+        self.calculate_overall_results()
+        self.update_inspection_status()
+    
+    def before_submit(self):
+        """Validate before submission"""
+        validation_result = validate_inspection_completion(self.name)
+        
+        if not validation_result.get('valid', False):
+            errors = validation_result.get('errors', [])
+            frappe.throw(_("Cannot submit inspection: {0}").format('; '.join(errors)))
+        
+        # Set final status
+        self.inspection_status = 'Completed'
+        
+        # Update linked GRN if exists
+        self.update_grn_inspection_status()
+    
+    def on_submit(self):
+        """Actions after successful submission"""
+        # Update fabric roll statuses
+        self.update_fabric_roll_statuses()
+        
+        # Create quality certificates if needed
+        self.create_quality_certificates()
+    
+    def validate_inspection_setup(self):
+        """Validate basic inspection setup"""
+        if not self.grn_reference:
+            frappe.throw(_("GRN Reference is required"))
+        
+        if not self.fabric_rolls_tab:
+            frappe.throw(_("At least one fabric roll must be added for inspection"))
+        
+        if self.inspection_type == 'AQL Based':
+            if not self.aql_level:
+                frappe.throw(_("AQL Level is required for AQL Based inspection"))
+            if not self.aql_value:
+                frappe.throw(_("AQL Value is required for AQL Based inspection"))
+    
+    def validate_aql_configuration(self):
+        """Validate AQL configuration and calculate sample requirements"""
+        if self.inspection_type == 'AQL Based' and self.total_rolls:
+            # Recalculate sample requirements
+            sample_data = calculate_aql_sample_size(
+                lot_size=self.total_rolls,
+                aql_level=self.aql_level,
+                aql_value=self.aql_value,
+                inspection_regime=self.inspection_regime or 'Normal'
+            )
+            
+            if sample_data:
+                self.required_sample_size = sample_data.get('sample_size', 0)
+                self.required_sample_rolls = sample_data.get('sample_rolls', 0)
+                self.required_sample_meters = sample_data.get('sample_meters', 0)
+        
+        elif self.inspection_type == '100% Inspection':
+            self.required_sample_size = 100
+            self.required_sample_rolls = self.total_rolls or 0
+            # Calculate total meters
+            total_meters = sum(flt(roll.roll_length or 0) for roll in self.fabric_rolls_tab)
+            self.required_sample_meters = total_meters
+    
+    def calculate_roll_results(self):
+        """Calculate results for each inspected roll"""
+        if not self.fabric_rolls_tab:
+            return
+        
+        for roll in self.fabric_rolls_tab:
+            if not roll.inspected:
+                continue
+            
+            # Calculate defect points for each defect
+            total_points = 0
+            total_defects = 0
+            defect_groups = {}
+            
+            # Get defects for this roll from the JSON defects data
+            roll_defects_data = {}
+            if self.defects_data:
+                try:
+                    defects_data = json.loads(self.defects_data) if isinstance(self.defects_data, str) else self.defects_data
+                    roll_defects_data = defects_data.get(roll.roll_number, {})
+                except:
+                    pass
+            
+            if roll_defects_data:
+                # Get defect master data for point calculation
+                from erpnext_trackerx_customization.api.fabric_inspection import get_default_defect_categories
+                defect_master = get_default_defect_categories()
+                
+                # Calculate points from the structured defects data
+                for defect_key, size in roll_defects_data.items():
+                    if size > 0:
+                        # Parse defect_key to get category and code
+                        if '_' in defect_key:
+                            category_name = '_'.join(defect_key.split('_')[:-1])
+                            defect_code = defect_key.split('_')[-1]
+                            
+                            # Find the defect in master data
+                            points_per_meter = 2  # Default
+                            for category, defects in defect_master.items():
+                                if category == category_name:
+                                    for defect in defects:
+                                        if defect['code'] == defect_code:
+                                            points_per_meter = defect['points']
+                                            break
+                            
+                            # Calculate total points for this defect
+                            defect_points = flt(size) * points_per_meter
+                            total_points += defect_points
+                            total_defects += 1
+                            
+                            # Group defects by category
+                            if category_name not in defect_groups:
+                                defect_groups[category_name] = {
+                                    'count': 0,
+                                    'points': 0,
+                                    'defects': []
+                                }
+                            defect_groups[category_name]['count'] += 1
+                            defect_groups[category_name]['points'] += defect_points
+                            defect_groups[category_name]['defects'].append(defect_code)
+            
+            # Calculate roll metrics
+            roll_area = self.calculate_roll_area(roll)
+            points_per_100_sqm = (total_points * 100) / roll_area if roll_area > 0 else 0
+            defect_density = total_defects / roll_area if roll_area > 0 else 0
+            
+            # Determine grade and result based on 4-point system
+            grade, result = self.determine_roll_grade(points_per_100_sqm, total_points)
+            
+            # Update roll fields
+            roll.total_defect_points = total_points
+            roll.points_per_100_sqm = points_per_100_sqm
+            roll.defect_density = defect_density
+            roll.roll_grade = grade
+            roll.roll_result = result
+            roll.defect_summary_by_group = json.dumps(defect_groups)
+            
+            # Set accept/reject reason if needed
+            if result == 'Rejected':
+                roll.accept_reject_reason = self.get_rejection_reason(points_per_100_sqm, total_points)
+            elif result == 'Conditional Accept':
+                roll.accept_reject_reason = "Conditional acceptance based on defect points and customer requirements"
+    
+    def calculate_roll_area(self, roll):
+        """Calculate roll area in square meters"""
+        length_m = flt(roll.roll_length or 0)
+        width_inches = flt(roll.roll_width or 60)  # Default 60 inches
+        width_m = width_inches * 0.0254  # Convert inches to meters
+        return length_m * width_m
+    
+    def determine_roll_grade(self, points_per_100_sqm, total_points):
+        """Determine roll grade and result based on industry standards"""
+        # Standard grading based on 4-point system
+        if points_per_100_sqm <= 20:
+            return 'A', 'First Quality'
+        elif points_per_100_sqm <= 40:
+            return 'B', 'Second Quality'
+        elif points_per_100_sqm <= 60:
+            return 'C', 'Conditional Accept'
+        else:
+            return 'D', 'Rejected'
+    
+    def get_rejection_reason(self, points_per_100_sqm, total_points):
+        """Get specific rejection reason"""
+        reasons = []
+        
+        if points_per_100_sqm > 60:
+            reasons.append(f"Excessive defect points per 100 sqm ({points_per_100_sqm:.2f})")
+        
+        if total_points > 40:  # Arbitrary threshold
+            reasons.append(f"High total defect points ({total_points:.2f})")
+        
+        return '; '.join(reasons) if reasons else "Quality standards not met"
+    
+    def calculate_overall_results(self):
+        """Calculate overall inspection results"""
+        if not self.fabric_rolls_tab:
+            return
+        
+        total_points = 0
+        total_defects = 0
+        inspected_rolls = 0
+        accepted_rolls = 0
+        rejected_rolls = 0
+        grade_counts = {'A': 0, 'B': 0, 'C': 0, 'D': 0}
+        
+        for roll in self.fabric_rolls_tab:
+            if roll.inspected:
+                inspected_rolls += 1
+                total_points += flt(roll.total_defect_points or 0)
+                
+                roll_defects = [d for d in (self.all_defects or []) if d.roll_reference == roll.roll_number]
+                if roll_defects:
+                    total_defects += len(roll_defects)
+                
+                # Count results
+                if roll.roll_result in ['First Quality', 'Accepted']:
+                    accepted_rolls += 1
+                elif roll.roll_result == 'Rejected':
+                    rejected_rolls += 1
+                
+                # Count grades
+                grade = roll.roll_grade or 'D'
+                if grade in grade_counts:
+                    grade_counts[grade] += 1
+        
+        # Update overall fields
+        self.total_defect_points = total_points
+        
+        # Determine overall result
+        if inspected_rolls == 0:
+            overall_result = 'Pending'
+            overall_grade = ''
+        else:
+            acceptance_rate = (accepted_rolls / inspected_rolls) * 100
+            
+            if acceptance_rate >= 95:
+                overall_result = 'Accepted'
+                overall_grade = 'A'
+            elif acceptance_rate >= 85:
+                overall_result = 'Conditional Accept'
+                overall_grade = 'B'
+            else:
+                overall_result = 'Rejected'
+                overall_grade = 'C'
+        
+        self.inspection_result = overall_result
+        self.quality_grade = overall_grade
+        
+        # Generate inspection summary
+        self.generate_inspection_summary(inspected_rolls, accepted_rolls, rejected_rolls, grade_counts)
+    
+    def generate_inspection_summary(self, inspected_rolls, accepted_rolls, rejected_rolls, grade_counts):
+        """Generate HTML inspection summary"""
+        total_rolls = len(self.fabric_rolls_tab)
+        acceptance_rate = (accepted_rolls / inspected_rolls * 100) if inspected_rolls > 0 else 0
+        
+        summary_html = f"""
+        <div class="inspection-summary">
+            <h4>Inspection Summary</h4>
+            <div class="row">
+                <div class="col-sm-6">
+                    <table class="table table-condensed">
+                        <tr><td><strong>Total Rolls:</strong></td><td>{total_rolls}</td></tr>
+                        <tr><td><strong>Inspected:</strong></td><td>{inspected_rolls}</td></tr>
+                        <tr><td><strong>Accepted:</strong></td><td>{accepted_rolls}</td></tr>
+                        <tr><td><strong>Rejected:</strong></td><td>{rejected_rolls}</td></tr>
+                    </table>
+                </div>
+                <div class="col-sm-6">
+                    <table class="table table-condensed">
+                        <tr><td><strong>Acceptance Rate:</strong></td><td>{acceptance_rate:.1f}%</td></tr>
+                        <tr><td><strong>Total Points:</strong></td><td>{self.total_defect_points:.2f}</td></tr>
+                        <tr><td><strong>Overall Grade:</strong></td><td>{self.quality_grade}</td></tr>
+                        <tr><td><strong>Final Result:</strong></td><td><span class="indicator {self.get_result_indicator()}">{self.inspection_result}</span></td></tr>
+                    </table>
+                </div>
+            </div>
+            <div class="grade-distribution">
+                <h5>Grade Distribution:</h5>
+                <p>Grade A: {grade_counts['A']} | Grade B: {grade_counts['B']} | Grade C: {grade_counts['C']} | Grade D: {grade_counts['D']}</p>
+            </div>
+        </div>
+        """
+        
+        self.inspection_summary = summary_html
+    
+    def get_result_indicator(self):
+        """Get indicator class for result display"""
+        result_indicators = {
+            'Accepted': 'green',
+            'Conditional Accept': 'orange', 
+            'Rejected': 'red',
+            'Pending': 'grey'
+        }
+        return result_indicators.get(self.inspection_result, 'grey')
+    
+    def update_inspection_status(self):
+        """Update inspection status based on progress"""
+        if not self.fabric_rolls_tab:
+            self.inspection_status = 'Draft'
+            return
+        
+        total_rolls = len(self.fabric_rolls_tab)
+        inspected_rolls = sum(1 for roll in self.fabric_rolls_tab if roll.inspected)
+        
+        if inspected_rolls == 0:
+            self.inspection_status = 'Draft'
+        elif inspected_rolls < total_rolls:
+            self.inspection_status = 'In Progress'
+        else:
+            self.inspection_status = 'Completed'
+    
+    def update_grn_inspection_status(self):
+        """Update inspection status in linked GRN"""
+        if not self.grn_reference:
+            return
+        
+        try:
+            grn = frappe.get_doc("Goods Receipt Note", self.grn_reference)
+            
+            # Update GRN status based on inspection result
+            if self.inspection_result == 'Accepted':
+                grn.quality_inspection_status = 'Passed'
+            elif self.inspection_result == 'Rejected':
+                grn.quality_inspection_status = 'Failed'
+            else:
+                grn.quality_inspection_status = 'Partial'
+            
+            grn.fabric_inspection_reference = self.name
+            grn.save()
+            
+        except Exception as e:
+            frappe.log_error(f"Error updating GRN inspection status: {str(e)}")
+    
+    def update_fabric_roll_statuses(self):
+        """Update individual fabric roll inspection statuses"""
+        if not self.fabric_rolls_tab:
+            return
+        
+        for roll in self.fabric_rolls_tab:
+            if not roll.inspected:
+                continue
+            
+            try:
+                # Try to find and update the actual Fabric Roll document
+                roll_filters = {'roll_id': roll.roll_number}
+                
+                if frappe.db.exists("Fabric Roll", roll_filters):
+                    fabric_roll = frappe.get_doc("Fabric Roll", roll_filters)
+                    
+                    # Update inspection details
+                    fabric_roll.inspection_status = 'Passed' if roll.roll_result in ['First Quality', 'Accepted'] else 'Rejected'
+                    fabric_roll.inspector_name = self.inspector
+                    fabric_roll.inspection_date = self.inspection_date
+                    fabric_roll.total_defect_points = roll.total_defect_points
+                    fabric_roll.points_per_100_sqm = roll.points_per_100_sqm
+                    fabric_roll.fabric_grade = roll.roll_grade
+                    fabric_roll.final_result = roll.roll_result
+                    fabric_roll.inspection_remarks = roll.roll_remarks
+                    
+                    # Copy defects if the Fabric Roll has a defects table
+                    roll_defects = [d for d in (self.all_defects or []) if d.roll_reference == roll.roll_number]
+                    if hasattr(fabric_roll, 'defects') and roll_defects:
+                        fabric_roll.defects = []  # Clear existing
+                        for defect in roll_defects:
+                            fabric_roll.append('defects', {
+                                'defect_code': defect.defect_code,
+                                'defect_name': defect.defect_name,
+                                'defect_category': defect.defect_category,
+                                'location_yard': defect.location_yard,
+                                'location_position': defect.location_position,
+                                'defect_size': defect.defect_size,
+                                'defect_points': defect.defect_points,
+                                'severity': defect.severity,
+                                'defect_image': defect.defect_image,
+                                'remarks': defect.remarks
+                            })
+                    
+                    fabric_roll.save()
+                    
+            except Exception as e:
+                frappe.log_error(f"Error updating fabric roll {roll.roll_number}: {str(e)}")
+    
+    def create_quality_certificates(self):
+        """Create quality certificates for accepted rolls"""
+        accepted_rolls = [roll for roll in self.fabric_rolls_tab 
+                         if roll.inspected and roll.roll_result in ['First Quality', 'Accepted']]
+        
+        if not accepted_rolls:
+            return
+        
+        try:
+            # Create a Quality Certificate document (if this DocType exists)
+            if frappe.db.exists("DocType", "Quality Certificate"):
+                quality_cert = frappe.new_doc("Quality Certificate")
+                quality_cert.inspection_reference = self.name
+                quality_cert.grn_reference = self.grn_reference
+                quality_cert.supplier = self.supplier
+                quality_cert.item_code = self.item_code
+                quality_cert.certificate_date = getdate()
+                quality_cert.inspector = self.inspector
+                quality_cert.overall_result = self.inspection_result
+                quality_cert.quality_grade = self.quality_grade
+                
+                # Add accepted rolls
+                for roll in accepted_rolls:
+                    quality_cert.append('certified_rolls', {
+                        'roll_number': roll.roll_number,
+                        'roll_grade': roll.roll_grade,
+                        'roll_length': roll.roll_length,
+                        'defect_points': roll.total_defect_points
+                    })
+                
+                quality_cert.save()
+                frappe.msgprint(_("Quality Certificate {0} created for {1} accepted rolls").format(
+                    quality_cert.name, len(accepted_rolls)
+                ))
+                
+        except Exception as e:
+            frappe.log_error(f"Error creating quality certificate: {str(e)}")
+    
+    @frappe.whitelist()
+    def recalculate_all_results(self):
+        """Recalculate all roll and overall results"""
+        self.calculate_roll_results()
+        self.calculate_overall_results()
+        self.save()
+        return True
+    
+    @frappe.whitelist() 
+    def get_inspection_statistics(self):
+        """Get detailed inspection statistics"""
+        stats = {
+            'total_rolls': len(self.fabric_rolls_tab or []),
+            'inspected_rolls': 0,
+            'pending_rolls': 0,
+            'accepted_rolls': 0,
+            'rejected_rolls': 0,
+            'total_defects': 0,
+            'total_points': flt(self.total_defect_points or 0),
+            'grade_distribution': {'A': 0, 'B': 0, 'C': 0, 'D': 0},
+            'defect_categories': {},
+            'aql_compliance': True
+        }
+        
+        for roll in (self.fabric_rolls_tab or []):
+            if roll.inspected:
+                stats['inspected_rolls'] += 1
+                
+                if roll.roll_result in ['First Quality', 'Accepted']:
+                    stats['accepted_rolls'] += 1
+                elif roll.roll_result == 'Rejected':
+                    stats['rejected_rolls'] += 1
+                
+                if roll.roll_grade in stats['grade_distribution']:
+                    stats['grade_distribution'][roll.roll_grade] += 1
+                
+                roll_defects = [d for d in (self.all_defects or []) if d.roll_reference == roll.roll_number]
+                if roll_defects:
+                    stats['total_defects'] += len(roll_defects)
+                    
+                    for defect in roll_defects:
+                        category = defect.defect_category or 'Other'
+                        if category not in stats['defect_categories']:
+                            stats['defect_categories'][category] = 0
+                        stats['defect_categories'][category] += 1
+            else:
+                stats['pending_rolls'] += 1
+        
+        # Check AQL compliance
+        if self.inspection_type == 'AQL Based':
+            required_sample = cint(self.required_sample_rolls or 0)
+            stats['aql_compliance'] = stats['inspected_rolls'] >= required_sample
+        
+        return stats
