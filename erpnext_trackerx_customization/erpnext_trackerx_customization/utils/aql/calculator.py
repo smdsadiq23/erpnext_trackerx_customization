@@ -7,10 +7,36 @@ class AQLCalculator:
 	"""Utility class for AQL calculations based on industry standards"""
 	
 	@staticmethod
+	def get_sample_size_code_and_range(quantity, inspection_level=DEFAULT_INSPECTION_LEVEL):
+		"""
+		Get sample size code letter and lot size range based on lot quantity and inspection level
+		According to ISO 2859-1 (MIL-STD-105E) standard
+		
+		Args:
+			quantity (int): Lot quantity
+			inspection_level (str): Inspection level (1, 2, 3, S1, S2, S3, S4)
+			
+		Returns:
+			tuple: (sample_code_letter, lot_size_range)
+		"""
+		level_ranges = LOT_SIZE_RANGES.get(inspection_level, LOT_SIZE_RANGES.get(DEFAULT_INSPECTION_LEVEL, {}))
+		
+		for (min_qty, max_qty), code in level_ranges.items():
+			if min_qty <= quantity <= max_qty:
+				# Format the range string
+				if max_qty >= 999999999:  # Open-ended range
+					lot_range = f"{min_qty}-"
+				else:
+					lot_range = f"{min_qty}-{max_qty}"
+				return code, lot_range
+		
+		return "A", "2-8"  # Fallback for edge cases
+
+	@staticmethod 
 	def get_sample_size_code(quantity, inspection_level=DEFAULT_INSPECTION_LEVEL):
 		"""
 		Get sample size code letter based on lot quantity and inspection level
-		According to ISO 2859-1 (MIL-STD-105E) standard
+		(Legacy method for backward compatibility)
 		
 		Args:
 			quantity (int): Lot quantity
@@ -19,13 +45,8 @@ class AQLCalculator:
 		Returns:
 			str: Sample size code letter (A-R)
 		"""
-		level_ranges = LOT_SIZE_RANGES.get(inspection_level, LOT_SIZE_RANGES.get(DEFAULT_INSPECTION_LEVEL, {}))
-		
-		for (min_qty, max_qty), code in level_ranges.items():
-			if min_qty <= quantity <= max_qty:
-				return code
-		
-		return "A"  # Fallback for edge cases
+		code, _ = AQLCalculator.get_sample_size_code_and_range(quantity, inspection_level)
+		return code
 	
 	@staticmethod
 	def get_sample_size(code_letter):
@@ -66,17 +87,19 @@ class AQLCalculator:
 		inspection_regime = item.get("custom_inspection_regime", "Normal")
 		aql_value = item.custom_accepted_quality_level
 		
-		# Get sample size code based on quantity and inspection level
-		sample_code = AQLCalculator.get_sample_size_code(quantity, aql_level.level_code)
+		# Get sample size code and lot range based on quantity and inspection level
+		sample_code, lot_size_range = AQLCalculator.get_sample_size_code_and_range(quantity, aql_level.level_code)
 		sample_size = AQLCalculator.get_sample_size(sample_code)
 		
-		# Get AQL criteria from table
+		# Get AQL criteria from table using the new structure
 		aql_criteria = frappe.db.get_value(
 			"AQL Table",
 			{
+				"inspection_level": aql_level.level_code,
+				"inspection_regime": inspection_regime,
+				"lot_size_range": lot_size_range,
 				"sample_code_letter": sample_code,
 				"aql_value": aql_value,
-				"inspection_regime": inspection_regime,
 				"is_active": 1
 			},
 			["acceptance_number", "rejection_number"]
@@ -87,20 +110,23 @@ class AQLCalculator:
 			aql_criteria = frappe.db.get_value(
 				"AQL Table",
 				{
+					"inspection_level": aql_level.level_code,
+					"inspection_regime": "Normal",
+					"lot_size_range": lot_size_range,
 					"sample_code_letter": sample_code,
 					"aql_value": aql_value,
-					"inspection_regime": "Normal",
 					"is_active": 1
 				},
 				["acceptance_number", "rejection_number"]
 			)
 			
 			if not aql_criteria:
-				frappe.throw(f"No AQL table entry found for Sample Code: {sample_code}, AQL: {aql_value}")
+				frappe.throw(f"No AQL table entry found for Level: {aql_level.level_code}, Range: {lot_size_range}, Sample Code: {sample_code}, AQL: {aql_value}")
 		
 		return {
 			"sample_code_letter": sample_code,
 			"sample_size": sample_size,
+			"lot_size_range": lot_size_range,
 			"acceptance_number": aql_criteria[0],
 			"rejection_number": aql_criteria[1],
 			"inspection_level": aql_level.level_code,

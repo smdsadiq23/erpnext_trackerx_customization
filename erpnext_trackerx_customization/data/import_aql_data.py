@@ -102,7 +102,7 @@ def import_aql_table():
         for entry_data in batch:
             try:
                 # Create unique identifier for the entry
-                table_name = f"{entry_data.get('sample_code_letter')}-{entry_data.get('aql_value')}-{entry_data.get('inspection_regime')}"
+                table_name = f"{entry_data.get('inspection_level')}-{entry_data.get('inspection_regime')}-{entry_data.get('lot_size_range')}-{entry_data.get('sample_code_letter')}-{entry_data.get('aql_value')}"
                 
                 if not frappe.db.exists("AQL Table", table_name):
                     doc = frappe.get_doc(entry_data)

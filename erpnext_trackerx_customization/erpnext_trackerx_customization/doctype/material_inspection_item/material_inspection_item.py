@@ -20,6 +20,7 @@ class MaterialInspectionItem(Document):
 				self.received_quantity or 0
 			)
 			
+			self.lot_size_range = aql_data.get("lot_size_range", "")
 			self.sample_size = aql_data.get("sample_size", 0)
 			self.acceptance_number = aql_data.get("acceptance_number", 0)
 			self.rejection_number = aql_data.get("rejection_number", 1)

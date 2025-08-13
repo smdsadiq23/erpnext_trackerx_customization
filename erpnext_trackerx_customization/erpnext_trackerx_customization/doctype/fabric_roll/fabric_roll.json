@@ -52,7 +52,7 @@
     "fieldname": "inspection_status",
     "label": "Inspection Status",
     "fieldtype": "Select",
-    "options": "\nPending\nPassed\nRejected\nPartial"
+    "options": "\nPending\nIn Progress\nPassed\nRejected\nPartial"
   },
   {
     "fieldname": "linked_purchase_receipt",
@@ -82,6 +82,94 @@
     "label": "Material Inspection Report",
     "fieldtype": "Link",
     "options": "Material Inspection Report"
+  },
+  {
+    "fieldname": "inspection_section",
+    "label": "Inspection Details",
+    "fieldtype": "Section Break",
+    "collapsible": 1,
+    "depends_on": "eval:doc.inspection_status != 'Pending'"
+  },
+  {
+    "fieldname": "inspection_method",
+    "label": "Inspection Method",
+    "fieldtype": "Select",
+    "options": "\nFull Roll\n4-Point Method\nRandom Sampling\n10-Point Method",
+    "default": "4-Point Method"
+  },
+  {
+    "fieldname": "inspected_length",
+    "label": "Inspected Length (m)",
+    "fieldtype": "Float",
+    "precision": 2
+  },
+  {
+    "fieldname": "column_break_insp",
+    "fieldtype": "Column Break"
+  },
+  {
+    "fieldname": "inspector_name",
+    "label": "Inspector Name",
+    "fieldtype": "Data"
+  },
+  {
+    "fieldname": "inspection_date",
+    "label": "Inspection Date",
+    "fieldtype": "Date"
+  },
+  {
+    "fieldname": "defects_section",
+    "label": "Defects Found",
+    "fieldtype": "Section Break"
+  },
+  {
+    "fieldname": "defects",
+    "label": "Defects",
+    "fieldtype": "Table",
+    "options": "Fabric Defect Item",
+    "depends_on": "eval:doc.inspection_status != 'Pending'"
+  },
+  {
+    "fieldname": "calculation_section",
+    "label": "Calculation & Results",
+    "fieldtype": "Section Break",
+    "depends_on": "eval:doc.defects && doc.defects.length > 0"
+  },
+  {
+    "fieldname": "total_defect_points",
+    "label": "Total Defect Points",
+    "fieldtype": "Float",
+    "precision": 2,
+    "read_only": 1
+  },
+  {
+    "fieldname": "points_per_100_sqm",
+    "label": "Points per 100 sqm",
+    "fieldtype": "Float",
+    "precision": 2,
+    "read_only": 1
+  },
+  {
+    "fieldname": "column_break_calc",
+    "fieldtype": "Column Break"
+  },
+  {
+    "fieldname": "fabric_grade",
+    "label": "Fabric Grade",
+    "fieldtype": "Data",
+    "read_only": 1
+  },
+  {
+    "fieldname": "final_result",
+    "label": "Final Result",
+    "fieldtype": "Select",
+    "options": "\nFirst Quality\nSecond Quality\nRejected",
+    "read_only": 1
+  },
+  {
+    "fieldname": "inspection_remarks",
+    "label": "Inspection Remarks",
+    "fieldtype": "Text"
   }
  ],
  "permissions": [
