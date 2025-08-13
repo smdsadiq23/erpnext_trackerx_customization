@@ -61,7 +61,8 @@ def generate_item_code(doc):
         "Accessories": "ACC",
         "Labels": "LBL",
         "Machines": "MC",
-        "Packing Materials": "PM"
+        "Packing Materials": "PM",
+        "Spare Parts": "SP"
     }
 
     prefix = prefix_map.get(master)
