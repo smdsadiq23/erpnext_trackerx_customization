@@ -250,6 +250,10 @@ frappe.ui.form.on("Material Requirement Plan", {
 		});
 	},
 
+	schedule_date: function(frm, cdt, cdn) { 
+		frm.trigger('update_item_summary');
+	},
+
 	get_item_data: function (frm, item, overwrite_warehouse = false) {
 		if (item && !item.item_code) {
 			return;
@@ -638,6 +642,10 @@ frappe.ui.form.on("Material Requirement Plan Item", {
 		frm.events.get_item_data(frm, item, false);
 	},
 
+	schedule_date: function(frm, cdt, cdn) { 
+		frm.trigger('update_item_summary');
+	},
+
 	items_add: function(frm, cdt, cdn) { 
         frm.trigger('update_item_summary');
         // Your logic here
@@ -758,21 +766,22 @@ $.extend(cur_frm.cscript, {
                     item_code: item.item_code,
                     quantity: 0,
                     custom_size: item.custom_size || null,
-                    custom_uom: item.uom || null,
+                    uom: item.uom || null,
                     uom_mismatch: false,
                     size_mismatch: false,
 					conversion_factor: item.conversion_factor,
-					stock_qty: item.stock_qty
+					stock_qty: item.stock_qty,
+					required_by: item.schedule_date,
                 };
             } else {
                 // Check for UOM mismatch
-                if (item.uom && summary[item.item_code].custom_uom !== item.uom) {
+                if (item.uom && summary[item.item_code].uom !== item.uom) {
                     summary[item.item_code].uom_mismatch = true;
                 }
-                // Check for Size mismatch
-                if (item.custom_size && summary[item.item_code].custom_size !== item.custom_size) {
-                    summary[item.item_code].size_mismatch = true;
-                }
+                // // Check for Size mismatch
+                // if (item.custom_size && summary[item.item_code].custom_size !== item.custom_size) {
+                //     summary[item.item_code].size_mismatch = true;
+                // }
             }
 
             summary[item.item_code].quantity += flt(item.qty);
@@ -785,9 +794,10 @@ $.extend(cur_frm.cscript, {
             const child = frm.add_child('items_summary');
             frappe.model.set_value(child.doctype, child.name, 'item_code', row.item_code);
             frappe.model.set_value(child.doctype, child.name, 'quantity', row.quantity);
-            frappe.model.set_value(child.doctype, child.name, 'custom_uom', row.custom_uom);
+            frappe.model.set_value(child.doctype, child.name, 'uom', row.uom);
             frappe.model.set_value(child.doctype, child.name, 'conversion_factor', row.conversion_factor);
             frappe.model.set_value(child.doctype, child.name, 'stock_qty', row.stock_qty);
+            frappe.model.set_value(child.doctype, child.name, 'required_by', row.required_by);
 
             // Show size only if no conflict
             const size_value = row.size_mismatch ? 'Mixed Sizes' : (row.custom_size || '');
