@@ -60,21 +60,25 @@ function populate_items_from_trims_order(frm) {
                 
                 // Add items from trims order
                 r.message.forEach(function(item) {
-                    let row = frm.add_child('locations');
-                    row.item_code = item.item_code;
-                    row.warehouse = item.warehouse;
-                    row.qty = item.required_quantity;
-                    row.uom = item.uom;
-                    row.item_name = item.item_name;
-                    row.item_group = item.item_group;
-                    //row.stock_qty = item.stock_qty;
-                    
-                    // Add custom fields if they exist
-                    if (item.sales_order) row.sales_order = item.sales_order;
-                    if (item.line_item_no) row.custom_line_item_no = item.line_item_no;
-                    if (item.size) row.custom_size = item.size;
-                    if (item.item_type) row.item_type = item.item_type;
-                    if (item.required_quantity) row.required_quantity = item.required_quantity;
+
+                    if(item.required_quantity>0)
+                    {
+                        let row = frm.add_child('locations');
+                        row.item_code = item.item_code;
+                        row.warehouse = item.warehouse;
+                        row.qty = item.required_quantity;
+                        row.uom = item.uom;
+                        row.item_name = item.item_name;
+                        row.item_group = item.item_group;
+                        //row.stock_qty = item.stock_qty;
+                        
+                        // Add custom fields if they exist
+                        if (item.sales_order) row.sales_order = item.sales_order;
+                        if (item.line_item_no) row.custom_line_item_no = item.line_item_no;
+                        if (item.size) row.custom_size = item.size;
+                        if (item.item_type) row.item_type = item.item_type;
+                        if (item.required_quantity) row.required_quantity = item.required_quantity;
+                    }
                 });
                 
                 frm.refresh_field('locations');
