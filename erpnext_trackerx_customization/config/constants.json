@@ -1,5 +1,5 @@
 {
     "item_master": [ "Style", "Fabrics", "Trims", "Accessories", "Machines", "Labels", "Packing Materials","Spare Parts"],
-    "item_master_role_map": { "Style": ["Style Master"],"Fabrics": ["Fabrics Master"],"Trims": ["Trims Master"],"Accessories": ["Accessories Master"],"Machine": ["Machine Master"],"Labels": ["Labels Master"], "Packing Materials": ["Packing Materials Master"],"Spare Parts":["Spare Parts Master"] },
-    "item_master_item_group_filter": { "Style": "Finished Goods", "Fabrics": "Fabrics", "Trims": "Trims", "Accessories": "Accessories", "Machine": "Machine", "Labels": "Labels", "Packing Materials":"Packing Materials", "Spare Parts": "Spare Parts"}
+    "item_master_role_map": { "Style": ["Style Master"],"Fabrics": ["Fabrics Master"],"Trims": ["Trims Master"],"Accessories": ["Accessories Master"],"Machines": ["Machine Master"],"Labels": ["Labels Master"], "Packing Materials": ["Packing Materials Master"],"Spare Parts":["Spare Parts Master"] },
+    "item_master_item_group_filter": { "Style": "Finished Goods", "Fabrics": "Fabrics", "Trims": "Trims", "Accessories": "Accessories", "Machines": "Machines", "Labels": "Labels", "Packing Materials":"Packing Materials", "Spare Parts": "Spare Parts"}
 }
