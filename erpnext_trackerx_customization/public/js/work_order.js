@@ -18,6 +18,15 @@ frappe.ui.form.on('Work Order', {
         frm.set_df_property('custom_work_order_line_items', 'cannot_delete_rows', true);
     },
 
+    refresh: function(frm){
+        frm.remove_custom_button('Create Pick List');
+        if (frm.doc.docstatus === 1 && frm.doc.status !== "Closed") {
+          frm.add_custom_button(__('Create Trims Order'), () => {
+              show_create_trims_order_dialogue(frm);
+          });
+        }
+    },
+
     custom_sales_orders(frm) {
         frm.trigger('sync_work_order_line_items');
     },
@@ -106,6 +115,141 @@ frappe.ui.form.on('Work Order', {
 
 });
 
+function show_create_trims_order_dialogue(frm){
+
+    const dialog = new frappe.ui.Dialog({
+    title: 'Create Trims Order',
+    fields: [
+      {
+        fieldtype: 'Data',
+        label: 'Work Center',
+        fieldname: 'work_center',
+        options: '',
+        reqd: 1,
+        description: 'Choose Work Center'
+      }
+    ],
+    primary_action_label: 'Create',
+    primary_action(values) {
+    
+      
+        create_trims_order(frm, values.work_center);
+        dialog.hide();
+    }
+  });
+
+  dialog.show();
+}
+
+function create_trims_order(frm, work_center){
+
+
+    const production_item = frm.doc.production_item;
+
+    frappe.throw("Feature is under development, Till then please create Pick List from pick list doctype");
+    
+    
+    // First get BOM for the production item
+    frappe.call({
+        method: 'frappe.client.get_list',
+        args: {
+            doctype: 'BOM',
+            filters: {
+                item: production_item,
+                is_active: 1,
+                is_default: 1
+            },
+            fields: ['name']
+        },
+        callback: async function(bom_response) {
+            let bom_no = null;
+            let required_items = [];
+            
+            if (bom_response.message && bom_response.message.length > 0) {
+                bom_no = bom_response.message[0].name;
+                
+                try {
+                    // Get required items from BOM
+                    required_items = await get_raw_materials_from_bom_except_fabrics(bom_no, frm.doc.custom_work_order_line_items);
+                } catch (error) {
+                    frappe.msgprint({
+                        title: 'Error',
+                        message: 'Failed to fetch BOM items: ' + error.message,
+                        indicator: 'red'
+                    });
+                    return;
+                }
+            }
+            
+             // Create Trims Order
+            frappe.call({
+                method: 'frappe.client.insert',
+                args: {
+                    doc: {
+                        doctype: 'Trims Order',
+                        work_order: frm.doc.name,
+                        item_code: frm.doc.production_item,
+                        work_center: work_center,
+                        table_trims_order_details: required_items
+                    }
+                },
+                callback(r) {
+                    if (r.message) {
+                        frappe.set_route('Form', 'Trims Order', r.message.name);
+                        frappe.show_alert({
+                            message: `Trims Order ${r.message.name} created successfully`,
+                            indicator: 'green'
+                        });
+                    }
+                },
+                error(r) {
+                    frappe.msgprint({
+                        title: 'Error',
+                        message: r.message || 'An error occurred while creating the Trims Order',
+                        indicator: 'red'
+                    });
+                }
+            });
+        }
+    });
+}
+
+
+function get_raw_materials_from_bom_except_fabrics(bom_no, work_order_line_items) {
+
+    work_order_line_items.forEach(work_order)
+
+
+    return new Promise((resolve, reject) => {
+        frappe.call({
+            method: 'frappe.client.get',
+            args: {
+                doctype: 'BOM',
+                name: bom_no
+            },
+            callback(response) {
+                if (response.message && response.message.items) {
+                    const required_items = response.message.items.filter(bom_item => bom_item.custom_item_type!='Fabrics').map(bom_item => ({
+                        item_type: bom_item.custom_item_type,
+                        item_code: bom_item.item_code,
+                        size: bom_item.custom_size,
+                        uom: bom_item.uom,
+                        qty: bom_item.qty || 0,
+                        rate: bom_item.rate || 0,
+                        amount: (bom_item.rate || 0) * (bom_item.qty||0)
+                    }));
+                    resolve(required_items);
+                } else {
+                    resolve([]);
+                }
+            },
+            error(error) {
+                reject(error);
+            }
+        });
+    });
+}
+
 function set_sales_order_filter(frm) {
     if (frm.doc.production_item) {
         frm.set_query( "custom_sales_orders", function() {
@@ -153,5 +297,12 @@ function recalculate_total_qty(frm) {
 frappe.ui.form.on('Work Order Line Item', {
     work_order_allocated_qty: function(frm, cdt, cdn) {
         recalculate_total_qty(frm);
+
+        const row = locals[cdt][cdn];
+
+        const pending_qty = flt(row.qty) - flt(row.already_allocated_qty) - flt(row.work_order_allocated_qty);
+      
+        frappe.model.set_value(cdt, cdn, 'pending_qty', pending_qty);
+      
     }
 });

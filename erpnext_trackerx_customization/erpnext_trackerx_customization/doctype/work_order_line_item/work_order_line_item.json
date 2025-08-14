@@ -8,6 +8,7 @@
  "field_order": [
   "sales_order",
   "line_item_no",
+  "cell",
   "size",
   "qty",
   "already_allocated_qty",
@@ -84,13 +85,20 @@
    "label": "Sales Order",
    "options": "Sales Order",
    "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "cell",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Cell"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-08-06 18:29:35.768088",
+ "modified": "2025-08-14 23:45:01.614010",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Work Order Line Item",
