@@ -297,5 +297,12 @@ function recalculate_total_qty(frm) {
 frappe.ui.form.on('Work Order Line Item', {
     work_order_allocated_qty: function(frm, cdt, cdn) {
         recalculate_total_qty(frm);
+
+        const row = locals[cdt][cdn];
+
+        const pending_qty = flt(row.qty) - flt(row.already_allocated_qty) - flt(row.work_order_allocated_qty);
+      
+        frappe.model.set_value(cdt, cdn, 'pending_qty', pending_qty);
+      
     }
 });
