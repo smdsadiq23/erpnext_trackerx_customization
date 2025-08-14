@@ -63,7 +63,7 @@ function populate_items_from_trims_order(frm) {
                     let row = frm.add_child('locations');
                     row.item_code = item.item_code;
                     row.warehouse = item.warehouse;
-                    row.qty = item.trims_order_quantity;
+                    row.qty = item.required_quantity;
                     row.uom = item.uom;
                     row.item_name = item.item_name;
                     row.item_group = item.item_group;
