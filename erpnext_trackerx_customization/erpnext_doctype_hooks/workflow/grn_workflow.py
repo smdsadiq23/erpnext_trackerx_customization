@@ -315,11 +315,10 @@ def create_inspection_for_material_type(grn_doc, material_type, items):
             total_quantity = sum(float(item.received_quantity or 0) for item in items)
             
             inspection_data.update({
-                "total_inspected_quantity": total_quantity,
                 "total_quantity": total_quantity,
-                "defective_quantity": 0,  # Will be updated during inspection
-                "accepted_quantity": total_quantity,  # Initially all accepted
-                "inspection_type": "Count Based",
+                "total_pieces": total_quantity,  # Set pieces equal to quantity for trims
+                "required_sample_size": 100,  # Default 100% for trims
+                "required_sample_pieces": total_quantity,  # Sample all pieces initially
                 "aql_level": "2",  # Default - AQL Level II corresponds to level_code "2"
                 "aql_value": "2.5",  # Default AQL value
                 "inspection_regime": "Normal"  # Default inspection regime
