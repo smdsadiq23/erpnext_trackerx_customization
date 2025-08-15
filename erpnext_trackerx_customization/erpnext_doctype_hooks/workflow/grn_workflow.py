@@ -319,7 +319,10 @@ def create_inspection_for_material_type(grn_doc, material_type, items):
                 "total_quantity": total_quantity,
                 "defective_quantity": 0,  # Will be updated during inspection
                 "accepted_quantity": total_quantity,  # Initially all accepted
-                "inspection_type": "Count Based"
+                "inspection_type": "Count Based",
+                "aql_level": "2",  # Default - AQL Level II corresponds to level_code "2"
+                "aql_value": "2.5",  # Default AQL value
+                "inspection_regime": "Normal"  # Default inspection regime
             })
         
         # Create the document
