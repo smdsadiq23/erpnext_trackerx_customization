@@ -3,11 +3,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, cint, getdate, now, get_datetime
 import json
-from erpnext_trackerx_customization.api.fabric_inspection import (
-    calculate_defect_points, 
-    calculate_aql_sample_size,
-    validate_inspection_completion
-)
+# Removed Vue.js API imports - using inline functions
 
 
 class FabricInspection(Document):
@@ -21,7 +17,7 @@ class FabricInspection(Document):
     
     def before_submit(self):
         """Validate before submission"""
-        validation_result = validate_inspection_completion(self.name)
+        validation_result = self.validate_inspection_completion_inline()
         
         if not validation_result.get('valid', False):
             errors = validation_result.get('errors', [])
@@ -58,8 +54,8 @@ class FabricInspection(Document):
     def validate_aql_configuration(self):
         """Validate AQL configuration and calculate sample requirements"""
         if self.inspection_type == 'AQL Based' and self.total_rolls:
-            # Recalculate sample requirements
-            sample_data = calculate_aql_sample_size(
+            # Simple AQL sample size calculation
+            sample_data = self.calculate_aql_sample_size_inline(
                 lot_size=self.total_rolls,
                 aql_level=self.aql_level,
                 aql_value=self.aql_value,
@@ -103,8 +99,7 @@ class FabricInspection(Document):
             
             if roll_defects_data:
                 # Get defect master data for point calculation
-                from erpnext_trackerx_customization.api.fabric_inspection import get_default_defect_categories
-                defect_master = get_default_defect_categories()
+                defect_master = self.get_default_defect_categories_inline()
                 
                 # Calculate points from the structured defects data
                 for defect_key, size in roll_defects_data.items():
@@ -297,6 +292,10 @@ class FabricInspection(Document):
     
     def update_inspection_status(self):
         """Update inspection status based on progress"""
+        # Don't auto-update status if manually set to Hold or Completed
+        if self.inspection_status in ['Hold', 'Completed']:
+            return
+            
         if not self.fabric_rolls_tab:
             self.inspection_status = 'Draft'
             return
@@ -309,7 +308,9 @@ class FabricInspection(Document):
         elif inspected_rolls < total_rolls:
             self.inspection_status = 'In Progress'
         else:
-            self.inspection_status = 'Completed'
+            # Only auto-set to Completed if not manually held
+            if self.inspection_status != 'Hold':
+                self.inspection_status = 'Completed'
     
     def update_grn_inspection_status(self):
         """Update inspection status in linked GRN"""
@@ -474,3 +475,133 @@ class FabricInspection(Document):
             stats['aql_compliance'] = stats['inspected_rolls'] >= required_sample
         
         return stats
+    
+    # Inline helper functions (replacing removed API functions)
+    
+    def validate_inspection_completion_inline(self):
+        """Validate that inspection is complete before submission"""
+        errors = []
+        
+        if not self.fabric_rolls_tab:
+            errors.append("No fabric rolls found for inspection")
+        
+        total_rolls = len(self.fabric_rolls_tab or [])
+        inspected_rolls = sum(1 for roll in self.fabric_rolls_tab if roll.inspected)
+        
+        if inspected_rolls == 0:
+            errors.append("No rolls have been inspected")
+        
+        # For AQL inspection, check if minimum sample size is met
+        if self.inspection_type == 'AQL Based':
+            required_sample = cint(self.required_sample_rolls or 0)
+            if inspected_rolls < required_sample:
+                errors.append(f"Minimum sample size not met: {inspected_rolls}/{required_sample} rolls inspected")
+        
+        # For 100% inspection, all rolls must be inspected
+        if self.inspection_type == '100% Inspection' and inspected_rolls < total_rolls:
+            errors.append(f"100% inspection requires all rolls to be inspected: {inspected_rolls}/{total_rolls}")
+        
+        return {
+            'valid': len(errors) == 0,
+            'errors': errors
+        }
+    
+    def calculate_aql_sample_size_inline(self, lot_size, aql_level, aql_value, inspection_regime='Normal'):
+        """Simple AQL sample size calculation"""
+        
+        # Basic AQL table mapping
+        aql_map = {
+            'I': {
+                '0.4': {'sample': 8, 'accept': 0, 'reject': 1},
+                '0.65': {'sample': 13, 'accept': 0, 'reject': 1},
+                '1.0': {'sample': 20, 'accept': 0, 'reject': 1},
+                '1.5': {'sample': 32, 'accept': 1, 'reject': 2},
+                '2.5': {'sample': 50, 'accept': 2, 'reject': 3},
+                '4.0': {'sample': 80, 'accept': 3, 'reject': 4},
+            },
+            'II': {
+                '0.4': {'sample': 13, 'accept': 0, 'reject': 1},
+                '0.65': {'sample': 20, 'accept': 0, 'reject': 1},
+                '1.0': {'sample': 32, 'accept': 1, 'reject': 2},
+                '1.5': {'sample': 50, 'accept': 2, 'reject': 3},
+                '2.5': {'sample': 80, 'accept': 3, 'reject': 4},
+                '4.0': {'sample': 125, 'accept': 5, 'reject': 6},
+            },
+            'III': {
+                '0.4': {'sample': 20, 'accept': 0, 'reject': 1},
+                '0.65': {'sample': 32, 'accept': 1, 'reject': 2},
+                '1.0': {'sample': 50, 'accept': 2, 'reject': 3},
+                '1.5': {'sample': 80, 'accept': 3, 'reject': 4},
+                '2.5': {'sample': 125, 'accept': 5, 'reject': 6},
+                '4.0': {'sample': 200, 'accept': 7, 'reject': 8},
+            }
+        }
+        
+        # Get sample requirements
+        level_data = aql_map.get(aql_level, aql_map['II'])  # Default to Level II
+        aql_data = level_data.get(str(aql_value), level_data.get('2.5'))  # Default to 2.5
+        
+        sample_size = aql_data['sample']
+        
+        # Adjust based on lot size
+        if lot_size < sample_size:
+            sample_rolls = lot_size
+            sample_size_percent = 100
+        else:
+            sample_rolls = min(sample_size, lot_size)
+            sample_size_percent = (sample_rolls / lot_size) * 100
+        
+        # Estimate sample meters (assuming average roll length)
+        avg_roll_length = 50  # Default 50 meters per roll
+        sample_meters = sample_rolls * avg_roll_length
+        
+        return {
+            'sample_size': round(sample_size_percent, 2),
+            'sample_rolls': sample_rolls,
+            'sample_meters': sample_meters,
+            'accept_number': aql_data['accept'],
+            'reject_number': aql_data['reject']
+        }
+    
+    def get_default_defect_categories_inline(self):
+        """Get default defect categories and their point values"""
+        
+        return {
+            'Weaving': [
+                {'code': 'BROKEN_END', 'name': 'Broken End', 'points': 1},
+                {'code': 'BROKEN_PICK', 'name': 'Broken Pick', 'points': 1},
+                {'code': 'FLOAT', 'name': 'Float', 'points': 2},
+                {'code': 'SLACK_TENSION', 'name': 'Slack Tension', 'points': 2},
+                {'code': 'REED_MARK', 'name': 'Reed Mark', 'points': 3},
+                {'code': 'MISPICK', 'name': 'Mispick', 'points': 2}
+            ],
+            'Yarn': [
+                {'code': 'THICK_PLACE', 'name': 'Thick Place', 'points': 1},
+                {'code': 'THIN_PLACE', 'name': 'Thin Place', 'points': 1},
+                {'code': 'NEPS', 'name': 'Neps', 'points': 1},
+                {'code': 'SLUB', 'name': 'Slub', 'points': 2},
+                {'code': 'FOREIGN_YARN', 'name': 'Foreign Yarn', 'points': 4},
+                {'code': 'HAIRINESS', 'name': 'Hairiness', 'points': 1}
+            ],
+            'Dyeing': [
+                {'code': 'SHADE_VARIATION', 'name': 'Shade Variation', 'points': 4},
+                {'code': 'COLOR_BLEEDING', 'name': 'Color Bleeding', 'points': 4},
+                {'code': 'UNEVEN_DYEING', 'name': 'Uneven Dyeing', 'points': 3},
+                {'code': 'STAINING', 'name': 'Staining', 'points': 3},
+                {'code': 'COLOR_SPOT', 'name': 'Color Spot', 'points': 2}
+            ],
+            'Finishing': [
+                {'code': 'CREASE_MARK', 'name': 'Crease Mark', 'points': 2},
+                {'code': 'SHINE_MARK', 'name': 'Shine Mark', 'points': 2},
+                {'code': 'PILLING', 'name': 'Pilling', 'points': 2},
+                {'code': 'HAND_FEEL', 'name': 'Hand Feel', 'points': 1},
+                {'code': 'CHEMICAL_SPOT', 'name': 'Chemical Spot', 'points': 4}
+            ],
+            'Physical': [
+                {'code': 'HOLE', 'name': 'Hole', 'points': 4},
+                {'code': 'TEAR', 'name': 'Tear', 'points': 4},
+                {'code': 'CUT_MARK', 'name': 'Cut Mark', 'points': 3},
+                {'code': 'SOIL_MARK', 'name': 'Soil Mark', 'points': 2},
+                {'code': 'OIL_STAIN', 'name': 'Oil Stain', 'points': 3}
+            ]
+        }

@@ -11,7 +11,7 @@ def test_grn_inspection_hook_functions():
     print("=== GRN INSPECTION HOOK FUNCTIONS TEST ===")
     
     try:
-        from erpnext_trackerx_customization.hooks.grn_inspection_hook import (
+        from erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow import (
             get_material_type, 
             determine_inspection_type,
             create_inspection_record

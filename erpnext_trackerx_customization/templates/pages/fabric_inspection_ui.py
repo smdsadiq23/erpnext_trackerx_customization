@@ -8,7 +8,7 @@ def get_context(context):
     """
     
     # Get the inspection document name from URL parameters
-    inspection_name = frappe.form_dict.get('name')
+    inspection_name = frappe.form_dict.get('inspection') or frappe.form_dict.get('name')
     
     if not inspection_name:
         frappe.throw(_("Inspection document name is required"))

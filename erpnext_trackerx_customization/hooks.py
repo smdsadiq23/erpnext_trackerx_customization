@@ -69,6 +69,8 @@ app_include_js = [
     "/assets/erpnext_trackerx_customization/js/fabric_inspection_routes.js"
 ]
 
+# Removed Vue.js applications - using traditional interface
+
 # include js, css files in header of web template
 # web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
 # web_include_js = "/assets/erpnext_trackerx_customization/js/erpnext_trackerx_customization.js"
@@ -230,16 +232,7 @@ doc_events= {
         "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_trash"
     },
     "Goods Receipt Note": {
-        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_submit_grn",
-        "on_cancel": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_cancel_grn",
-        "before_cancel": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.before_cancel_grn"
-        
-    },
-    "Material Inspection Report": {
-        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_submit_mir"
-    },
-    "Roll Allocation Map": {
-        "validate": "erpnext_trackerx_customization.roll_allocation_map.roll_allocation_map.validate"
+        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.create_inspections_on_grn_submit"
     }
 }
 
