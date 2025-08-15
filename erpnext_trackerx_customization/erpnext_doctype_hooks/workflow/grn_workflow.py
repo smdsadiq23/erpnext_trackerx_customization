@@ -154,14 +154,14 @@ def create_purchase_receipt_for_items(grn_doc, items):
                 "item_code": item.item_code,
                 "item_name": item_name,
                 "description": getattr(item, 'description', item_name),
-                "qty": item.received_quantity or item.quantity,
-                "received_qty": item.received_quantity or item.quantity,
-                "rate": item.rate or 0,
-                "amount": (item.received_quantity or item.quantity) * (item.rate or 0),
+                "qty": item.received_quantity or getattr(item, 'ordered_quantity', 0),
+                "received_qty": item.received_quantity or getattr(item, 'ordered_quantity', 0),
+                "rate": getattr(item, 'rate', 0),
+                "amount": (item.received_quantity or getattr(item, 'ordered_quantity', 0)) * getattr(item, 'rate', 0),
                 "warehouse": warehouse,
-                "uom": item.uom or "Nos",
-                "stock_uom": item.stock_uom or item.uom or "Nos",
-                "conversion_factor": item.conversion_factor or 1,
+                "uom": getattr(item, 'uom', 'Nos'),
+                "stock_uom": getattr(item, 'uom', 'Nos'),  # Use same as uom since stock_uom doesn't exist
+                "conversion_factor": getattr(item, 'conversion_factor', 1),
                 "grn_item_reference": item.name
             }
             purchase_receipt_data["items"].append(pr_item)
