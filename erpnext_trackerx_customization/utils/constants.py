@@ -13,4 +13,5 @@ def get_constants():
 
 def boot_session(bootinfo):
     bootinfo.item_constants = get_constants()
+
     

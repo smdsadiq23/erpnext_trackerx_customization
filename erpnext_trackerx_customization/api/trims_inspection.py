@@ -8,6 +8,69 @@ from frappe import _
 
 
 @frappe.whitelist()
+def save_progress(inspection_name, defects_data=None, items_data=None, checklist_data=None, **kwargs):
+    """Save trims inspection progress without determining final results"""
+    try:
+        inspection = frappe.get_doc("Trims Inspection", inspection_name)
+        
+        # Check permissions
+        if not inspection.has_permission("write"):
+            frappe.throw(_("You do not have permission to modify this inspection"))
+        
+        # Initialize data with safe defaults
+        if defects_data is None:
+            defects_data = {}
+        if items_data is None:
+            items_data = {}
+        if checklist_data is None:
+            checklist_data = []
+            
+        # Parse JSON strings if needed
+        if isinstance(defects_data, str):
+            try:
+                defects_data = json.loads(defects_data) if defects_data else {}
+            except json.JSONDecodeError:
+                defects_data = {}
+                
+        if isinstance(items_data, str):
+            try:
+                items_data = json.loads(items_data) if items_data else {}
+            except json.JSONDecodeError:
+                items_data = {}
+                
+        if isinstance(checklist_data, str):
+            try:
+                checklist_data = json.loads(checklist_data) if checklist_data else []
+            except json.JSONDecodeError:
+                checklist_data = []
+        
+        # Update defects data
+        if defects_data:
+            inspection.defects_data = json.dumps(defects_data)
+        
+        # Skip complex calculations for now
+        # Focus on core requirement: save defects and update status
+        
+        # Update status to In Progress (key requirement)
+        # Change status to In Progress if it's currently Draft or Hold
+        if inspection.inspection_status in ["Draft", "Hold"]:
+            inspection.inspection_status = "In Progress"
+        
+        # Save without determining final results
+        inspection.save()
+        frappe.db.commit()
+        
+        return {
+            'success': True,
+            'message': f'Trims inspection progress saved successfully. Status: {inspection.inspection_status}',
+            'status': inspection.inspection_status,
+            'inspection_status': inspection.inspection_status  # Ensure status is included
+        }
+        
+    except Exception as e:
+        frappe.throw(_("Error saving inspection progress: {0}").format(str(e)))
+
+@frappe.whitelist()
 def save_inspection_data(inspection_name, defects_data, items_data, checklist_data=None):
     """
     Save trims inspection data including defects, items, and checklist results
@@ -441,17 +504,14 @@ def submit_inspection(inspection_name):
         if not validation_result['valid']:
             frappe.throw(_("Cannot submit inspection: {0}").format(validation_result['reason']))
         
-        # Update status to completed
-        inspection.inspection_status = "Completed"
-        
-        # Auto-determine inspection result based on defects and checklist
+        # Auto-determine final inspection status based on defects and checklist
         auto_result = determine_inspection_result(
             inspection.total_critical_defects or 0,
             inspection.total_major_defects or 0,
             inspection.total_minor_defects or 0,
             get_trims_checklist_data_for_determination(inspection)
         )
-        inspection.inspection_result = auto_result
+        inspection.inspection_status = auto_result
         
         inspection.save()
         frappe.db.commit()
@@ -459,7 +519,7 @@ def submit_inspection(inspection_name):
         return {
             'success': True,
             'message': 'Trims inspection submitted successfully',
-            'inspection_result': auto_result
+            'inspection_status': auto_result
         }
         
     except Exception as e:

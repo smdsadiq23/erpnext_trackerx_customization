@@ -103,6 +103,128 @@ def generate_inspection_report(inspection_doc):
         frappe.throw(_("Error generating report: {0}").format(str(e)))
 
 @frappe.whitelist()
+def save_progress(inspection_name, defects_data=None, rolls_data=None, checklist_data=None, **kwargs):
+    """Save fabric inspection progress without determining final results"""
+    try:
+        inspection = frappe.get_doc("Fabric Inspection", inspection_name)
+        
+        # Check permissions
+        if not inspection.has_permission("write"):
+            frappe.throw(_("You do not have permission to modify this inspection"))
+        
+        # Remove debug logging to avoid character length errors
+        
+        # Initialize data with safe defaults
+        if defects_data is None:
+            defects_data = {}
+        if rolls_data is None:
+            rolls_data = {}
+        if checklist_data is None:
+            checklist_data = []
+            
+        # Parse JSON strings if needed
+        if isinstance(defects_data, str):
+            try:
+                defects_data = json.loads(defects_data) if defects_data else {}
+            except json.JSONDecodeError:
+                defects_data = {}
+                
+        if isinstance(rolls_data, str):
+            try:
+                rolls_data = json.loads(rolls_data) if rolls_data else {}
+            except json.JSONDecodeError:
+                rolls_data = {}
+                
+        if isinstance(checklist_data, str):
+            try:
+                checklist_data = json.loads(checklist_data) if checklist_data else []
+            except json.JSONDecodeError:
+                checklist_data = []
+        
+        # Update defects data - simple save without complex cleaning
+        if defects_data and isinstance(defects_data, dict):
+            # Simple save - just ensure it's a valid dict
+            inspection.defects_data = json.dumps(defects_data)
+        
+        # Update rolls data if provided
+        if rolls_data and isinstance(rolls_data, dict):
+            # Clear existing rolls
+            inspection.set('fabric_rolls_tab', [])
+            
+            # Process rolls data - handle both dict format with proper error handling
+            for roll_key, roll_data in rolls_data.items():
+                if isinstance(roll_data, dict):
+                    try:
+                        inspection.append('fabric_rolls_tab', {
+                            'roll_number': roll_data.get('roll_number', roll_key),
+                            'roll_length': flt(roll_data.get('roll_length', roll_data.get('length', 0))),
+                            'roll_width': flt(roll_data.get('roll_width', roll_data.get('width', 0))),
+                            'shade_code': roll_data.get('shade_code', ''),
+                            'lot_number': roll_data.get('lot_number', ''),
+                            'gsm': flt(roll_data.get('gsm', 0)),
+                            'compact_roll_no': roll_data.get('compact_roll_no', ''),
+                            'sample_length': flt(roll_data.get('sample_length', 0)),
+                            'inspection_method': roll_data.get('inspection_method', '4-Point Method'),
+                            'inspection_percentage': flt(roll_data.get('inspection_percentage', 100)),
+                            'inspected': cint(roll_data.get('inspected', 0)),
+                            'total_defect_points': flt(roll_data.get('total_defect_points', 0)),
+                            'points_per_100_sqm': flt(roll_data.get('points_per_100_sqm', 0)),
+                            'defect_density': flt(roll_data.get('defect_density', 0)),
+                            'roll_grade': roll_data.get('roll_grade', ''),
+                            'roll_result': roll_data.get('roll_result', 'Pending'),
+                            'accept_reject_reason': roll_data.get('accept_reject_reason', ''),
+                            'roll_remarks': roll_data.get('roll_remarks', '')
+                        })
+                    except Exception as roll_error:
+                        # Log individual roll error but continue processing
+                        frappe.log_error(f"Error processing roll {roll_key}: {str(roll_error)}")
+                        continue
+        
+        # Update checklist data if provided
+        if checklist_data and isinstance(checklist_data, list):
+            # Clear existing checklist items
+            inspection.set('fabric_checklist_items', [])
+            
+            # Add new checklist items with proper error handling
+            for checklist_item in checklist_data:
+                if isinstance(checklist_item, dict) and checklist_item.get('results'):
+                    try:
+                        results = checklist_item['results']
+                        inspection.append('fabric_checklist_items', {
+                            'test_parameter': checklist_item.get('test_parameter', ''),
+                            'standard_requirement': checklist_item.get('standard_requirement', ''),
+                            'actual_result': results.get('actual_result', ''),
+                            'status': results.get('status', ''),
+                            'remarks': results.get('remarks', ''),
+                            'test_method': checklist_item.get('test_method', ''),
+                            'test_category': checklist_item.get('test_category', ''),
+                            'is_mandatory': cint(checklist_item.get('is_mandatory', 0))
+                        })
+                    except Exception as checklist_error:
+                        # Log individual checklist error but continue processing
+                        frappe.log_error(f"Error processing checklist item: {str(checklist_error)}")
+                        continue
+        
+        # Update status to In Progress (key requirement)
+        # Change status to In Progress if it's currently Draft or Hold
+        if inspection.inspection_status in ["Draft", "Hold"]:
+            inspection.inspection_status = "In Progress"
+        
+        # Save without determining final results
+        inspection.save()
+        frappe.db.commit()
+        
+        return {
+            'success': True, 
+            'message': f'Inspection progress saved successfully. Status: {inspection.inspection_status}',
+            'status': inspection.inspection_status,
+            'inspection_status': inspection.inspection_status  # Ensure status is included
+        }
+        
+    except Exception as e:
+        frappe.throw(_("Error saving inspection progress: {0}").format(str(e)))
+
+@frappe.whitelist()
 def save_inspection_data(inspection_name, defects_data, rolls_data=None, checklist_data=None):
     """Save fabric inspection data including defects, rolls, and checklist results"""
     try:
@@ -414,11 +536,36 @@ def get_inspection_data(inspection_name):
                 'is_mandatory': item.is_mandatory
             })
         
+        # Get rolls data
+        rolls_data = []
+        for roll in inspection.get('fabric_rolls_tab', []):
+            rolls_data.append({
+                'roll_number': roll.roll_number,
+                'roll_length': roll.roll_length,
+                'roll_width': roll.roll_width,
+                'shade_code': roll.shade_code,
+                'lot_number': roll.lot_number,
+                'gsm': roll.gsm,
+                'compact_roll_no': roll.compact_roll_no,
+                'sample_length': roll.sample_length,
+                'inspection_method': roll.inspection_method,
+                'inspection_percentage': roll.inspection_percentage,
+                'inspected': roll.inspected,
+                'total_defect_points': roll.total_defect_points,
+                'points_per_100_sqm': roll.points_per_100_sqm,
+                'defect_density': roll.defect_density,
+                'roll_grade': roll.roll_grade,
+                'roll_result': roll.roll_result,
+                'accept_reject_reason': roll.accept_reject_reason,
+                'roll_remarks': roll.roll_remarks
+            })
+        
         return {
             'success': True,
             'name': inspection.name,
             'defects': defects_data,
             'checklist_items': checklist_items,
+            'rolls': rolls_data,
             'canWrite': inspection.has_permission("write")
         }
         
@@ -478,15 +625,12 @@ def submit_inspection(inspection_name):
         if not validation_result['valid']:
             frappe.throw(_("Cannot submit inspection: {0}").format(validation_result['reason']))
         
-        # Update status to completed
-        inspection.inspection_status = "Completed"
-        
-        # Auto-determine inspection result based on defects and checklist
+        # Auto-determine final inspection status based on defects and checklist
         auto_result = determine_fabric_inspection_result(
             inspection.total_defect_points or 0,
             get_checklist_data_for_determination(inspection)
         )
-        inspection.inspection_result = auto_result
+        inspection.inspection_status = auto_result
         
         inspection.save()
         frappe.db.commit()
@@ -494,7 +638,7 @@ def submit_inspection(inspection_name):
         return {
             'success': True,
             'message': 'Inspection submitted successfully',
-            'inspection_result': auto_result
+            'inspection_status': auto_result
         }
         
     except Exception as e:

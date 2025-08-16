@@ -165,6 +165,15 @@ def get_context(context):
         except Exception as defects_error:
             frappe.log_error(f"Error getting defects data: {str(defects_error)}")
         
+        # Get current user roles
+        user_roles = frappe.get_roles(frappe.session.user)
+        is_quality_inspector = "Quality Inspector" in user_roles
+        is_quality_manager = "Quality Manager" in user_roles
+        is_system_user = "Administrator" in user_roles or "System Manager" in user_roles
+        
+        # Check if inspection can be written to (not submitted and has write permission)
+        can_write = inspection_doc.has_permission("write") and inspection_doc.get('inspection_status') != 'Submitted'
+        
         # Prepare context data
         context.update({
             'inspection_doc': inspection_data,
@@ -172,7 +181,11 @@ def get_context(context):
             'defect_categories': defect_categories,
             'defects_data': defects_data,
             'fabric_rolls': fabric_rolls,
-            'can_write': inspection_doc.has_permission("write"),
+            'can_write': can_write,
+            'is_quality_inspector': is_quality_inspector,
+            'is_quality_manager': is_quality_manager,
+            'is_system_user': is_system_user,
+            'show_manager_actions': is_quality_manager and inspection_doc.get('inspection_status') in ['Rejected', 'In Progress', 'Hold'],
             'page_title': f'Four-Point Inspection - {inspection_name}',
             'show_sidebar': False,
             'show_header': True
@@ -358,3 +371,383 @@ def get_defects_data(inspection_doc):
         return {}
     except Exception:
         return {}
+
+
+@frappe.whitelist()
+def fabric_manager_pass_inspection(inspection_name, manager_comment=""):
+    """Quality Manager action to pass an inspection"""
+    try:
+        # Verify user has Quality Manager role
+        user_roles = frappe.get_roles(frappe.session.user)
+        if "Quality Manager" not in user_roles and "Administrator" not in user_roles:
+            frappe.throw(_("Only Quality Managers can perform this action"))
+        
+        # Get inspection document
+        inspection_doc = frappe.get_doc("Fabric Inspection", inspection_name)
+        
+        # Check permissions
+        if not inspection_doc.has_permission("write"):
+            frappe.throw(_("You don't have permission to modify this document"))
+        
+        # Update inspection status to Accepted
+        inspection_doc.inspection_status = "Accepted"
+        inspection_doc.quality_grade = "A"
+        
+        # Add manager comment
+        if manager_comment:
+            existing_remarks = inspection_doc.get('manager_remarks') or ''
+            timestamp = frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M:%S")
+            new_remark = f"[{timestamp}] Quality Manager: {manager_comment}"
+            
+            if existing_remarks:
+                inspection_doc.manager_remarks = f"{existing_remarks}\n{new_remark}"
+            else:
+                inspection_doc.manager_remarks = new_remark
+        
+        # Save the document
+        inspection_doc.save()
+        
+        frappe.db.commit()
+        
+        return {
+            "status": "success",
+            "message": "Inspection marked as Accepted",
+            "new_status": "Accepted"
+        }
+        
+    except Exception as e:
+        frappe.log_error(f"Error in fabric_manager_pass_inspection: {str(e)}")
+        frappe.throw(_("Error updating inspection: {0}").format(str(e)))
+
+@frappe.whitelist()
+def fabric_manager_fail_inspection(inspection_name, manager_comment=""):
+    """Quality Manager action to fail an inspection"""
+    try:
+        # Verify user has Quality Manager role
+        user_roles = frappe.get_roles(frappe.session.user)
+        if "Quality Manager" not in user_roles and "Administrator" not in user_roles:
+            frappe.throw(_("Only Quality Managers can perform this action"))
+        
+        # Get inspection document
+        inspection_doc = frappe.get_doc("Fabric Inspection", inspection_name)
+        
+        # Check permissions
+        if not inspection_doc.has_permission("write"):
+            frappe.throw(_("You don't have permission to modify this document"))
+        
+        # Update inspection status to Rejected
+        inspection_doc.inspection_status = "Rejected"
+        inspection_doc.quality_grade = "C"
+        
+        # Add manager comment
+        if manager_comment:
+            existing_remarks = inspection_doc.get('manager_remarks') or ''
+            timestamp = frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M:%S")
+            new_remark = f"[{timestamp}] Quality Manager: {manager_comment}"
+            
+            if existing_remarks:
+                inspection_doc.manager_remarks = f"{existing_remarks}\n{new_remark}"
+            else:
+                inspection_doc.manager_remarks = new_remark
+        
+        # Save the document
+        inspection_doc.save()
+        
+        frappe.db.commit()
+        
+        return {
+            "status": "success",
+            "message": "Inspection marked as Rejected",
+            "new_status": "Rejected"
+        }
+        
+    except Exception as e:
+        frappe.log_error(f"Error in fabric_manager_fail_inspection: {str(e)}")
+        frappe.throw(_("Error updating inspection: {0}").format(str(e)))
+
+@frappe.whitelist()
+def fabric_manager_conditional_pass(inspection_name, manager_comment=""):
+    """Quality Manager action to conditionally pass a failed inspection"""
+    try:
+        # Verify user has Quality Manager role
+        user_roles = frappe.get_roles(frappe.session.user)
+        if "Quality Manager" not in user_roles and "Administrator" not in user_roles:
+            frappe.throw(_("Only Quality Managers can perform this action"))
+        
+        # Get inspection document
+        inspection_doc = frappe.get_doc("Fabric Inspection", inspection_name)
+        
+        # Check permissions
+        if not inspection_doc.has_permission("write"):
+            frappe.throw(_("You don't have permission to modify this document"))
+        
+        # Check if inspection was previously rejected or can be conditionally accepted
+        current_status = inspection_doc.get('inspection_status', '')
+        if current_status not in ['Rejected', 'In Progress', 'Hold']:
+            frappe.throw(_("Conditional pass can only be applied to rejected, in progress, or hold inspections"))
+        
+        # Update inspection status to Conditional Accept
+        inspection_doc.inspection_status = "Conditional Accept"
+        inspection_doc.quality_grade = "B"
+        
+        # Add mandatory comment for conditional pass
+        if not manager_comment:
+            frappe.throw(_("Manager comment is required for conditional pass"))
+        
+        existing_remarks = inspection_doc.get('manager_remarks') or ''
+        timestamp = frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M:%S")
+        new_remark = f"[{timestamp}] Quality Manager - CONDITIONAL PASS: {manager_comment}"
+        
+        if existing_remarks:
+            inspection_doc.manager_remarks = f"{existing_remarks}\n{new_remark}"
+        else:
+            inspection_doc.manager_remarks = new_remark
+        
+        # Save the document
+        inspection_doc.save()
+        
+        frappe.db.commit()
+        
+        return {
+            "status": "success",
+            "message": "Inspection marked as Conditional Accept",
+            "new_status": "Conditional Accept"
+        }
+        
+    except Exception as e:
+        frappe.log_error(f"Error in fabric_manager_conditional_pass: {str(e)}")
+        frappe.throw(_("Error updating inspection: {0}").format(str(e)))
+
+@frappe.whitelist()
+def fabric_manager_conditional_pass_with_purchase_receipt(inspection_name, manager_comment=""):
+    """Quality Manager action to conditionally pass rejected inspection and create purchase receipt"""
+    try:
+        # Verify user has Quality Manager role
+        user_roles = frappe.get_roles(frappe.session.user)
+        if "Quality Manager" not in user_roles and "Administrator" not in user_roles:
+            frappe.throw(_("Only Quality Managers can perform this action"))
+        
+        # Get inspection document
+        inspection_doc = frappe.get_doc("Fabric Inspection", inspection_name)
+        
+        # Check permissions
+        if not inspection_doc.has_permission("write"):
+            frappe.throw(_("You don't have permission to modify this document"))
+        
+        # Verify inspection is in Rejected status
+        if inspection_doc.inspection_status != "Rejected":
+            frappe.throw(_("This action can only be performed on Rejected inspections"))
+        
+        # Verify comment is provided
+        if not manager_comment or not manager_comment.strip():
+            frappe.throw(_("Manager comment is required for conditional pass"))
+        
+        # Update inspection status to Conditional Accept
+        inspection_doc.inspection_status = "Conditional Accept"
+        inspection_doc.quality_grade = "B"
+        
+        # Add manager comment
+        existing_remarks = inspection_doc.get('manager_remarks') or ''
+        timestamp = frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M:%S")
+        new_remark = f"[{timestamp}] Quality Manager - CONDITIONAL ACCEPT WITH PURCHASE RECEIPT: {manager_comment}"
+        
+        if existing_remarks:
+            inspection_doc.manager_remarks = f"{existing_remarks}\n{new_remark}"
+        else:
+            inspection_doc.manager_remarks = new_remark
+        
+        # Save the inspection
+        inspection_doc.save()
+        
+        # Create Purchase Receipt
+        purchase_receipt_result = create_purchase_receipt_from_inspection(inspection_doc)
+        
+        frappe.db.commit()
+        
+        response = {
+            "status": "success",
+            "message": f"Inspection conditionally accepted. Purchase Receipt {purchase_receipt_result['name']} created.",
+            "purchase_receipt_name": purchase_receipt_result['name'],
+            "purchase_receipt_url": f"/app/purchase-receipt/{purchase_receipt_result['name']}",
+            "new_status": "Conditional Accept"
+        }
+        
+        return response
+        
+    except Exception as e:
+        frappe.log_error(f"Error in fabric_manager_conditional_pass_with_purchase_receipt: {str(e)}")
+        frappe.throw(_("Error creating conditional pass and purchase receipt: {0}").format(str(e)))
+
+@frappe.whitelist()
+def manager_submit_for_purchase_receipt(inspection_name, manager_remarks=""):
+    """Quality Manager action to submit accepted inspection and create purchase receipt"""
+    try:
+        # Verify user has Quality Manager role
+        user_roles = frappe.get_roles(frappe.session.user)
+        if "Quality Manager" not in user_roles and "Administrator" not in user_roles:
+            frappe.throw(_("Only Quality Managers can perform this action"))
+        
+        # Get inspection document
+        inspection_doc = frappe.get_doc("Fabric Inspection", inspection_name)
+        
+        # Check permissions
+        if not inspection_doc.has_permission("write"):
+            frappe.throw(_("You don't have permission to modify this document"))
+        
+        # Verify inspection is in Accepted status
+        if inspection_doc.inspection_status != "Accepted":
+            frappe.throw(_("Only Accepted inspections can be submitted for purchase receipt creation"))
+        
+        # Add manager remarks if provided
+        if manager_remarks:
+            existing_remarks = inspection_doc.get('manager_remarks') or ''
+            timestamp = frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M:%S")
+            new_remark = f"[{timestamp}] Quality Manager - SUBMIT FOR PURCHASE RECEIPT: {manager_remarks}"
+            
+            if existing_remarks:
+                inspection_doc.manager_remarks = f"{existing_remarks}\n{new_remark}"
+            else:
+                inspection_doc.manager_remarks = new_remark
+        
+        # Update inspection status to Submitted
+        inspection_doc.inspection_status = "Submitted"
+        
+        # Add submitted tracking fields
+        inspection_doc.submitted_by = frappe.session.user
+        inspection_doc.submitted_date = frappe.utils.now_datetime()
+        
+        # Add submission details to remarks
+        existing_remarks = inspection_doc.get('remarks') or ''
+        timestamp = frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M:%S")
+        submission_note = f"[{timestamp}] PURCHASE RECEIPT CREATED - Quality Manager: {frappe.session.user}"
+        
+        if existing_remarks:
+            inspection_doc.remarks = f"{existing_remarks}\n\n{submission_note}"
+        else:
+            inspection_doc.remarks = submission_note
+        
+        # Save the inspection
+        inspection_doc.save()
+        
+        # Create Purchase Receipt
+        purchase_receipt_result = create_purchase_receipt_from_inspection(inspection_doc)
+        
+        frappe.db.commit()
+        
+        response = {
+            "status": "success",
+            "message": f"Inspection submitted successfully. Purchase Receipt {purchase_receipt_result['name']} created.",
+            "purchase_receipt_name": purchase_receipt_result['name'],
+            "purchase_receipt_url": f"/app/purchase-receipt/{purchase_receipt_result['name']}",
+            "new_status": "Submitted"
+        }
+        
+        return response
+        
+    except Exception as e:
+        frappe.log_error(f"Error in manager_submit_for_purchase_receipt: {str(e)}")
+        frappe.throw(_("Error creating purchase receipt: {0}").format(str(e)))
+
+def create_purchase_receipt_from_inspection(inspection_doc):
+    """Create a Purchase Receipt based on the fabric inspection"""
+    try:
+        # Get the linked GRN
+        if not inspection_doc.grn_reference:
+            frappe.throw(_("No GRN reference found in inspection"))
+        
+        grn_doc = frappe.get_doc("Goods Receipt Note", inspection_doc.grn_reference)
+        
+        # Create new Purchase Receipt
+        purchase_receipt = frappe.new_doc("Purchase Receipt")
+        
+        # Set basic details from GRN
+        purchase_receipt.supplier = grn_doc.supplier
+        purchase_receipt.supplier_name = grn_doc.get('supplier_name', grn_doc.supplier)
+        purchase_receipt.company = grn_doc.get('company')
+        purchase_receipt.set_warehouse = grn_doc.get('set_warehouse')
+        purchase_receipt.posting_date = frappe.utils.getdate()
+        purchase_receipt.posting_time = frappe.utils.nowtime()
+        purchase_receipt.set_posting_time = 1
+        
+        # Add reference fields
+        purchase_receipt.fabric_inspection_reference = inspection_doc.name
+        purchase_receipt.grn_reference = inspection_doc.grn_reference
+        purchase_receipt.linked_grn = inspection_doc.grn_reference
+        
+        # Add items from inspection
+        total_accepted_qty = 0
+        for roll in inspection_doc.get('fabric_rolls_tab', []):
+            if roll.get('roll_result') in ['First Quality', 'Accepted', 'Conditional Accept']:
+                # Find corresponding item in GRN
+                grn_item = None
+                for grn_item_row in grn_doc.get('items', []):
+                    if grn_item_row.item_code == inspection_doc.item_code:
+                        grn_item = grn_item_row
+                        break
+                
+                if grn_item:
+                    try:
+                        # Calculate quantities and amounts
+                        received_qty = roll.roll_length or 1
+                        rate = getattr(grn_item, 'rate', 0) or 0
+                        if rate == 0 and hasattr(grn_item, 'amount') and hasattr(grn_item, 'received_quantity'):
+                            rate = grn_item.amount / max(grn_item.received_quantity, 1)
+                        
+                        # Get item name from Item master
+                        item_name = grn_item.item_code
+                        try:
+                            item_doc = frappe.get_doc("Item", grn_item.item_code)
+                            item_name = item_doc.item_name or grn_item.item_code
+                        except:
+                            pass
+                        
+                        # Ensure all required fields have valid values
+                        uom = grn_item.uom or 'Meter'
+                        if not uom:
+                            uom = 'Meter'
+                        
+                        # Create Purchase Receipt item with minimal fields to avoid validation issues
+                        purchase_receipt.append('items', {
+                            'item_code': grn_item.item_code,
+                            'item_name': item_name or grn_item.item_code,
+                            'description': item_name or grn_item.item_code,
+                            'received_qty': received_qty,
+                            'qty': received_qty,
+                            'uom': uom,
+                            'stock_uom': uom,
+                            'conversion_factor': 1,
+                            'rate': rate or 0,
+                            'base_rate': rate or 0,
+                            'amount': received_qty * (rate or 0),
+                            'base_amount': received_qty * (rate or 0),
+                            'warehouse': grn_doc.get('set_warehouse'),
+                            'remarks': f"Quality Grade: {getattr(roll, 'roll_grade', 'N/A')}, Points: {getattr(roll, 'total_defect_points', 0)}, Roll: {getattr(roll, 'roll_number', 'N/A')} | Quality Inspection: {inspection_doc.name}"
+                        })
+                        total_accepted_qty += received_qty
+                        
+                    except Exception as item_error:
+                        frappe.log_error(f"Error processing roll {getattr(roll, 'roll_number', 'unknown')}: {str(item_error)}")
+                        continue
+        
+        # Add inspection summary in remarks
+        purchase_receipt.remarks = f"""Purchase Receipt created from Quality Inspection: {inspection_doc.name}
+GRN Reference: {inspection_doc.grn_reference}
+Total Accepted Quantity: {total_accepted_qty}
+Quality Manager: {frappe.session.user}
+Inspection Result: {inspection_doc.inspection_result}
+Overall Quality Grade: {inspection_doc.quality_grade}
+
+Manager Remarks:
+{inspection_doc.get('manager_remarks', 'No additional remarks')}"""
+        
+        # Save the Purchase Receipt
+        purchase_receipt.save()
+        
+        return {
+            'name': purchase_receipt.name,
+            'doctype': 'Purchase Receipt'
+        }
+        
+    except Exception as e:
+        frappe.log_error(f"Error creating purchase receipt: {str(e)}")
+        frappe.throw(_("Error creating purchase receipt: {0}").format(str(e)))

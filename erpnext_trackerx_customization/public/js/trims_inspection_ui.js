@@ -791,7 +791,7 @@ async function saveTrimsInspection() {
     try {
         showMessage('Saving...', 'info');
         
-        const response = await fetch('/api/method/erpnext_trackerx_customization.api.trims_inspection.save_inspection_data', {
+        const response = await fetch('/api/method/erpnext_trackerx_customization.api.trims_inspection.save_progress', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -799,10 +799,9 @@ async function saveTrimsInspection() {
             },
             body: JSON.stringify({
                 inspection_name: inspectionData.name,
-                defects_data: trimsInspectionState.defectsData,
-                items_data: trimsInspectionState.itemsData,
-                checklist_data: trimsInspectionState.checklistData,
-                action: 'save_progress'
+                defects_data: trimsInspectionState.defectsData || {},
+                items_data: trimsInspectionState.itemsData || {},
+                checklist_data: trimsInspectionState.checklistData || []
             })
         });
         
@@ -879,6 +878,57 @@ async function holdTrimsInspection() {
     } catch (error) {
         console.error('Hold error:', error);
         showMessage('Error holding inspection: ' + error.message, 'error');
+    }
+}
+
+// Resume trims inspection from hold status
+async function resumeTrimsInspection() {
+    if (!inspectionData.canWrite) {
+        showMessage('You do not have permission to resume inspection', 'error');
+        return;
+    }
+    
+    // Confirm resume action
+    if (!confirm('Are you sure you want to resume this inspection? It will be moved back to In Progress status.')) {
+        return;
+    }
+    
+    try {
+        showMessage('Resuming inspection...', 'info');
+        
+        const response = await fetch('/api/method/erpnext_trackerx_customization.api.trims_inspection.update_status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Frappe-CSRF-Token': frappe.csrf_token
+            },
+            body: JSON.stringify({
+                inspection_name: inspectionData.name,
+                status: 'In Progress'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.message && result.message.success) {
+            showMessage('Inspection resumed successfully', 'success');
+            
+            // Update UI immediately without page refresh
+            updateUIForResumeStatus();
+            
+            // Update page header status immediately
+            const statusElement = document.querySelector('.meta');
+            if (statusElement) {
+                statusElement.innerHTML = statusElement.innerHTML.replace(/Status: [^|]*/, 'Status: In Progress');
+            }
+            
+        } else {
+            showMessage('Error resuming inspection', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error resuming inspection:', error);
+        showMessage('Error resuming inspection: ' + error.message, 'error');
     }
 }
 
@@ -1161,23 +1211,63 @@ function updateUIForHoldStatus() {
                 text-align: center;
                 font-weight: 500;
             `;
-            holdNotice.innerHTML = '⏸️ This inspection is on hold - You can still submit when ready';
+            holdNotice.innerHTML = '⏸️ This inspection is on hold - Click Resume to continue working';
             pageHeader.appendChild(holdNotice);
         }
     }
     
-    // Update action buttons for trims inspection - keep submit button available during hold
+    // Update action buttons - show Resume button and hide others
     const holdBtn = document.querySelector('button[onclick*="holdTrimsInspection"]');
     const submitBtn = document.querySelector('button[onclick*="submitTrimsInspection"]');
     const saveBtn = document.querySelector('button[onclick*="saveTrimsInspection"]');
     
+    // Hide all regular action buttons
     if (holdBtn) holdBtn.style.display = 'none';
-    // Keep submit button available - inspectors can submit from hold status
-    if (submitBtn) {
-        submitBtn.style.display = 'inline-block';
-        submitBtn.disabled = false;
-    }
+    if (submitBtn) submitBtn.style.display = 'none';
     if (saveBtn) saveBtn.style.display = 'none';
+    
+    // Create and show Resume button if it doesn't exist
+    let resumeBtn = document.querySelector('button[onclick*="resumeTrimsInspection"]');
+    if (!resumeBtn) {
+        resumeBtn = document.createElement('button');
+        resumeBtn.className = 'btn btn-info';
+        resumeBtn.onclick = resumeTrimsInspection;
+        resumeBtn.innerHTML = '▶️ Resume';
+        
+        // Insert the Resume button in the actions container
+        const actionsContainer = holdBtn?.parentElement || submitBtn?.parentElement || saveBtn?.parentElement;
+        if (actionsContainer) {
+            actionsContainer.insertBefore(resumeBtn, actionsContainer.firstChild);
+        }
+    } else {
+        resumeBtn.style.display = 'inline-block';
+    }
+}
+
+// Update UI when resuming from hold status
+function updateUIForResumeStatus() {
+    // Re-enable all input elements
+    const inputs = document.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        input.disabled = false;
+    });
+    
+    // Remove hold notice from page header
+    const holdNotice = document.querySelector('.hold-notice');
+    if (holdNotice) {
+        holdNotice.remove();
+    }
+    
+    // Hide Resume button and show normal action buttons
+    const resumeBtn = document.querySelector('button[onclick*="resumeTrimsInspection"]');
+    const holdBtn = document.querySelector('button[onclick*="holdTrimsInspection"]');
+    const submitBtn = document.querySelector('button[onclick*="submitTrimsInspection"]');
+    const saveBtn = document.querySelector('button[onclick*="saveTrimsInspection"]');
+    
+    if (resumeBtn) resumeBtn.style.display = 'none';
+    if (holdBtn) holdBtn.style.display = 'inline-block';
+    if (submitBtn) submitBtn.style.display = 'inline-block';
+    if (saveBtn) saveBtn.style.display = 'inline-block';
 }
 
 // Update UI for completed status

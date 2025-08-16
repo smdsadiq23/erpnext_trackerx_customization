@@ -292,24 +292,26 @@ class FabricInspection(Document):
     
     def update_inspection_status(self):
         """Update inspection status based on progress"""
-        # Don't auto-update status if manually set to Hold or Completed
-        if self.inspection_status in ['Hold', 'Completed']:
+        # Don't auto-update status if manually set to Hold, Completed, Accepted, Rejected, Conditional Accept, or In Progress
+        if self.inspection_status in ['Hold', 'Completed', 'Accepted', 'Rejected', 'Conditional Accept', 'In Progress']:
             return
             
         if not self.fabric_rolls_tab:
-            self.inspection_status = 'Draft'
+            # Only set to Draft if currently not set or if it was Draft
+            if not self.inspection_status or self.inspection_status == 'Draft':
+                self.inspection_status = 'Draft'
             return
         
         total_rolls = len(self.fabric_rolls_tab)
         inspected_rolls = sum(1 for roll in self.fabric_rolls_tab if roll.inspected)
         
-        if inspected_rolls == 0:
-            self.inspection_status = 'Draft'
-        elif inspected_rolls < total_rolls:
-            self.inspection_status = 'In Progress'
-        else:
-            # Only auto-set to Completed if not manually held
-            if self.inspection_status != 'Hold':
+        # Only auto-update status if it's currently Draft or empty
+        if not self.inspection_status or self.inspection_status == 'Draft':
+            if inspected_rolls == 0:
+                self.inspection_status = 'Draft'
+            elif inspected_rolls < total_rolls:
+                self.inspection_status = 'In Progress'
+            else:
                 self.inspection_status = 'Completed'
     
     def update_grn_inspection_status(self):

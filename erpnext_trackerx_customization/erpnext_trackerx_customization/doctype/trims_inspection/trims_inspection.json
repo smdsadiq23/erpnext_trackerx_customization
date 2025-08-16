@@ -44,10 +44,13 @@
   "inspection_result",
   "quality_grade",
   "remarks",
+  "manager_remarks",
   "conditional_pass_reason",
   "approved_by",
   "approval_timestamp",
   "section_break_5",
+  "submitted_by",
+  "submitted_date",
   "amended_from"
  ],
  "fields": [
@@ -96,7 +99,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Inspection Status",
-   "options": "Draft\nIn Progress\nHold\nCompleted",
+   "options": "Draft\nIn Progress\nHold\nAccepted\nRejected\nConditional Accept\nSubmitted",
    "reqd": 1
   },
   {
@@ -287,6 +290,12 @@
    "label": "Remarks"
   },
   {
+   "fieldname": "manager_remarks",
+   "fieldtype": "Long Text",
+   "label": "Quality Manager Remarks",
+   "read_only": 1
+  },
+  {
    "depends_on": "eval:doc.inspection_result=='Conditional Accept'",
    "fieldname": "conditional_pass_reason",
    "fieldtype": "Long Text",
@@ -311,6 +320,21 @@
   {
    "fieldname": "section_break_5",
    "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:doc.inspection_status=='Submitted'",
+   "fieldname": "submitted_by",
+   "fieldtype": "Link",
+   "label": "Submitted By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.inspection_status=='Submitted'",
+   "fieldname": "submitted_date",
+   "fieldtype": "Datetime",
+   "label": "Submitted Date",
+   "read_only": 1
   },
   {
    "fieldname": "amended_from",
