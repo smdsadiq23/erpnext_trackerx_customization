@@ -168,8 +168,7 @@ def main():
         print(f"\n=== SETUP COMPLETE ===")
         print(f"✅ {created_count} new views created")
         print(f"✅ Web interface ready at:")
-        print(f"   - /aql_chart (AQL Chart view)")
-        print(f"   - /aql_tables (Complete AQL Tables)")
+        print(f"   - /aql_grid (AQL Grid - Editable Table)")
         
         if test_success:
             print(f"✅ All tests passed - system ready for use!")

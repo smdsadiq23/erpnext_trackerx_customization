@@ -58,6 +58,7 @@ after_migrate = [
     #"erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute", 
     #"erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure"
    # "erpnext_trackerx_customization.setup.purchase_receipt_custom_fields.execute"
+    "erpnext_trackerx_customization.setup.migrate_quality_roles.execute"
     ]
 
 # Includes in <head>
@@ -68,6 +69,8 @@ after_migrate = [
 app_include_js = [
     "/assets/erpnext_trackerx_customization/js/fabric_inspection_routes.js"
 ]
+
+# Removed Vue.js applications - using traditional interface
 
 # include js, css files in header of web template
 # web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
@@ -231,16 +234,7 @@ doc_events= {
         "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_trash"
     },
     "Goods Receipt Note": {
-        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_submit_grn",
-        "on_cancel": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_cancel_grn",
-        "before_cancel": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.before_cancel_grn"
-        
-    },
-    "Material Inspection Report": {
-        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_submit_mir"
-    },
-    "Roll Allocation Map": {
-        "validate": "erpnext_trackerx_customization.roll_allocation_map.roll_allocation_map.validate"
+        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.create_inspections_on_grn_submit"
     }
 }
 
@@ -336,6 +330,17 @@ override_whitelisted_methods = {
 # auth_hooks = [
 # 	"erpnext_trackerx_customization.auth.validate"
 # ]
+
+# Login hooks
+# -----------
+# on_login = "erpnext_trackerx_customization.auth_hooks.quality_login_redirect.redirect_quality_users_on_login"
+
+# Role-based home page redirection
+role_home_page = {
+    "Quality Inspector": "/app/Quality Dashboard",
+    "Quality Manager": "/app/Quality Dashboard"
+}
+
 
 # Automatically update python controller files with type annotations for this app.
 # export_python_type_annotations = True

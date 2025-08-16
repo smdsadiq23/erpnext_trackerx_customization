@@ -1,27 +1,24 @@
 /**
- * Custom List View Behavior for Fabric Inspection
+ * Fixed Custom List View Behavior for Fabric Inspection
  * Redirects to the fabric inspection UI instead of the standard form
  */
 
 frappe.listview_settings['Fabric Inspection'] = {
     onload: function(listview) {
-        // Override the default row click behavior
-        setup_fabric_inspection_redirect(listview);
+        console.log('🎯 Fabric Inspection List View Loaded');
+        
+        // Setup redirect behavior with multiple approaches
+        setup_fabric_inspection_redirect_v2(listview);
         
         // Add custom button to list view
-        listview.page.add_inner_button(__('🎯 Open Inspection UI'), function() {
+        listview.page.add_inner_button(__('🔍 Open Selected Inspections'), function() {
             open_selected_inspections(listview);
         });
-        
-        // Add a notice about the redirection
-        setTimeout(() => {
-            if (listview.data && listview.data.length > 0) {
-                frappe.show_alert({
-                    message: __('Click any inspection to open Four-Point Inspection Interface'),
-                    indicator: 'blue'
-                }, 5);
-            }
-        }, 1000);
+    },
+    
+    // Override get_form_link to redirect to custom UI
+    get_form_link: function(doc) {
+        return `/fabric_inspection_ui?name=${encodeURIComponent(doc.name)}`;
     },
     
     // Custom formatting for the list view
@@ -30,6 +27,7 @@ frappe.listview_settings['Fabric Inspection'] = {
             const status_colors = {
                 'Draft': 'gray',
                 'In Progress': 'orange', 
+                'Hold': 'yellow',
                 'Completed': 'green',
                 'Approved': 'blue',
                 'Rejected': 'red'
@@ -50,7 +48,7 @@ frappe.listview_settings['Fabric Inspection'] = {
         }
     },
     
-    // Custom filters for the list view
+    // Custom filters
     filters: [
         ['inspection_status', '!=', 'Cancelled']
     ],
@@ -59,134 +57,250 @@ frappe.listview_settings['Fabric Inspection'] = {
     order_by: 'modified desc'
 };
 
-function setup_fabric_inspection_redirect(listview) {
-    /**
-     * Setup custom redirect behavior for fabric inspection rows
-     */
+function setup_fabric_inspection_redirect_v2(listview) {
     try {
-        // Wait for the listview to be fully rendered
+        console.log('🔧 Setting up Fabric Inspection redirect...');
+        
+        // Wait for listview to be fully rendered
         setTimeout(() => {
-            // Remove existing click handlers first
+            // Approach 1: Override the get_form_link method if it exists
+            if (listview.get_form_link) {
+                const original_get_form_link = listview.get_form_link.bind(listview);
+                listview.get_form_link = function(doc) {
+                    console.log('🎯 Redirecting via get_form_link for:', doc.name);
+                    return `/fabric_inspection_ui?name=${encodeURIComponent(doc.name)}`;
+                };
+            }
+            
+            // Approach 2: Override row click events
+            setupRowClickRedirect(listview);
+            
+            // Approach 3: Override form navigation
+            overrideFormNavigation(listview);
+            
+            console.log('✅ Fabric Inspection redirect setup complete');
+            
+        }, 1000);
+        
+    } catch (error) {
+        console.error('❌ Error setting up fabric inspection redirect:', error);
+    }
+}
+
+function setupRowClickRedirect(listview) {
+    try {
+        // Remove existing click handlers
+        if (listview.$result) {
             listview.$result.off('click', '.list-row-container');
             listview.$result.off('click', '.list-row');
+            listview.$result.off('click', '.list-subject');
             
-            // Add our custom click handler to the result container
+            // Add new click handler
             listview.$result.on('click', '.list-row-container, .list-row', function(e) {
-                // Don't interfere with checkbox clicks or other controls
-                if ($(e.target).is('input[type="checkbox"], .btn, button, .dropdown-toggle')) {
-                    return true; // Let the default behavior handle these
-                }
-                
-                // Special handling for inspection ID links
-                if ($(e.target).is('a') && $(e.target).attr('href') && $(e.target).attr('href').includes('/app/fabric-inspection/')) {
-                    e.preventDefault();
-                    const doc_name = $(e.target).attr('href').split('/').pop();
-                    if (doc_name) {
-                        open_fabric_inspection_ui(doc_name, e.ctrlKey || e.metaKey);
-                        return false;
-                    }
+                // Don't interfere with checkboxes, buttons, etc.
+                if ($(e.target).is('input[type="checkbox"], .btn, button, .dropdown-toggle, .list-row-checkbox')) {
+                    return true;
                 }
                 
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // Get the document name from the row
-                const $row = $(this).closest('.list-row-container, .list-row');
-                let doc_name = $row.attr('data-name') || $row.data('name');
-                
-                // Alternative way to get doc name from the row
-                if (!doc_name) {
-                    const $nameCell = $row.find('[data-field="name"], .list-subject a');
-                    if ($nameCell.length) {
-                        doc_name = $nameCell.text().trim() || $nameCell.attr('href')?.split('/').pop();
-                    }
-                }
+                const doc_name = getDocNameFromRow($(this));
                 
                 if (doc_name) {
-                    console.log('Redirecting to fabric inspection UI for:', doc_name);
-                    
-                    // Check if it's a middle click or Ctrl+click (open in new tab)
-                    const new_tab = e.ctrlKey || e.metaKey || e.which === 2;
-                    open_fabric_inspection_ui(doc_name, new_tab);
+                    console.log('🎯 Row clicked, redirecting to fabric inspection UI for:', doc_name);
+                    open_fabric_inspection_ui(doc_name, e.ctrlKey || e.metaKey);
                 } else {
-                    console.warn('Could not determine document name from row');
-                    // Fallback to default behavior
-                    return true;
+                    console.warn('⚠️  Could not determine document name from row click');
                 }
+                
+                return false;
+            });
+            
+            // Also handle subject link clicks specifically
+            listview.$result.on('click', '.list-subject a', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const href = $(this).attr('href') || '';
+                const doc_name = href.split('/').pop() || $(this).text().trim();
+                
+                if (doc_name) {
+                    console.log('🎯 Subject link clicked, redirecting for:', doc_name);
+                    open_fabric_inspection_ui(doc_name, e.ctrlKey || e.metaKey);
+                }
+                
+                return false;
             });
             
             // Add visual indicators
-            listview.$result.on('mouseenter', '.list-row-container, .list-row', function() {
+            listview.$result.on('mouseenter', '.list-row-container', function() {
                 $(this).attr('title', 'Click to open Four-Point Inspection Interface')
                        .css('cursor', 'pointer');
             });
-            
-            // Add custom styling to indicate clickable rows
-            if (!document.getElementById('fabric-inspection-redirect-style')) {
-                const style = document.createElement('style');
-                style.id = 'fabric-inspection-redirect-style';
-                style.textContent = `
-                    .list-row-container, .list-row {
-                        position: relative;
-                    }
-                    .list-row-container:before, .list-row:before {
-                        content: "🎯";
-                        position: absolute;
-                        right: 10px;
-                        top: 50%;
-                        transform: translateY(-50%);
-                        opacity: 0.3;
-                        font-size: 12px;
-                    }
-                    .list-row-container:hover:before, .list-row:hover:before {
-                        opacity: 0.8;
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-            
-            console.log('Fabric Inspection list view redirect setup complete');
-        }, 500);
+        }
         
     } catch (error) {
-        console.error('Error setting up fabric inspection redirect:', error);
+        console.error('Error setting up row click redirect:', error);
     }
 }
 
-function open_fabric_inspection_ui(doc_name, new_tab = true) {
-    /**
-     * Open the fabric inspection UI for the given document
-     */
+function overrideFormNavigation(listview) {
     try {
+        // Override the open_form method if it exists
+        if (listview.open_form) {
+            const original_open_form = listview.open_form.bind(listview);
+            listview.open_form = function(doc_name) {
+                console.log('🎯 Form navigation intercepted for:', doc_name);
+                open_fabric_inspection_ui(doc_name, false);
+            };
+        }
+        
+        // Override navigate_to_document if it exists
+        if (listview.navigate_to_document) {
+            const original_navigate = listview.navigate_to_document.bind(listview);
+            listview.navigate_to_document = function(doc_name) {
+                console.log('🎯 Document navigation intercepted for:', doc_name);
+                open_fabric_inspection_ui(doc_name, false);
+            };
+        }
+        
+    } catch (error) {
+        console.error('Error overriding form navigation:', error);
+    }
+}
+
+function getDocNameFromRow($row) {
+    try {
+        console.log('🔍 Getting document name from row:', $row);
+        
+        // Method 1: data-name attribute (most reliable)
+        let doc_name = $row.attr('data-name') || $row.data('name');
+        if (doc_name && !doc_name.includes('fabric_inspection_ui')) {
+            console.log('✅ Found doc_name via data-name:', doc_name);
+            return doc_name;
+        }
+        
+        // Method 2: find in data-docname
+        doc_name = $row.attr('data-docname') || $row.data('docname');
+        if (doc_name && !doc_name.includes('fabric_inspection_ui')) {
+            console.log('✅ Found doc_name via data-docname:', doc_name);
+            return doc_name;
+        }
+        
+        // Method 3: Look for subject link with standard Frappe format
+        const $subject_link = $row.find('.list-subject a, .bold a');
+        if ($subject_link.length) {
+            const href = $subject_link.attr('href') || '';
+            console.log('🔗 Subject link href:', href);
+            
+            // Only extract from standard Frappe form URLs, not our custom UI URLs
+            if (href.includes('/app/fabric-inspection/') && !href.includes('fabric_inspection_ui')) {
+                doc_name = href.split('/').pop();
+                if (doc_name) {
+                    console.log('✅ Found doc_name via subject link href:', doc_name);
+                    return doc_name;
+                }
+            }
+            
+            // Try text content (document name should be in the link text)
+            doc_name = $subject_link.text().trim();
+            if (doc_name && doc_name.match(/^[A-Z]+-\d{4}-\d{5,}$/)) {
+                console.log('✅ Found doc_name via subject link text:', doc_name);
+                return doc_name;
+            }
+        }
+        
+        // Method 4: Find first cell with document name pattern
+        const $cells = $row.find('td, .list-item-container, .list-row-col');
+        let found_doc_name = null;
+        
+        $cells.each(function() {
+            const text = $(this).text().trim();
+            // Look for pattern like FINSP-2025-00007
+            if (text && text.match(/^[A-Z]+-\d{4}-\d{5,}$/)) {
+                found_doc_name = text;
+                return false; // Break out of loop
+            }
+        });
+        
+        if (found_doc_name) {
+            console.log('✅ Found doc_name via cell text pattern:', found_doc_name);
+            return found_doc_name;
+        }
+        
+        console.warn('⚠️  Could not determine document name from row');
+        return null;
+        
+    } catch (error) {
+        console.error('❌ Error getting document name from row:', error);
+        return null;
+    }
+}
+
+function open_fabric_inspection_ui(doc_name, new_tab = false) {
+    try {
+        if (!doc_name) {
+            console.warn('No document name provided to open_fabric_inspection_ui');
+            return;
+        }
+        
+        // Clean up the document name - remove any URL encoding issues
+        doc_name = doc_name.trim();
+        
+        // If doc_name already contains our URL, extract just the document name
+        if (doc_name.includes('fabric_inspection_ui?name=')) {
+            const match = doc_name.match(/name=([^&]+)/);
+            if (match) {
+                doc_name = decodeURIComponent(match[1]);
+                console.log('🔧 Extracted document name from URL:', doc_name);
+            }
+        }
+        
+        // Validate document name format
+        if (!doc_name.match(/^[A-Z]+-\d{4}-\d{5,}$/)) {
+            console.warn('⚠️  Invalid document name format:', doc_name);
+            // Try to extract valid document name pattern
+            const match = doc_name.match(/([A-Z]+-\d{4}-\d{5,})/);
+            if (match) {
+                doc_name = match[1];
+                console.log('🔧 Extracted valid document name:', doc_name);
+            } else {
+                console.error('❌ Could not extract valid document name from:', doc_name);
+                return;
+            }
+        }
+        
+        console.log(`🚀 Opening fabric inspection UI for: ${doc_name}${new_tab ? ' (new tab)' : ''}`);
+        
         // Show loading indicator
-        frappe.show_progress(__('Opening Fabric Inspection...'), 30, 100);
+        frappe.show_progress(__('Opening Fabric Inspection...'), 50, 100);
         
-        // Directly open the inspection UI - let the page handle validation
+        // Create the inspection URL with clean document name
         const inspection_url = `/fabric_inspection_ui?name=${encodeURIComponent(doc_name)}`;
+        console.log('📍 Inspection URL:', inspection_url);
         
-        frappe.show_progress(__('Opening Fabric Inspection...'), 80, 100);
+        // Hide progress after a short delay
+        setTimeout(() => frappe.hide_progress(), 500);
         
         if (new_tab) {
-            // Open in new tab
             window.open(inspection_url, '_blank');
+            frappe.show_alert({
+                message: __('Opening Four-Point Inspection in new tab...'),
+                indicator: 'blue'
+            });
         } else {
-            // Navigate in current tab
             window.location.href = inspection_url;
         }
         
-        frappe.hide_progress();
-        
-        frappe.show_alert({
-            message: __('Opening Four-Point Inspection Interface...'),
-            indicator: 'blue'
-        });
-        
     } catch (error) {
+        console.error('❌ Error opening fabric inspection UI:', error);
         frappe.hide_progress();
-        console.error('Error opening fabric inspection UI:', error);
         
         // Fallback to standard form
         const form_url = `/app/fabric-inspection/${doc_name}`;
+        console.log('🔄 Falling back to standard form:', form_url);
+        
         if (new_tab) {
             window.open(form_url, '_blank');
         } else {
@@ -201,86 +315,86 @@ function open_fabric_inspection_ui(doc_name, new_tab = true) {
 }
 
 function open_selected_inspections(listview) {
-    /**
-     * Open selected inspections in the fabric inspection UI
-     */
-    const selected = listview.get_checked_items();
-    
-    if (selected.length === 0) {
-        frappe.msgprint(__('Please select at least one inspection'));
-        return;
+    try {
+        const selected = listview.get_checked_items();
+        
+        if (selected.length === 0) {
+            frappe.msgprint(__('Please select at least one inspection'));
+            return;
+        }
+        
+        if (selected.length > 5) {
+            frappe.msgprint(__('Please select maximum 5 inspections to avoid performance issues'));
+            return;
+        }
+        
+        console.log('🎯 Opening selected inspections:', selected.map(item => item.name));
+        
+        // Open each selected inspection in a new tab with delay
+        selected.forEach((item, index) => {
+            setTimeout(() => {
+                open_fabric_inspection_ui(item.name, true);
+            }, index * 300); // 300ms delay between each
+        });
+        
+    } catch (error) {
+        console.error('Error opening selected inspections:', error);
+        frappe.msgprint(__('Error opening selected inspections. Please try again.'));
     }
-    
-    if (selected.length > 5) {
-        frappe.msgprint(__('Please select maximum 5 inspections to avoid performance issues'));
-        return;
-    }
-    
-    // Open each selected inspection in a new tab
-    selected.forEach((item, index) => {
-        setTimeout(() => {
-            open_fabric_inspection_ui(item.name, true);
-        }, index * 500); // Stagger the opening to avoid browser popup blocking
-    });
 }
 
-// Add custom CSS for better list view appearance
+// Debug helper - can be called from console
+window.test_fabric_inspection_redirect = function(doc_name) {
+    console.log('🧪 Testing fabric inspection redirect...');
+    open_fabric_inspection_ui(doc_name || 'FINSP-2025-00007', false);
+};
+
+// Add CSS for better visual feedback
 frappe.ready(function() {
     if (frappe.get_route()[0] === 'List' && frappe.get_route()[1] === 'Fabric Inspection') {
-        add_custom_list_styles();
+        add_fabric_inspection_list_styles();
     }
 });
 
-function add_custom_list_styles() {
-    /**
-     * Add custom CSS for fabric inspection list view
-     */
+function add_fabric_inspection_list_styles() {
     if (!document.getElementById('fabric-inspection-list-styles')) {
         const style = document.createElement('style');
         style.id = 'fabric-inspection-list-styles';
         style.textContent = `
             .list-row-container {
-                cursor: pointer;
-                transition: background-color 0.2s ease;
+                cursor: pointer !important;
+                transition: all 0.2s ease;
             }
             
             .list-row-container:hover {
                 background-color: #f8f9fa !important;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                transform: translateY(-1px);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
             }
             
-            .list-row-container[data-name] {
-                border-left: 3px solid #007bff;
+            .list-row-container:before {
+                content: "🎯";
+                position: absolute;
+                right: 15px;
+                top: 50%;
+                transform: translateY(-50%);
+                opacity: 0.3;
+                font-size: 14px;
+                z-index: 1;
             }
             
-            .list-row-container[data-name]:hover {
-                border-left-color: #0056b3;
+            .list-row-container:hover:before {
+                opacity: 0.8;
             }
             
-            /* Status indicators */
-            .indicator.green {
-                background-color: #28a745;
-                color: white;
+            .list-subject a {
+                color: #007bff !important;
+                text-decoration: none;
             }
             
-            .indicator.red {
-                background-color: #dc3545;
-                color: white;
-            }
-            
-            .indicator.orange {
-                background-color: #fd7e14;
-                color: white;
-            }
-            
-            .indicator.blue {
-                background-color: #007bff;
-                color: white;
-            }
-            
-            .indicator.gray {
-                background-color: #6c757d;
-                color: white;
+            .list-subject a:hover {
+                color: #0056b3 !important;
+                text-decoration: underline;
             }
         `;
         document.head.appendChild(style);

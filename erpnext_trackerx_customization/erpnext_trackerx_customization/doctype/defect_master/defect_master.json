@@ -11,6 +11,7 @@
   "defect_description",
   "column_break_1",
   "inspection_type",
+  "material_type",
   "defect_category",
   "fault_group",
   "section_break_1",
@@ -55,6 +56,13 @@
    "label": "Inspection Type",
    "options": "Fabric Inspection\nTrims Inspection\nFinal Inspection",
    "reqd": 1
+  },
+  {
+   "fieldname": "material_type",
+   "fieldtype": "Select",
+   "label": "Material Type",
+   "options": "Fabrics\nTrims\nAccessories\nMachine\nLabels\nPacking Materials",
+   "description": "Material type for filtering defects in inspections"
   },
   {
    "fieldname": "defect_category",
