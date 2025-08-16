@@ -58,7 +58,8 @@ after_migrate = [
     #"erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute", 
     #"erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure"
    # "erpnext_trackerx_customization.setup.purchase_receipt_custom_fields.execute"
-    "erpnext_trackerx_customization.setup.migrate_quality_roles.execute"
+    "erpnext_trackerx_customization.setup.migrate_quality_roles.execute",
+    "erpnext_trackerx_customization.setup.fix_quality_workspace.execute"
     ]
 
 # Includes in <head>
@@ -333,13 +334,14 @@ override_whitelisted_methods = {
 
 # Login hooks
 # -----------
-# on_login = "erpnext_trackerx_customization.auth_hooks.quality_login_redirect.redirect_quality_users_on_login"
+on_login = "erpnext_trackerx_customization.auth_hooks.quality_login_redirect.redirect_quality_users_on_login"
 
 # Role-based home page redirection
-role_home_page = {
-    "Quality Inspector": "/app/Quality Dashboard",
-    "Quality Manager": "/app/Quality Dashboard"
-}
+# Removed - not working properly with custom pages, users can access Quality Dashboard through workspace
+# role_home_page = {
+#     "Quality Inspector": "/app/quality_dashboard",
+#     "Quality Manager": "/app/quality_dashboard"
+# }
 
 
 # Automatically update python controller files with type annotations for this app.

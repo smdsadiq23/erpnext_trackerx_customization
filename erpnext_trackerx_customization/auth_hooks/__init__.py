@@ -1,0 +1,1 @@
+# Auth hooks for Quality Management
