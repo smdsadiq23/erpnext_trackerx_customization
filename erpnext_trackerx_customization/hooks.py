@@ -50,7 +50,10 @@ fixtures = [
                 "module", "=", "Erpnext Trackerx Customization"
             ]
         ]
-    }
+    },
+    "erpnext_trackerx_customization/fixtures/aql_level.json",
+    "erpnext_trackerx_customization/fixtures/aql_standard.json", 
+    "erpnext_trackerx_customization/fixtures/aql_table.json"
 ]
 
 
