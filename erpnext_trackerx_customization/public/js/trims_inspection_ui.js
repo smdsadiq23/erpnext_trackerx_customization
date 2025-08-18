@@ -478,15 +478,63 @@ async function updateAQLConfiguration() {
         // Get total pieces from inspection data
         const totalPieces = inspectionData.total_pieces || 0;
         
-        // Calculate AQL sample size
-        const aqlConfig = calculateAQLSampleSize(totalPieces, aqlLevel, aqlValue, inspectionRegime, inspectionType);
-        
-        // Update displays
-        if (document.getElementById('sample-size-display')) {
-            document.getElementById('sample-size-display').value = aqlConfig.samplePieces;
-        }
-        if (document.getElementById('sample-percentage-display')) {
-            document.getElementById('sample-percentage-display').value = aqlConfig.samplePercentage + '%';
+        if (inspectionType === 'AQL Based' && totalPieces > 0) {
+            // Use backend AQL calculator for accurate results
+            try {
+                const response = await fetch('/api/method/erpnext_trackerx_customization.erpnext_trackerx_customization.utils.aql.calculator.calculate_aql_criteria', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Frappe-CSRF-Token': frappe.csrf_token
+                    },
+                    body: JSON.stringify({
+                        item_code: inspectionData.item_code,
+                        quantity: totalPieces
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.message) {
+                    const aqlConfig = result.message;
+                    
+                    // Update displays with backend-calculated values
+                    if (document.getElementById('sample-size-display')) {
+                        document.getElementById('sample-size-display').value = aqlConfig.sample_size;
+                    }
+                    if (document.getElementById('sample-percentage-display')) {
+                        const percentage = Math.round((aqlConfig.sample_size / totalPieces) * 100);
+                        document.getElementById('sample-percentage-display').value = percentage + '%';
+                    }
+                    
+                    console.log('Backend AQL calculation:', aqlConfig);
+                    
+                } else {
+                    throw new Error('Backend AQL calculation failed');
+                }
+                
+            } catch (backendError) {
+                console.warn('Backend AQL calculation failed, using fallback:', backendError);
+                // Fallback to client-side calculation
+                const aqlConfig = calculateAQLSampleSize(totalPieces, aqlLevel, aqlValue, inspectionRegime, inspectionType);
+                
+                if (document.getElementById('sample-size-display')) {
+                    document.getElementById('sample-size-display').value = aqlConfig.samplePieces;
+                }
+                if (document.getElementById('sample-percentage-display')) {
+                    document.getElementById('sample-percentage-display').value = aqlConfig.samplePercentage + '%';
+                }
+            }
+        } else {
+            // For 100% inspection or fallback
+            const aqlConfig = calculateAQLSampleSize(totalPieces, aqlLevel, aqlValue, inspectionRegime, inspectionType);
+            
+            if (document.getElementById('sample-size-display')) {
+                document.getElementById('sample-size-display').value = aqlConfig.samplePieces;
+            }
+            if (document.getElementById('sample-percentage-display')) {
+                document.getElementById('sample-percentage-display').value = aqlConfig.samplePercentage + '%';
+            }
         }
         
         console.log('AQL configuration updated for trims inspection');
@@ -569,7 +617,7 @@ function updateDefectCount(input) {
     const category = input.dataset.category;
     const count = parseInt(input.value) || 0;
     
-    // Create defect key
+    // Create defect key - ensure consistent naming
     const defectKey = `${category.toLowerCase().replace(/\s+/g, '_')}_${defectCode}`;
     
     // Initialize item data if needed
@@ -577,12 +625,36 @@ function updateDefectCount(input) {
         trimsInspectionState.defectsData[itemNumber] = {};
     }
     
-    // Store the count
-    trimsInspectionState.defectsData[itemNumber][defectKey] = count;
+    // Clear the specific defect key first to avoid contamination
+    if (count === 0 || isNaN(count)) {
+        delete trimsInspectionState.defectsData[itemNumber][defectKey];
+    } else {
+        // Store only positive, valid counts
+        trimsInspectionState.defectsData[itemNumber][defectKey] = count;
+    }
+    
+    // Clean up empty item objects
+    if (Object.keys(trimsInspectionState.defectsData[itemNumber]).length === 0) {
+        delete trimsInspectionState.defectsData[itemNumber];
+    }
+    
     trimsInspectionState.isDirty = true;
     
-    // Recalculate totals
-    debounce(calculateTotals, 300)();
+    // Update the individual total display immediately
+    updateIndividualDefectTotal(itemNumber, defectCode, count);
+    
+    // Recalculate all totals
+    debounce(calculateTotals, 100)();
+    
+    console.log(`Updated defect ${defectKey} for item ${itemNumber}: ${count}`);
+}
+
+// Update individual defect total display
+function updateIndividualDefectTotal(itemNumber, defectCode, count) {
+    const totalElement = document.getElementById(`total-${itemNumber}-${defectCode}`);
+    if (totalElement) {
+        totalElement.textContent = count || 0;
+    }
 }
 
 // Update item meta data
@@ -614,26 +686,38 @@ function calculateTotals() {
         let totalMinorDefects = 0;
         let totalItems = 0;
         
+        // Debug: Log current defects data
+        console.log('Calculating totals from defects data:', trimsInspectionState.defectsData);
+        
         // Calculate for each item
         for (const itemNumber in trimsInspectionState.defectsData) {
             const itemDefects = trimsInspectionState.defectsData[itemNumber];
-            const itemData = trimsInspectionState.itemsData[itemNumber] || {};
             
             let itemCritical = 0;
             let itemMajor = 0;
             let itemMinor = 0;
             
-            // Calculate item totals
+            // Calculate item totals with better category detection
             for (const defectKey in itemDefects) {
                 const count = parseInt(itemDefects[defectKey]) || 0;
                 if (count > 0) {
-                    // Extract defect code from key
-                    const parts = defectKey.split('_');
-                    const defectCode = parts[parts.length - 1];
+                    // Determine severity from defect key prefix
+                    let severity = 'Minor'; // Default
                     
-                    // Get defect severity
-                    const severity = getDefectSeverity(defectCode);
+                    if (defectKey.startsWith('critical_')) {
+                        severity = 'Critical';
+                    } else if (defectKey.startsWith('major_')) {
+                        severity = 'Major';
+                    } else if (defectKey.startsWith('minor_')) {
+                        severity = 'Minor';
+                    } else {
+                        // Fallback: extract defect code and determine severity
+                        const parts = defectKey.split('_');
+                        const defectCode = parts[parts.length - 1];
+                        severity = getDefectSeverity(defectCode);
+                    }
                     
+                    // Add to appropriate category
                     if (severity === 'Critical') {
                         itemCritical += count;
                     } else if (severity === 'Major') {
@@ -641,6 +725,8 @@ function calculateTotals() {
                     } else {
                         itemMinor += count;
                     }
+                    
+                    console.log(`Item ${itemNumber}: ${defectKey} = ${count} (${severity})`);
                 }
             }
             
@@ -657,6 +743,8 @@ function calculateTotals() {
             totalMajorDefects += itemMajor;
             totalMinorDefects += itemMinor;
             totalItems++;
+            
+            console.log(`Item ${itemNumber} totals: Critical=${itemCritical}, Major=${itemMajor}, Minor=${itemMinor}`);
         }
         
         // Update final displays
@@ -668,7 +756,7 @@ function calculateTotals() {
         // Update final decision
         updateFinalDecision(totalCriticalDefects, totalMajorDefects, totalMinorDefects);
         
-        console.log('Trims inspection totals calculated successfully');
+        console.log(`Final totals: Critical=${totalCriticalDefects}, Major=${totalMajorDefects}, Minor=${totalMinorDefects}`);
         
     } catch (error) {
         console.error('Error calculating totals:', error);

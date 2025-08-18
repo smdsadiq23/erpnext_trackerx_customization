@@ -504,13 +504,19 @@ def submit_inspection(inspection_name):
         if not validation_result['valid']:
             frappe.throw(_("Cannot submit inspection: {0}").format(validation_result['reason']))
         
-        # Auto-determine final inspection status based on defects and checklist
+        # First set to Submitted status
+        inspection.inspection_status = "Submitted"
+        
+        # Then auto-determine final inspection result based on defects and checklist
         auto_result = determine_inspection_result(
             inspection.total_critical_defects or 0,
             inspection.total_major_defects or 0,
             inspection.total_minor_defects or 0,
             get_trims_checklist_data_for_determination(inspection)
         )
+        inspection.inspection_result = auto_result
+        
+        # Update status to final result
         inspection.inspection_status = auto_result
         
         inspection.save()
@@ -599,9 +605,12 @@ def is_valid_trims_status_transition(current_status, new_status):
     """Check if status transition is valid for trims inspection"""
     valid_transitions = {
         'Draft': ['In Progress', 'Hold'],
-        'In Progress': ['Hold', 'Completed'],
-        'Hold': ['In Progress', 'Completed'],
-        'Completed': []  # No transitions from completed
+        'In Progress': ['Hold', 'Submitted'],
+        'Hold': ['In Progress', 'Submitted'],
+        'Submitted': ['Accepted', 'Rejected', 'Conditional Accept'],
+        'Accepted': [],      # Terminal status
+        'Rejected': [],      # Terminal status  
+        'Conditional Accept': []  # Terminal status
     }
     
     return new_status in valid_transitions.get(current_status, [])
