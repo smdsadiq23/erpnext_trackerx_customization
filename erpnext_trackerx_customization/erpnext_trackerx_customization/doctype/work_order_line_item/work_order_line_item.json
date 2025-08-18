@@ -40,7 +40,7 @@
    "fieldname": "qty",
    "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Qty",
+   "label": "SO Qty",
    "read_only": 1
   },
   {
@@ -48,15 +48,14 @@
    "fieldname": "work_order_allocated_qty",
    "fieldtype": "Float",
    "in_list_view": 1,
-   "label": "Work Order Allocated Qty"
+   "label": "WO Qty"
   },
   {
    "allow_on_submit": 1,
-   "columns": 1,
    "fetch_from": "sales_order_item.custom_allocated_qty_for_work_order",
    "fieldname": "already_allocated_qty",
    "fieldtype": "Float",
-   "in_list_view": 1,
+   "hidden": 1,
    "label": "Already allocated qty",
    "read_only": 1
   },
@@ -98,7 +97,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-08-14 23:45:01.614010",
+ "modified": "2025-08-18 13:56:32.442604",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Work Order Line Item",
