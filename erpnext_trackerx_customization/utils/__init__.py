@@ -24,12 +24,12 @@ def get_material_types():
             return constants.get('item_master', [])
         else:
             # Fallback if constants file doesn't exist
-            return ["Style", "Fabrics", "Trims", "Accessories", "Machines", "Labels", "Packing Materials"]
+            return ["Finished Goods", "Fabrics", "Trims", "Accessories", "Machines", "Labels", "Packing Materials"]
             
     except Exception as e:
         frappe.log_error(f"Error reading material types from constants: {str(e)}")
         # Return fallback values
-        return ["Style", "Fabrics", "Trims", "Accessories", "Machines", "Labels", "Packing Materials"]
+        return ["Finished Goods", "Fabrics", "Trims", "Accessories", "Machines", "Labels", "Packing Materials"]
 
 
 def get_material_type_options():
