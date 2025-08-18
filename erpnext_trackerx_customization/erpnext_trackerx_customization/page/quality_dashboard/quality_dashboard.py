@@ -4,17 +4,26 @@ from frappe import _
 @frappe.whitelist()
 def get_context(context):
     """Get context for quality dashboard page"""
-    context.no_cache = 1
-    context.show_sidebar = True
+    if hasattr(context, 'no_cache'):
+        context.no_cache = 1
+    if hasattr(context, 'show_sidebar'):
+        context.show_sidebar = True
     
     # Get current user roles
     user_roles = frappe.get_roles(frappe.session.user)
     
-    context.is_quality_inspector = "Quality Inspector" in user_roles
-    context.is_quality_manager = "Quality Manager" in user_roles
-    context.is_system_user = "Administrator" in user_roles or "System Manager" in user_roles
+    if hasattr(context, 'is_quality_inspector'):
+        context.is_quality_inspector = "Quality Inspector" in user_roles
+    if hasattr(context, 'is_quality_manager'):
+        context.is_quality_manager = "Quality Manager" in user_roles
+    if hasattr(context, 'is_system_user'):
+        context.is_system_user = "Administrator" in user_roles or "System Manager" in user_roles
     
-    return context
+    return {
+        'is_quality_inspector': "Quality Inspector" in user_roles,
+        'is_quality_manager': "Quality Manager" in user_roles,
+        'is_system_user': "Administrator" in user_roles or "System Manager" in user_roles
+    }
 
 @frappe.whitelist()
 def get_pending_fabric_inspections():

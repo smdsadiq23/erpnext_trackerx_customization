@@ -349,12 +349,26 @@ window.test_fabric_inspection_redirect = function(doc_name) {
     open_fabric_inspection_ui(doc_name || 'FINSP-2025-00007', false);
 };
 
-// Add CSS for better visual feedback
-frappe.ready(function() {
-    if (frappe.get_route()[0] === 'List' && frappe.get_route()[1] === 'Fabric Inspection') {
-        add_fabric_inspection_list_styles();
-    }
+// Add CSS for better visual feedback - use proper event-based approach
+$(document).ready(function() {
+    checkAndAddFabricInspectionStyles();
+    
+    // Also check on page changes
+    $(document).on('page-change', checkAndAddFabricInspectionStyles);
 });
+
+function checkAndAddFabricInspectionStyles() {
+    try {
+        if (typeof frappe !== 'undefined' && frappe.get_route) {
+            const route = frappe.get_route();
+            if (route[0] === 'List' && route[1] === 'Fabric Inspection') {
+                add_fabric_inspection_list_styles();
+            }
+        }
+    } catch (error) {
+        console.log('Fabric inspection styles check skipped:', error.message);
+    }
+}
 
 function add_fabric_inspection_list_styles() {
     if (!document.getElementById('fabric-inspection-list-styles')) {

@@ -13,7 +13,7 @@ def execute():
         frappe.logger().info("Starting Quality System Migration...")
         create_quality_roles_if_missing()
         create_aql_data_if_missing()
-        create_quality_workspace()
+        # create_quality_workspace() - REMOVED: User will manage workspaces through UI
         frappe.logger().info("Quality System Migration completed successfully")
     except Exception as e:
         frappe.logger().error(f"Quality System Migration failed: {str(e)}")
