@@ -23,7 +23,7 @@ function create_pick_list(frm)
                 company: frm.doc.company,
                 purpose: 'Material Transfer for Manufacture',
                 custom_trims_order: frm.doc.name,
-                locations: frm.doc.table_trims_order_details.map(i => ({
+                locations: frm.doc.table_trims_order_details.filter(i => i.required_quantity > 0).map(i => ({
                     line_item_no: i.line_item_no,
                     custom_size: i.size,
                     //sales_order: i.item_type,
@@ -32,8 +32,9 @@ function create_pick_list(frm)
                     per_unit_quantity: i.per_unit_quantity,
                     line_item_no: i.wo_quantity,
                     wo_quantity: i.already_issued_quantity,
-                    qty: i.trims_order_quantity,
-                    required_quantity: i.required_quantity
+                    qty: i.required_quantity,
+                    required_quantity: i.required_quantity,
+                    custom_trims_order_qty: i.trims_order_quantity
                 })),
             }
         },
