@@ -55,7 +55,7 @@ def generate_item_code(doc):
     """
     master = doc.custom_select_master
     prefix_map = {
-        "Style": "FG",
+        "Finished Goods": "FG",
         "Fabrics": "FAB",
         "Trims": "TRM",
         "Accessories": "ACC",
