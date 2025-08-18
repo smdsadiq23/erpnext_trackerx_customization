@@ -12,8 +12,22 @@ frappe.ui.form.on('Trims Order', {
   
 });
 
+function genereate_key(so, size)
+{
+    return so + "___" + size;
+}
+
 function create_pick_list(frm)
 {
+
+
+    
+    const trims_order_qty_dict = {}
+
+    frm.doc.table_trims_order_summary.forEach(element => {
+       key = genereate_key(element.sales_order, element.size);
+       trims_order_qty_dict[key] = element.trims_order_quantity;
+    });
 
     frappe.call({
         method: 'frappe.client.insert',
@@ -26,7 +40,7 @@ function create_pick_list(frm)
                 locations: frm.doc.table_trims_order_details.filter(i => i.required_quantity > 0).map(i => ({
                     line_item_no: i.line_item_no,
                     custom_size: i.size,
-                    //sales_order: i.item_type,
+                    sales_order: i.sales_order,
                     item_code: i.item_code,
                     uom: i.uom,
                     per_unit_quantity: i.per_unit_quantity,
@@ -34,7 +48,7 @@ function create_pick_list(frm)
                     wo_quantity: i.already_issued_quantity,
                     qty: i.required_quantity,
                     required_quantity: i.required_quantity,
-                    custom_trims_order_qty: i.trims_order_quantity
+                    custom_trims_order_qty: trims_order_qty_dict[genereate_key(i.sales_order, i.size)] //i.trims_order_quantity
                 })),
             }
         },
