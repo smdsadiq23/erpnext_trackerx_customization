@@ -70,6 +70,7 @@ function populate_items_from_trims_order(frm) {
                         row.uom = item.uom;
                         row.item_name = item.item_name;
                         row.item_group = item.item_group;
+                        
                         //row.stock_qty = item.stock_qty;
                         
                         // Add custom fields if they exist
@@ -78,6 +79,7 @@ function populate_items_from_trims_order(frm) {
                         if (item.size) row.custom_size = item.size;
                         if (item.item_type) row.item_type = item.item_type;
                         if (item.required_quantity) row.required_quantity = item.required_quantity;
+                        if( item.trims_order_quantity ) row.custom_trims_order_qty= item.trims_order_quantity;
                     }
                 });
                 
