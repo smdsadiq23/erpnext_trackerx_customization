@@ -79,7 +79,7 @@ function populate_items_from_trims_order(frm) {
                         if (item.size) row.custom_size = item.size;
                         if (item.item_type) row.item_type = item.item_type;
                         if (item.required_quantity) row.required_quantity = item.required_quantity;
-                        if( item.trims_order_quantity ) row.custom_trims_order_qty= item.trims_order_quantity;
+                        if( item.trims_order_quantity ) row.custom_trims_order_qty = item.trims_order_quantity;
                     }
                 });
                 

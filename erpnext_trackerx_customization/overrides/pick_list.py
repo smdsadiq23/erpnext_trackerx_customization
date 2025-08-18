@@ -173,6 +173,9 @@ class CustomPickList(PickList):
             
             frappe.throw(error_msg, title=_("Insufficient Stock"))
 
+def generate_trims_unique_key(so, size):
+    return so + "___" + size
+
 # Method to be called from client side to populate items
 @frappe.whitelist()
 def get_trims_order_items(trims_order):
@@ -186,6 +189,12 @@ def get_trims_order_items(trims_order):
     frappe.log(f"get trimgs order items for {trims_order}")
 
     frappe.log(f"table_trims_order_details: {trims_order_doc.table_trims_order_details}")
+
+    trims_order_qty_dict = {}
+    for trims_order_summary_row in trims_order_doc.table_trims_order_summary:
+        key = generate_trims_unique_key(trims_order_summary_row.sales_order,trims_order_summary_row.size)
+        trims_order_qty_dict[key] = trims_order_summary_row.trims_order_quantity
+
     
     item_codes = [row.item_code for row in trims_order_doc.table_trims_order_details]
     unique_item_codes = list(set(item_codes))
@@ -217,7 +226,7 @@ def get_trims_order_items(trims_order):
                     'per_unit_quantity': detail.per_unit_quantity,
                     'wo_quantity': detail.wo_quantity,
                     'already_issued_quantity': detail.already_issued_quantity,
-                    'trims_order_quantity': detail.trims_order_quantity,
+                    'trims_order_quantity': trims_order_qty_dict[generate_trims_unique_key(detail.sales_order, detail.size)], # detail.trims_order_quantity,
                     'required_quantity': detail.required_quantity,
                 })
         # # Get available warehouses for the item
