@@ -34,7 +34,7 @@
    "fieldname": "material_type",
    "fieldtype": "Select",
    "label": "Material Type",
-   "options": "Style\nFabrics\nTrims\nAccessories\nMachines\nLabels\nPacking Materials",
+   "options": "Finished Goods\nFabrics\nTrims\nAccessories\nMachines\nLabels\nPacking Materials",
    "reqd": 1
   },
   {
