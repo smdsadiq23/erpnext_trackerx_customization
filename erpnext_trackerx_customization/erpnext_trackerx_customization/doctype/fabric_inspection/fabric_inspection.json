@@ -14,6 +14,9 @@
   "grn_reference",
   "supplier",
   "inspection_status",
+  "hold_reason",
+  "hold_timestamp",
+  "hold_by",
   "section_break_1",
   "item_code",
   "item_name",
@@ -35,6 +38,8 @@
   "fabric_rolls_tab",
   "section_break_defects_ui",
   "defects_data",
+  "section_break_checklist",
+  "fabric_checklist_items",
   "section_break_4",
   "inspection_summary",
   "total_defect_points",
@@ -42,7 +47,13 @@
   "column_break_4",
   "inspection_result",
   "remarks",
+  "manager_remarks",
+  "conditional_pass_reason",
+  "approved_by",
+  "approval_timestamp",
   "section_break_5",
+  "submitted_by",
+  "submitted_date",
   "amended_from"
  ],
  "fields": [
@@ -95,9 +106,32 @@
    "default": "Draft",
    "fieldname": "inspection_status",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Inspection Status",
-   "options": "Draft\nIn Progress\nCompleted\nApproved\nRejected",
+   "options": "Draft\nIn Progress\nHold\nAccepted\nRejected\nConditional Accept\nSubmitted",
    "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.inspection_status=='Hold'",
+   "fieldname": "hold_reason",
+   "fieldtype": "Long Text",
+   "label": "Hold Reason",
+   "mandatory_depends_on": "eval:doc.inspection_status=='Hold'"
+  },
+  {
+   "depends_on": "eval:doc.inspection_status=='Hold'",
+   "fieldname": "hold_timestamp",
+   "fieldtype": "Datetime",
+   "label": "Hold Timestamp",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.inspection_status=='Hold'",
+   "fieldname": "hold_by",
+   "fieldtype": "Link",
+   "label": "Hold By",
+   "options": "User",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_1",
@@ -229,6 +263,18 @@
    "hidden": 1
   },
   {
+   "fieldname": "section_break_checklist",
+   "fieldtype": "Section Break",
+   "label": "Physical Testing Results",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "fabric_checklist_items",
+   "fieldtype": "Table",
+   "label": "Testing Checklist",
+   "options": "Fabric Checklist Item"
+  },
+  {
    "fieldname": "section_break_4",
    "fieldtype": "Section Break",
    "label": "Inspection Results"
@@ -268,8 +314,51 @@
    "label": "Remarks"
   },
   {
+   "fieldname": "manager_remarks",
+   "fieldtype": "Long Text",
+   "label": "Quality Manager Remarks",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.inspection_result=='Conditional Accept'",
+   "fieldname": "conditional_pass_reason",
+   "fieldtype": "Long Text",
+   "label": "Conditional Pass Justification",
+   "mandatory_depends_on": "eval:doc.inspection_result=='Conditional Accept'"
+  },
+  {
+   "depends_on": "eval:doc.inspection_result=='Conditional Accept'",
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.inspection_result=='Conditional Accept'",
+   "fieldname": "approval_timestamp",
+   "fieldtype": "Datetime",
+   "label": "Approval Timestamp",
+   "read_only": 1
+  },
+  {
    "fieldname": "section_break_5",
    "fieldtype": "Section Break"
+  },
+  {
+   "depends_on": "eval:doc.inspection_status=='Submitted'",
+   "fieldname": "submitted_by",
+   "fieldtype": "Link",
+   "label": "Submitted By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.inspection_status=='Submitted'",
+   "fieldname": "submitted_date",
+   "fieldtype": "Datetime",
+   "label": "Submitted Date",
+   "read_only": 1
   },
   {
    "fieldname": "amended_from",
@@ -312,6 +401,17 @@
    "read": 1,
    "report": 1,
    "role": "Quality Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Quality Inspector",
    "share": 1,
    "write": 1
   },

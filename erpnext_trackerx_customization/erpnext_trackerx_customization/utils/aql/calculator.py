@@ -153,3 +153,23 @@ class AQLCalculator:
 			return "Rejected"
 		else:
 			return "Re-inspect"  # Edge case handling
+
+
+@frappe.whitelist()
+def calculate_aql_criteria(item_code, quantity):
+	"""
+	Whitelisted API method for AQL criteria calculation
+	
+	Args:
+		item_code (str): Item code
+		quantity (int): Received quantity
+		
+	Returns:
+		dict: AQL criteria with sample_size, acceptance_number, rejection_number, etc.
+	"""
+	try:
+		quantity = int(quantity)
+		return AQLCalculator.calculate_aql_criteria(item_code, quantity)
+	except Exception as e:
+		frappe.log_error(f"AQL calculation error for {item_code}: {str(e)}")
+		frappe.throw(f"AQL calculation failed: {str(e)}")

@@ -78,10 +78,10 @@
     "options": "Goods Receipt Note"
   },
   {
-    "fieldname": "mir",
-    "label": "Material Inspection Report",
+    "fieldname": "fabric_inspection",
+    "label": "Fabric Inspection",
     "fieldtype": "Link",
-    "options": "Material Inspection Report"
+    "options": "Fabric Inspection"
   },
   {
     "fieldname": "inspection_section",

@@ -8,7 +8,7 @@
  "field_order": [
   "item_code",
   "qty",
-  "mir",
+  "inspection_reference",
   "reason"
  ],
  "fields": [
@@ -28,10 +28,9 @@
     "in_list_view": 1
   },
   {
-    "fieldname": "mir",
-    "fieldtype": "Link",
-    "label": "Material Inspection Report",
-    "options": "Material Inspection Report"
+    "fieldname": "inspection_reference",
+    "fieldtype": "Data",
+    "label": "Inspection Reference"
   },
   {
     "fieldname": "reason",

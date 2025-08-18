@@ -435,7 +435,7 @@ function open_inspection_page(inspection_name) {
         // Hide loading progress
         frappe.hide_progress();
 
-        // Construct the URL for the four-point inspection page
+        // Construct the URL for the traditional four-point inspection page
         const inspection_url = `/fabric_inspection_ui?name=${encodeURIComponent(inspection_name)}`;
         
         // Open in new tab

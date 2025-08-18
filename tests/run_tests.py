@@ -43,6 +43,12 @@ def run_all_tests():
             "module": "test_grn_inspection_workflow", 
             "function": "run_all_grn_workflow_tests",
             "description": "Tests GRN to inspection workflow integration"
+        },
+        {
+            "name": "Fabric Inspection E2E Tests",
+            "module": "test_fabric_inspection_e2e",
+            "function": "run_all_e2e_tests", 
+            "description": "Complete E2E tests including Quality Manager workflows and Purchase Receipt creation"
         }
     ]
     

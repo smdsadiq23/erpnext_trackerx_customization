@@ -5,10 +5,12 @@
  "engine": "InnoDB",
  "field_order": [
   "roll_number",
+  "compact_roll_no",
   "shade_code", 
   "lot_number",
   "roll_length",
   "roll_width",
+  "gsm",
   "column_break_1",
   "sample_length",
   "inspection_method",
@@ -33,6 +35,12 @@
    "label": "Roll Number",
    "reqd": 1,
    "in_list_view": 1,
+   "permlevel": 0
+  },
+  {
+   "fieldname": "compact_roll_no",
+   "fieldtype": "Data",
+   "label": "Compact Roll No",
    "permlevel": 0
   },
   {
@@ -61,6 +69,13 @@
    "fieldname": "roll_width",
    "fieldtype": "Float",
    "label": "Roll Width (inches)",
+   "precision": "2",
+   "permlevel": 0
+  },
+  {
+   "fieldname": "gsm",
+   "fieldtype": "Float",
+   "label": "Actual GSM",
    "precision": "2",
    "permlevel": 0
   },
