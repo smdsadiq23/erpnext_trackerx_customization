@@ -1,0 +1,200 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{material_type}-{test_parameter}-{###}",
+ "creation": "2025-08-14 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "material_type",
+  "test_parameter",
+  "standard_requirement",
+  "column_break_1",
+  "test_method",
+  "unit_of_measurement",
+  "tolerance",
+  "section_break_1",
+  "is_active",
+  "is_mandatory",
+  "column_break_2",
+  "display_order",
+  "test_category",
+  "section_break_2",
+  "description",
+  "remarks",
+  "section_break_3",
+  "created_by",
+  "created_on",
+  "column_break_3",
+  "modified_by",
+  "modified_on"
+ ],
+ "fields": [
+  {
+   "fieldname": "material_type",
+   "fieldtype": "Select",
+   "label": "Material Type",
+   "options": "Finished Goods\nFabrics\nTrims\nAccessories\nMachines\nLabels\nPacking Materials",
+   "reqd": 1
+  },
+  {
+   "fieldname": "test_parameter",
+   "fieldtype": "Data",
+   "label": "Test Parameter",
+   "reqd": 1
+  },
+  {
+   "fieldname": "standard_requirement",
+   "fieldtype": "Data",
+   "label": "Standard Requirement",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "test_method",
+   "fieldtype": "Data",
+   "label": "Test Method"
+  },
+  {
+   "fieldname": "unit_of_measurement",
+   "fieldtype": "Data",
+   "label": "Unit of Measurement"
+  },
+  {
+   "fieldname": "tolerance",
+   "fieldtype": "Data",
+   "label": "Tolerance"
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break",
+   "label": "Configuration"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_mandatory",
+   "fieldtype": "Check",
+   "label": "Is Mandatory"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "display_order",
+   "fieldtype": "Int",
+   "label": "Display Order"
+  },
+  {
+   "fieldname": "test_category",
+   "fieldtype": "Select",
+   "label": "Test Category",
+   "options": "Physical Testing\nChemical Testing\nVisual Inspection\nDimensional Check\nColor Matching\nOther"
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break",
+   "label": "Additional Information"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "section_break_3",
+   "fieldtype": "Section Break",
+   "label": "Audit Information"
+  },
+  {
+   "fieldname": "created_by",
+   "fieldtype": "Link",
+   "label": "Created By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "created_on",
+   "fieldtype": "Datetime",
+   "label": "Created On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "modified_by",
+   "fieldtype": "Link",
+   "label": "Modified By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "modified_on",
+   "fieldtype": "Datetime",
+   "label": "Modified On",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-08-14 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Master Checklist",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Quality Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Material Manager",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

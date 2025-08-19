@@ -544,5 +544,18 @@
     "old_parent": "Raw Materials",
     "parent_item_group": "Raw Materials",
     "taxes": []
+  },
+   {
+    "docstatus": 0,
+    "doctype": "Item Group",
+    "image": null,
+    "is_group": 1,
+    "item_group_defaults": [],
+    "item_group_name": "Spare Parts",
+    "modified": "2025-07-17 19:20:15.776279",
+    "name": "Spare Parts",
+    "old_parent": "Raw Materials",
+    "parent_item_group": "Raw Materials",
+    "taxes": []
   }
 ]

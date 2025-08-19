@@ -1,0 +1,190 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:defect_code",
+ "creation": "2025-08-11 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "defect_code",
+  "defect_name",
+  "defect_description",
+  "column_break_1",
+  "inspection_type",
+  "material_type",
+  "defect_category",
+  "fault_group",
+  "section_break_1",
+  "defect_type",
+  "inspection_area",
+  "acceptable_limit",
+  "column_break_2",
+  "point_1_criteria",
+  "point_2_criteria",
+  "point_3_criteria",
+  "point_4_criteria",
+  "section_break_2",
+  "is_active",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "defect_code",
+   "fieldtype": "Data",
+   "label": "Defect Code",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "defect_name",
+   "fieldtype": "Data",
+   "label": "Defect Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "defect_description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "inspection_type",
+   "fieldtype": "Select",
+   "label": "Inspection Type",
+   "options": "Fabric Inspection\nTrims Inspection\nFinal Inspection",
+   "reqd": 1
+  },
+  {
+   "fieldname": "material_type",
+   "fieldtype": "Select",
+   "label": "Material Type",
+   "options": "Fabrics\nTrims\nAccessories\nMachine\nLabels\nPacking Materials",
+   "description": "Material type for filtering defects in inspections"
+  },
+  {
+   "fieldname": "defect_category",
+   "fieldtype": "Select",
+   "label": "Defect Category",
+   "options": "Yarn Defects\nWeaving Defects\nDyeing/Finishing Defects\nPrinting Defects\nPhysical Defects\nVisual Defects\nDimensional Defects\nFunctional Defects\nWorkmanship\nFabric\nTrim\nSize"
+  },
+  {
+   "fieldname": "fault_group",
+   "fieldtype": "Data",
+   "label": "Fault Group"
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break",
+   "label": "Defect Classification"
+  },
+  {
+   "fieldname": "defect_type",
+   "fieldtype": "Select",
+   "label": "Defect Type",
+   "options": "Critical\nMajor\nMinor",
+   "reqd": 1
+  },
+  {
+   "fieldname": "inspection_area",
+   "fieldtype": "Data",
+   "label": "Inspection Area"
+  },
+  {
+   "fieldname": "acceptable_limit",
+   "fieldtype": "Data",
+   "label": "Acceptable Limit"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "point_1_criteria",
+   "fieldtype": "Data",
+   "label": "1 Point Criteria",
+   "description": "Criteria for 1 point defect (Fabric Inspection)"
+  },
+  {
+   "fieldname": "point_2_criteria",
+   "fieldtype": "Data",
+   "label": "2 Points Criteria",
+   "description": "Criteria for 2 point defect (Fabric Inspection)"
+  },
+  {
+   "fieldname": "point_3_criteria",
+   "fieldtype": "Data",
+   "label": "3 Points Criteria",
+   "description": "Criteria for 3 point defect (Fabric Inspection)"
+  },
+  {
+   "fieldname": "point_4_criteria",
+   "fieldtype": "Data",
+   "label": "4 Points Criteria",
+   "description": "Criteria for 4 point defect (Fabric Inspection)"
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Text",
+   "label": "Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-08-11 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Defect Master",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Quality Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Material Manager",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

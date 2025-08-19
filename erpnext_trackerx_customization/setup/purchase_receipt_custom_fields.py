@@ -12,14 +12,6 @@ def execute():
         },
         {
             "dt": "Purchase Receipt",
-            "fieldname": "linked_mir",
-            "label": "Linked MIR",
-            "fieldtype": "Link",
-            "options": "Material Inspection Report",
-            "insert_after": "linked_grn",
-        },
-        {
-            "dt": "Purchase Receipt",
             "fieldname": "rejected_items_section",
             "label": "Rejected Items",
             "fieldtype": "Section Break",

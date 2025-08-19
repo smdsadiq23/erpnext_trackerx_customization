@@ -5,41 +5,105 @@ def validate(doc, method):
     calculate_total_qty(doc)
     validate_and_update_sales_order_items(doc)
 
+    #copy sales orders to sales order
+    if doc.custom_work_order_line_items:
+        if doc.custom_work_order_line_items[0].sales_order:
+            doc.sales_order = doc.custom_work_order_line_items[0].sales_order
+        
+
 def on_submit(doc, method):
     pass
+
+def on_trash(doc, method):
+    manage_work_order_delete(doc, method)
+
+
+def manage_work_order_delete(doc, method):
+    update_sales_order_pending_qty_by_work_order(doc)
+
+def update_sales_order_pending_qty_by_work_order(doc):
+    if not doc.custom_work_order_line_items:
+        return
+
+    for line in doc.custom_work_order_line_items:
+        if not line.sales_order or not line.sales_order_item:
+            continue
+
+        # Get existing allocated and pending qty from Sales Order Item
+        soi = frappe.db.get_value(
+            "Sales Order Item",
+            line.sales_order_item,
+            ["custom_allocated_qty_for_work_order", "custom_pending_qty_for_work_order"],
+            as_dict=True
+        )
+
+        if not soi:
+            continue
+
+        updated_allocated = flt(soi.custom_allocated_qty_for_work_order) - flt(line.work_order_allocated_qty)
+        updated_pending = flt(soi.custom_pending_qty_for_work_order) + flt(line.work_order_allocated_qty)
+
+        # Ensure we don't go below zero
+        updated_allocated = max(updated_allocated, 0)
+        updated_pending = max(updated_pending, 0)
+
+        frappe.db.set_value("Sales Order Item", line.sales_order_item, {
+            "custom_allocated_qty_for_work_order": updated_allocated,
+            "custom_pending_qty_for_work_order": updated_pending
+        })
+
+    sales_orders = list(set(d.sales_order for d in doc.custom_work_order_line_items if d.sales_order))
+
+    if not sales_orders:
+        return
+    
+    recalculate_work_orders_pending_qty(sales_orders)
+
 
 def calculate_total_qty(doc):
     doc.qty = sum(flt(item.work_order_allocated_qty) for item in doc.custom_work_order_line_items)
 
 def validate_and_update_sales_order_items(doc):
-    if not doc.sales_order:
+    if not doc.custom_work_order_line_items:
         return
 
-    # Fetch all saved Work Orders except current one
-    existing_wos = frappe.get_all("Work Order", filters={"sales_order": doc.sales_order, "name": ["!=", doc.name]}, fields=["name"])
-    
+    # Step 1: Extract sales orders from current doc's line items
+    sales_orders = list(set(d.sales_order for d in doc.custom_work_order_line_items if d.sales_order))
+
+    if not sales_orders:
+        return
+
+    # Step 2: Get all other Work Orders that reference these sales orders (excluding current one)
+    related_wo_names = frappe.get_all(
+        "Work Order Sales Orders",
+        filters={"sales_order": ["in", sales_orders]},
+        fields=["parent"]
+    )
+
+    other_wo_names = list(set([r.parent for r in related_wo_names if r.parent != doc.name]))
+
     allocations = {}
 
-    # Include current work order lines
+    # Step 3: Include current Work Order lines
     for line in doc.custom_work_order_line_items:
-        key = (line.line_item_no, line.size)
-        allocations.setdefault(key, 0)
-        allocations[key] += flt(line.work_order_allocated_qty)
+        key = (line.sales_order, line.sales_order_item, line.line_item_no, line.size)
+        allocations[key] = allocations.get(key, 0) + flt(line.work_order_allocated_qty)
 
-    # Include saved work orders
-    for wo in existing_wos:
-        wo_doc = frappe.get_doc("Work Order", wo.name)
+    # Step 4: Include allocations from other Work Orders
+    for wo_name in other_wo_names:
+        wo_doc = frappe.get_doc("Work Order", wo_name)
         for line in wo_doc.custom_work_order_line_items:
-            key = (line.line_item_no, line.size)
-            allocations.setdefault(key, 0)
-            allocations[key] += flt(line.work_order_allocated_qty)
+            key = (line.sales_order, line.sales_order_item, line.line_item_no, line.size)
+            allocations[key] = allocations.get(key, 0) + flt(line.work_order_allocated_qty)
 
-    # Update matching Sales Order Items
-    for (line_item_no, size), total_allocated in allocations.items():
+    # Step 5: Update Sales Order Items
+    sales_order_items_pending_qty = {}
+    for (sales_order, sales_order_item, line_item_no, size), total_allocated in allocations.items():
         soi = frappe.get_all(
             "Sales Order Item",
             filters={
-                "parent": doc.sales_order,
+                "parent": sales_order,
+                "name": sales_order_item,
                 "custom_lineitem": line_item_no,
                 "custom_size": size
             },
@@ -60,3 +124,51 @@ def validate_and_update_sales_order_items(doc):
 
         frappe.db.set_value("Sales Order Item", soi_name, "custom_pending_qty_for_work_order", pending_qty)
         frappe.db.set_value("Sales Order Item", soi_name, "custom_allocated_qty_for_work_order", total_allocated)
+
+        sales_order_items_pending_qty[soi_name] = pending_qty
+
+    
+    # Step 6: Update all work order line items including this workorder that uses the sales order line item, updatepending qty, qty and already allocated qty
+    recalculate_work_orders_pending_qty(sales_orders)
+
+    # Step 7 update for current work order line items since its not saved
+    for row in doc.custom_work_order_line_items:
+        row.pending_qty = sales_order_items_pending_qty[row.sales_order_item]
+        row.already_allocated_qty = row.qty - row.pending_qty
+
+
+
+
+def recalculate_work_orders_pending_qty(sales_orders):
+    if not sales_orders:
+        return
+
+    # Get all relevant Work Order Line Items and their linked sales_order_item
+    work_order_line_items = frappe.get_all(
+        "Work Order Line Item",
+        filters={"sales_order": ["in", sales_orders]},
+        fields=["name", "sales_order_item"]
+    )
+
+    for item in work_order_line_items:
+        if not item.sales_order_item:
+            continue
+        
+        # Fetch Sales Order Item document
+        soi = frappe.db.get_value(
+            "Sales Order Item",
+            item.sales_order_item,
+            ["custom_pending_qty_for_work_order", "custom_allocated_qty_for_work_order", "qty"],
+            as_dict=True
+        )
+
+        if not soi:
+            continue
+
+        frappe.db.set_value("Work Order Line Item", item.name, {
+            "pending_qty": flt(soi.custom_pending_qty_for_work_order),
+            "already_allocated_qty": flt(soi.custom_allocated_qty_for_work_order),
+            "qty": flt(soi.qty)  # if you want to sync qty too
+        })
+
+

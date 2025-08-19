@@ -96,6 +96,12 @@ frappe.ui.form.on('Item', {
         setFieldsToReadyOnly(frm);
 
 
+        setTimeout(function() {
+            setItemNameAndItemNumberProps(frm);
+        }, 500);
+        
+
+
     },
     custom_select_master: function(frm) {
         setTimeout(function() {
@@ -107,12 +113,30 @@ frappe.ui.form.on('Item', {
         // This function will be called on refresh and when custom_select_master changes
         setConstructionTypeFilter(frm);
         setItemGroupFilter(frm);
+        setItemNameAndItemNumberProps(frm);
+        
+        
     },
 
     
     
     
 });
+
+
+function setItemNameAndItemNumberProps(frm){
+    const read_only_value = 1;
+        if(frm.doc.custom_select_master != 'Finished Goods'){
+            read_only_value = 0;
+        }
+        else{
+            read_only_value = 1;
+        }
+        frm.set_df_property("item_name", "read_only", read_only_value);
+        frm.set_df_property("custom_item_number", "read_only", read_only_value);
+        frm.refresh_field("item_name");
+        frm.refresh_field("custom_item_number");
+}
 
 function setFieldsToReadyOnly(frm) {
     if (!frm.is_new()) {
@@ -122,7 +146,8 @@ function setFieldsToReadyOnly(frm) {
                 "item_name",
                 "custom_colour_name",
                 "custom_colour_code",
-                "custom_item_number"
+                "custom_item_number",
+                "custom_style_master"
             ]
 
             locked_fields.forEach(field => {
@@ -201,6 +226,7 @@ function insertDropdownInHeading(frm, options) {
         let val = $(this).val();
         if (val && val !== frm.doc.custom_select_master) {
             frm.set_value('custom_select_master', val);
+            frm.refresh_field('custom_select_master');
         }
     });
 }

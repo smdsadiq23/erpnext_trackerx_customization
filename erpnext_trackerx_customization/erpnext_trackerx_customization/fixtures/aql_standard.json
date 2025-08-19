@@ -1,0 +1,128 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "0.065",
+  "description": "0.065% defective - Extremely strict quality level. Used for critical safety components and high-precision items.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "0.10",
+  "description": "0.10% defective - Very strict quality level. Used for safety-critical and high-reliability components.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "0.15",
+  "description": "0.15% defective - Very strict quality level. Used for critical components with zero-defect requirements.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "0.25",
+  "description": "0.25% defective - Strict quality level. Used for high-quality consumer products and critical components.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "0.40",
+  "description": "0.40% defective - Strict quality level. Used for premium quality products and important components.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "0.65",
+  "description": "0.65% defective - Strict quality level. Used for high-quality products where defects are costly.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "1.0",
+  "description": "1.0% defective - Standard quality level. Most commonly used for general manufacturing and consumer products.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "1.5",
+  "description": "1.5% defective - Standard quality level. Used for routine manufacturing processes and standard products.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "2.5",
+  "description": "2.5% defective - Standard quality level. Commonly used for general manufacturing and moderate quality requirements.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "4.0",
+  "description": "4.0% defective - Lenient quality level. Used for non-critical components and cost-sensitive products.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "6.5",
+  "description": "6.5% defective - Lenient quality level. Used for basic products where some defects are acceptable.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "10",
+  "description": "10% defective - Very lenient quality level. Used for low-cost items and non-critical applications.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "15",
+  "description": "15% defective - Very lenient quality level. Used for rough materials and preliminary inspections.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "25",
+  "description": "25% defective - Extremely lenient quality level. Used for raw materials and very basic quality checks.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "40",
+  "description": "40% defective - Extremely lenient quality level. Used for preliminary sorting and very rough inspections.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "65",
+  "description": "65% defective - Maximum lenient quality level. Used for initial material screening and rough sorting.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "100",
+  "description": "100% defective - Absolute maximum quality level. Used for material classification and gross defect screening.",
+  "is_active": 1
+ },
+ {
+  "docstatus": 0,
+  "doctype": "AQL Standard",
+  "aql_value": "150",
+  "description": "150% defective - Ultimate quality level. Used only for special applications and initial material evaluation.",
+  "is_active": 1
+ }
+]

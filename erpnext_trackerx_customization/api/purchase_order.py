@@ -1,0 +1,118 @@
+# API for Purchase Order customization
+# File: erpnext_trackerx_customization/api/purchase_order.py
+
+import frappe
+from frappe import _
+from frappe.utils import flt
+
+@frappe.whitelist()
+def get_items_from_material_requirement_plan(material_requirement_plan, source_table="Items Summary", purchase_order=None):
+    """
+    Get items from Material Requirement Plan and its child tables
+    """
+    if not material_requirement_plan:
+        frappe.throw(_("Material Requirement Plan is required"))
+    
+    # Get the Material Requirement Plan document
+    mrp_doc = frappe.get_doc('Material Requirement Plan', material_requirement_plan)
+    
+    items = []
+    
+    if source_table == "Items":
+        # Get items from the main items table (Material Requirement Plan Item)
+        for item in mrp_doc.items:
+            items.append(prepare_po_item(item, mrp_doc))
+    
+    elif source_table == "Items Summary":
+        # Get items from items_summary table (Material Request Items Summary)
+        for item in mrp_doc.items_summary:
+            items.append(prepare_po_item_from_summary(item, mrp_doc))
+    
+    return items
+
+def prepare_po_item(mrp_item, mrp_doc):
+    """
+    Prepare Purchase Order item from Material Requirement Plan Item
+    """
+    # Get item details
+    item_doc = frappe.get_doc('Item', mrp_item.item_code)
+    
+    # Calculate rate - you may want to modify this logic
+    rate = get_item_rate(mrp_item.item_code, mrp_doc.company)
+    
+    po_item = {
+        'item_code': mrp_item.item_code,
+        'item_name': mrp_item.item_name,
+        'description': mrp_item.description,
+        'qty': mrp_item.qty,
+        'uom': mrp_item.uom,
+        'stock_uom': mrp_item.stock_uom,
+        'conversion_factor': mrp_item.conversion_factor or 1,
+        'rate': rate,
+        'amount': flt(mrp_item.qty) * flt(rate),
+        'schedule_date': mrp_item.schedule_date or frappe.utils.today(),
+        'warehouse': mrp_item.warehouse,
+        'material_requirement_plan': mrp_doc.name,
+        'material_requirement_plan_item': mrp_item.name,
+        'project': mrp_doc.project if hasattr(mrp_doc, 'project') else None
+    }
+    
+    return po_item
+
+def prepare_po_item_from_summary(summary_item, mrp_doc):
+    """
+    Prepare Purchase Order item from Material Request Items Summary
+    """
+    # Get item details
+    item_doc = frappe.get_doc('Item', summary_item.item_code)
+    
+    # Calculate rate
+    rate = get_item_rate(summary_item.item_code, mrp_doc.company)
+    
+    po_item = {
+        'item_code': summary_item.item_code,
+        'item_name': item_doc.item_name,
+        'description': summary_item.description if hasattr(summary_item, 'description') else item_doc.description,
+        'qty': summary_item.quantity,
+        'uom': summary_item.uom or item_doc.custom_uom or item_doc.stock_uom,
+        'stock_uom': item_doc.stock_uom,
+        'conversion_factor': 1,  # You may want to calculate this
+        'rate': rate,
+        'amount': flt(summary_item.quantity) * flt(rate),
+        'schedule_date': frappe.utils.today(),  # Set appropriate date
+        'warehouse': summary_item.warehouse if hasattr(summary_item, 'warehouse') else None,
+        'material_requirement_plan': mrp_doc.name,
+        'material_requirement_plan_summary_item': summary_item.name,
+        'project': mrp_doc.project if hasattr(mrp_doc, 'project') else None,
+        'required_by': summary_item.required_by if hasattr(summary_item, 'required_by') else None,
+    }
+    
+    return po_item
+
+def get_item_rate(item_code, company):
+    """
+    Get item rate from Item Price or Last Purchase Rate
+    """
+    # First try to get from Item Price
+    item_price = frappe.db.get_value('Item Price', {
+        'item_code': item_code,
+        'buying': 1,
+        'currency': frappe.get_cached_value('Company', company, 'default_currency')
+    }, 'price_list_rate')
+    
+    if item_price:
+        return item_price
+    
+    # If no item price, try to get last purchase rate
+    last_purchase_rate = frappe.db.get_value('Purchase Order Item', {
+        'item_code': item_code,
+        'docstatus': 1
+    }, 'rate', order_by='creation desc')
+    
+    if last_purchase_rate:
+        return last_purchase_rate
+    
+    # If nothing found, get valuation rate
+    valuation_rate = frappe.db.get_value('Item', item_code, 'valuation_rate')
+    
+    return valuation_rate or 0

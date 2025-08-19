@@ -1,0 +1,122 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{inspection_level}-{inspection_regime}-{lot_size_range}-{sample_code_letter}-{aql_value}",
+ "creation": "2025-08-10 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "inspection_level",
+  "inspection_regime", 
+  "lot_size_range",
+  "column_break_1",
+  "sample_code_letter",
+  "sample_size",
+  "section_break_1",
+  "aql_value",
+  "acceptance_number", 
+  "rejection_number",
+  "section_break_2",
+  "is_active"
+ ],
+ "fields": [
+  {
+   "fieldname": "inspection_level",
+   "fieldtype": "Link",
+   "label": "Inspection Level", 
+   "options": "AQL Level",
+   "reqd": 1
+  },
+  {
+   "fieldname": "inspection_regime",
+   "fieldtype": "Select",
+   "label": "Inspection Regime",
+   "options": "Normal\nTightened\nReduced",
+   "reqd": 1
+  },
+  {
+   "fieldname": "lot_size_range",
+   "fieldtype": "Data",
+   "label": "Lot Size Range",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sample_code_letter",
+   "fieldtype": "Select",
+   "label": "Sample Code Letter",
+   "options": "A\nB\nC\nD\nE\nF\nG\nH\nJ\nK\nL\nM\nN\nP\nQ\nR",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sample_size",
+   "fieldtype": "Int",
+   "label": "Sample Size",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break",
+   "label": "AQL Criteria"
+  },
+  {
+   "fieldname": "aql_value",
+   "fieldtype": "Link",
+   "label": "AQL Value",
+   "options": "AQL Standard",
+   "reqd": 1
+  },
+  {
+   "fieldname": "acceptance_number",
+   "fieldtype": "Int",
+   "label": "Acceptance Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "rejection_number",
+   "fieldtype": "Int",
+   "label": "Rejection Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-08-10 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "AQL Table",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

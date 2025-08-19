@@ -38,19 +38,37 @@ fixtures = [
     {
         "dt": "Custom Field",
         "filters": [
-            ["dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
-                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt"
-                          ]]
+            [
+                "dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
+                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item"
+                          ],
+            ],
+            [
+                "module", "=", "Erpnext Trackerx Customization"
+            ]
+
         ]
     },
     {
         "dt": "Property Setter",
         "filters": [
-            ["doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
-                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt"
-                            ]]
+            [
+                "doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
+                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item"
+                            ]
+            ],
+            [
+                "module", "=", "Erpnext Trackerx Customization"
+            ]
         ]
     }
+]
+
+# AQL data fixtures for import during migration
+aql_fixtures = [
+    "erpnext_trackerx_customization/fixtures/aql_level.json",
+    "erpnext_trackerx_customization/fixtures/aql_standard.json",
+    "erpnext_trackerx_customization/fixtures/aql_table.json"
 ]
 
 
@@ -58,16 +76,22 @@ after_migrate = [
     #"erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute",
     #"erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure"
    # "erpnext_trackerx_customization.setup.purchase_receipt_custom_fields.execute"
+    "erpnext_trackerx_customization.setup.migrate_quality_roles.execute",
+    "erpnext_trackerx_customization.setup.aql_data_setup.import_aql_fixtures",
     "erpnext_trackerx_customization.whitelabel.apply"
-]
+    ]
 
 # Includes in <head>
 # ------------------
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
-app_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
-# app_include_js = "/assets/erpnext_trackerx_customization/js/erpnext_trackerx_customization.js"
+app_include_js = [
+    "/assets/erpnext_trackerx_customization/js/fabric_inspection_routes.js",
+"/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
+]
+
+# Removed Vue.js applications - using traditional interface
 
 # include js, css files in header of web template
 # web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
@@ -90,9 +114,17 @@ doctype_js = {
     "BOM": "public/js/bom.js",
     "Material Request": "public/js/material_request.js",
     "Sales Order": "public/js/sales_order.js",
-    "Work Order": "public/js/work_order.js"
+    "Work Order": "public/js/work_order.js",
+    "Pick List": "public/js/pick_list.js",
+    "Trims Order": "public/js/trims_order.js",
+    "Purchase Order": "public/js/purchase_order.js"
 }
-# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
+# include js in doctype list views
+doctype_list_js = {
+    "Fabric Inspection": "public/js/fabric_inspection_list.js",
+    "Sales Order": "public/js/sales_order_list.js",
+    "Pick List": "public/js/pick_list_list.js"
+}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -184,7 +216,8 @@ permission_query_conditions = {
 # 	"ToDo": "custom_app.overrides.CustomToDo"
 # }
 override_doctype_class = {
-    "BOM": "erpnext_trackerx_customization.overrides.bom.CustomBOM"
+    "BOM": "erpnext_trackerx_customization.overrides.bom.CustomBOM",
+    "Pick List": "erpnext_trackerx_customization.overrides.pick_list.CustomPickList"
 }
 
 # Document Events
@@ -211,7 +244,8 @@ doc_events= {
     },
     "BOM": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.validate_bom",
-        "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.before_save_bom"
+        "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.before_save_bom",
+        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.on_submit"
     },
     "Sales Order": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.validate",
@@ -219,19 +253,11 @@ doc_events= {
     },
      "Work Order": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.validate",
-        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_submit"
+        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_submit",
+        "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_trash"
     },
     "Goods Receipt Note": {
-        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_submit_grn",
-        "on_cancel": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_cancel_grn",
-        "before_cancel": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.before_cancel_grn"
-
-    },
-    "Material Inspection Report": {
-        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_submit_mir"
-    },
-    "Roll Allocation Map": {
-        "validate": "erpnext_trackerx_customization.roll_allocation_map.roll_allocation_map.validate"
+        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.create_inspections_on_grn_submit"
     }
 }
 
@@ -267,6 +293,9 @@ doc_events= {
 # override_whitelisted_methods = {
 # 	"frappe.desk.doctype.event.event.get_events": "erpnext_trackerx_customization.event.get_events"
 # }
+override_whitelisted_methods = {
+    "erpnext.manufacturing.doctype.work_order.work_order.create_pick_list": "erpnext_trackerx_customization.api.custom_pick_list.custom_create_pick_list"
+}
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
@@ -325,6 +354,18 @@ doc_events= {
 # 	"erpnext_trackerx_customization.auth.validate"
 # ]
 
+# Login hooks
+# -----------
+# on_login = "erpnext_trackerx_customization.utils.quality_redirect.redirect_quality_users_on_login"
+
+# Role-based home page redirection
+# Removed - not working properly with custom pages, users can access Quality Dashboard through workspace
+# role_home_page = {
+#     "Quality Inspector": "/app/quality_dashboard",
+#     "Quality Manager": "/app/quality_dashboard"
+# }
+
+
 # Automatically update python controller files with type annotations for this app.
 # export_python_type_annotations = True
 
@@ -334,4 +375,3 @@ doc_events= {
 
 
 boot_session = "erpnext_trackerx_customization.utils.constants.boot_session"
-

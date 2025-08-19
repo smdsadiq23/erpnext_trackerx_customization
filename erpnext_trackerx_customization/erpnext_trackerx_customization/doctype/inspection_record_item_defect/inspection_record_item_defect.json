@@ -1,0 +1,54 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-08-07 20:21:01.942786",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "defect",
+  "observed_value",
+  "defect_points"
+ ],
+ "fields": [
+  {
+   "columns": 2,
+   "fieldname": "defect",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Defect",
+   "options": "Inspection Defect Master",
+   "reqd": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "observed_value",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Observed Value"
+  },
+  {
+   "columns": 1,
+   "default": "0.0",
+   "fieldname": "defect_points",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Defect Points",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-08-07 20:33:54.798894",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Inspection Record Item Defect",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

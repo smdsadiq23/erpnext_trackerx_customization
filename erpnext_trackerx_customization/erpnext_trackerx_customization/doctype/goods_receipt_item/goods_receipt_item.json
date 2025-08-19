@@ -31,6 +31,7 @@
  ],
  "fields": [
   {
+   "allow_in_quick_entry": 1,
    "columns": 1,
    "fieldname": "item_code",
    "fieldtype": "Link",
@@ -49,6 +50,7 @@
    "read_only": 1
   },
   {
+   "allow_in_quick_entry": 1,
    "columns": 1,
    "fieldname": "received_quantity",
    "fieldtype": "Int",
@@ -66,7 +68,6 @@
    "read_only": 1
   },
   {
-   "columns": 1,
    "fieldname": "accepted_warehouse",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -74,15 +75,19 @@
    "read_only": 1
   },
   {
+   "allow_in_quick_entry": 1,
    "columns": 1,
    "fieldname": "uom",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_preview": 1,
    "label": "UOM",
    "options": "UOM",
    "read_only": 1
   },
   {
+   "allow_in_quick_entry": 1,
+   "columns": 1,
    "fieldname": "color",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -98,7 +103,7 @@
    "read_only": 1
   },
   {
-   "depends_on": "eval: doc.material_type!=='Fabric'",
+   "depends_on": "eval: doc.material_type!=='Fabrics'",
    "fieldname": "size_spec",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -111,22 +116,31 @@
    "label": "Consumption"
   },
   {
-   "depends_on": "eval: doc.material_type !='Fabric'",
+   "allow_in_quick_entry": 1,
+   "columns": 1,
+   "depends_on": "eval: doc.material_type !='Fabrics'",
    "fieldname": "no_of_boxespacks",
    "fieldtype": "Float",
    "in_list_view": 1,
+   "in_preview": 1,
    "label": "No Of Boxes/Packs"
   },
   {
+   "allow_in_quick_entry": 1,
+   "columns": 1,
    "fieldname": "batch_no",
-   "fieldtype": "Float",
+   "fieldtype": "Data",
    "in_list_view": 1,
+   "in_preview": 1,
    "label": "Batch No"
   },
   {
+   "allow_in_quick_entry": 1,
+   "columns": 1,
    "fieldname": "lot_no",
-   "fieldtype": "Float",
+   "fieldtype": "Data",
    "in_list_view": 1,
+   "in_preview": 1,
    "label": "Lot No"
   },
   {
@@ -150,7 +164,9 @@
    "label": "Remarks"
   },
   {
-   "depends_on": "eval: doc.material_type=='Fabric'",
+   "allow_in_quick_entry": 1,
+   "columns": 1,
+   "depends_on": "eval: doc.material_type=='Fabrics'",
    "fieldname": "roll_no",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -158,31 +174,40 @@
    "reqd": 1
   },
   {
-   "depends_on": "eval: doc.material_type=='Fabric'",
+   "allow_in_quick_entry": 1,
+   "depends_on": "eval: doc.material_type=='Fabrics'",
    "fieldname": "fabric_length",
-   "fieldtype": "Float",
+   "fieldtype": "Int",
    "in_list_view": 1,
+   "in_preview": 1,
    "label": "Length",
    "mandatory_depends_on": "eval: doc.material_type=='Fabric'"
   },
   {
+   "allow_in_quick_entry": 1,
+   "columns": 1,
    "fieldname": "fabric_width",
-   "fieldtype": "Float",
+   "fieldtype": "Int",
    "in_list_view": 1,
+   "in_preview": 1,
    "label": "Width",
    "mandatory_depends_on": "eval: doc.material_type=='Fabric'"
   },
   {
+   "allow_in_quick_entry": 1,
    "fieldname": "composition",
    "fieldtype": "Data",
    "in_list_view": 1,
+   "in_preview": 1,
    "label": "Composition",
    "read_only": 1
   },
   {
+   "allow_in_quick_entry": 1,
    "fieldname": "shade",
    "fieldtype": "Data",
    "in_list_view": 1,
+   "in_preview": 1,
    "label": "Shade"
   }
  ],
@@ -190,7 +215,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-08-01 13:48:17.801304",
+ "modified": "2025-08-18 13:56:46.682018",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Item",

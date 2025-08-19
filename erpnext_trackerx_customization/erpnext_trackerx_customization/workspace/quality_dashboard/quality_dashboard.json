@@ -1,0 +1,50 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"-bFp4fn3mu\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Quality Dashboard</span>\",\"col\":12}},{\"id\":\"V292i7E80U\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inspection List\",\"col\":5}}]",
+ "creation": "2025-08-18 11:22:55.397949",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "quality",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Quality Dashboard",
+ "links": [],
+ "modified": "2025-08-18 11:53:35.523555",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Quality Dashboard",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [
+  {
+   "role": "Quality Inspector"
+  },
+  {
+   "role": "Quality Manager"
+  },
+  {
+   "role": "Administrator"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "sequence_id": 37.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Inspection List",
+   "link_to": "quality_dashboard",
+   "type": "Page"
+  }
+ ],
+ "title": "Quality Dashboard"
+}

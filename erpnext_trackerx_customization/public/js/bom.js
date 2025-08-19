@@ -50,6 +50,7 @@ frappe.ui.form.on('BOM', {
         frm.set_df_property('items', 'hidden', 1);
         modifyTheBOMItemTableFields(frm);
         fetch_allowed_item_groups(frm);
+        set_item_filter(frm);
     },
 
     custom_net_qty(frm, cdt, cdn) {
@@ -63,6 +64,7 @@ frappe.ui.form.on('BOM', {
     refresh(frm) {
         
         maybe_update_costing_size_options(frm);
+        set_item_filter(frm);
     },
 
     custom_costing_formula(frm) {
@@ -74,12 +76,25 @@ frappe.ui.form.on('BOM', {
         frm.trigger("calculate_total_cost");
     },
 
-
-
-    
-
-
 });
+
+
+function set_item_filter(frm) {
+    // Get Style item group details first
+   
+   // Set filter for item_code field in BOM Item child table
+   item_groups = ["Finished Goods"]
+    frm.set_query( 'item', function() {
+        return {
+            filters: {
+                'item_group': ['in', item_groups],
+                'disabled': 0
+            }
+        };
+    });                         
+}
+
+
 
 function generate_uuid() {
   return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
@@ -110,9 +125,9 @@ function merge_custom_items_into_items(frm)
     for (const { table, label } of source_tables) {
         const rows = frm.doc[table] || [];
 
-        if (rows.length < 1) {
-            frappe.throw(`Please add at least 1 row in <b>${label}</b> table.`);
-        }
+        // if ( frm.doc.docstatus == 1 && rows.length < 1) {
+        //     frappe.throw(`Please add at least 1 row in <b>${label}</b> table.`);
+        // }
 
         rows.forEach((row, idx) => {
             for (const field of required_fields) {
@@ -123,14 +138,14 @@ function merge_custom_items_into_items(frm)
             }
 
             if (label === 'Fabrics' && !row.custom_fg_link) {
-                frappe.throw(`Field <b>FG Link</b> is mandatory in row ${idx + 1} of <b>Fabrics</b> table.`);
+                frappe.throw(`Field <b>Panel Type</b> is mandatory in row ${idx + 1} of <b>Fabrics</b> table.`);
             }
 
             // Generate UUID if missing
             if (!row.custom_item_uuid) {
                 row.custom_item_uuid = generate_uuid();
             }
-
+            row.custom_item_type = label;
             desired_item_map[row.custom_item_uuid] = row;
         });
     }
@@ -139,6 +154,7 @@ function merge_custom_items_into_items(frm)
     (frm.doc.items || []).forEach(item => {
         if (item.custom_item_uuid) {
             existing_items_map[item.custom_item_uuid] = item;
+            copy(item, desired_item_map[item.custom_item_uuid], item.custom_item_type);
         }
     });
 
