@@ -1,0 +1,72 @@
+[
+ {
+  "description": "General Inspection Level I - Reduced discrimination. Use when less discrimination is needed or when testing is destructive.",
+  "docstatus": 0,
+  "doctype": "AQL Level",
+  "is_active": 1,
+  "level_code": "1",
+  "level_type": "General",
+  "modified": "2025-08-11 12:47:43.557854",
+  "name": "1"
+ },
+ {
+  "description": "General Inspection Level II - Standard discrimination. Most commonly used general inspection level for routine inspections.",
+  "docstatus": 0,
+  "doctype": "AQL Level",
+  "is_active": 1,
+  "level_code": "2",
+  "level_type": "General",
+  "modified": "2025-08-11 12:47:43.630209",
+  "name": "2"
+ },
+ {
+  "description": "General Inspection Level III - Increased discrimination. Use when greater discrimination is needed for critical items.",
+  "docstatus": 0,
+  "doctype": "AQL Level",
+  "is_active": 1,
+  "level_code": "3",
+  "level_type": "General",
+  "modified": "2025-08-11 12:47:43.636784",
+  "name": "3"
+ },
+ {
+  "description": "Special Inspection Level S-1 - Very small sample sizes. Used for expensive or destructive testing where minimum sample size is required.",
+  "docstatus": 0,
+  "doctype": "AQL Level",
+  "is_active": 1,
+  "level_code": "S1",
+  "level_type": "Special",
+  "modified": "2025-08-11 12:47:43.637969",
+  "name": "S1"
+ },
+ {
+  "description": "Special Inspection Level S-2 - Small sample sizes. Used for costly or destructive testing with slightly larger samples than S-1.",
+  "docstatus": 0,
+  "doctype": "AQL Level",
+  "is_active": 1,
+  "level_code": "S2",
+  "level_type": "Special",
+  "modified": "2025-08-11 12:47:43.639028",
+  "name": "S2"
+ },
+ {
+  "description": "Special Inspection Level S-3 - Medium sample sizes. Used for moderately destructive testing or when S-1/S-2 are insufficient.",
+  "docstatus": 0,
+  "doctype": "AQL Level",
+  "is_active": 1,
+  "level_code": "S3",
+  "level_type": "Special",
+  "modified": "2025-08-11 12:47:43.640059",
+  "name": "S3"
+ },
+ {
+  "description": "Special Inspection Level S-4 - Large sample sizes for special cases. Used when larger samples are needed for special destructive testing.",
+  "docstatus": 0,
+  "doctype": "AQL Level",
+  "is_active": 1,
+  "level_code": "S4",
+  "level_type": "Special",
+  "modified": "2025-08-11 12:47:43.641074",
+  "name": "S4"
+ }
+]

@@ -50,7 +50,11 @@ fixtures = [
                 "module", "=", "Erpnext Trackerx Customization"
             ]
         ]
-    },
+    }
+]
+
+# AQL data fixtures for import during migration
+aql_fixtures = [
     "erpnext_trackerx_customization/fixtures/aql_level.json",
     "erpnext_trackerx_customization/fixtures/aql_standard.json", 
     "erpnext_trackerx_customization/fixtures/aql_table.json"
@@ -61,7 +65,8 @@ after_migrate = [
     #"erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute", 
     #"erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure"
    # "erpnext_trackerx_customization.setup.purchase_receipt_custom_fields.execute"
-    "erpnext_trackerx_customization.setup.migrate_quality_roles.execute"
+    "erpnext_trackerx_customization.setup.migrate_quality_roles.execute",
+    "erpnext_trackerx_customization.setup.aql_data_setup.import_aql_fixtures"
     ]
 
 # Includes in <head>
