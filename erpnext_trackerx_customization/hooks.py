@@ -1,12 +1,23 @@
 app_name = "erpnext_trackerx_customization"
-app_title = "Erpnext Trackerx Customization"
+app_title = "CognitionX Logic"
 app_publisher = "CognitionX"
 app_description = "Customization for ERPNext"
 app_email = "support@cognitionx.tech"
 app_license = "mit"
 
+
+
 # Apps
 # ------------------
+app_logo_url = "/assets/erpnext_trackerx_customization/images/logo.svg"
+brand_html = "CognitionXLogic"
+website_context = {
+    "brand_html": "CognitionXLogic",
+    "favicon": "/assets/erpnext_trackerx_customization/images/logo.png",
+    "splash_image": "/assets/erpnext_trackerx_customization/images/logo.png"
+}
+
+
 
 required_apps = ["erpnext"]
 
@@ -36,7 +47,7 @@ fixtures = [
         "dt": "Property Setter",
         "filters": [
             ["doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
-                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt"    
+                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt"
                             ]]
         ]
     }
@@ -44,21 +55,24 @@ fixtures = [
 
 
 after_migrate = [
-    #"erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute", 
-    "erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure"
+    #"erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute",
+    #"erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure"
    # "erpnext_trackerx_customization.setup.purchase_receipt_custom_fields.execute"
-    ]
+    "erpnext_trackerx_customization.whitelabel.apply"
+]
 
 # Includes in <head>
 # ------------------
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
+app_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
 # app_include_js = "/assets/erpnext_trackerx_customization/js/erpnext_trackerx_customization.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
 # web_include_js = "/assets/erpnext_trackerx_customization/js/erpnext_trackerx_customization.js"
+web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
 
 # include custom scss in every website theme (without file extension ".scss")
 # website_theme_scss = "erpnext_trackerx_customization/public/scss/website"
@@ -72,8 +86,8 @@ after_migrate = [
 
 # include js in doctype views
 doctype_js = {
-    "Item" : "public/js/item.js", 
-    "BOM": "public/js/bom.js", 
+    "Item" : "public/js/item.js",
+    "BOM": "public/js/bom.js",
     "Material Request": "public/js/material_request.js",
     "Sales Order": "public/js/sales_order.js",
     "Work Order": "public/js/work_order.js"
@@ -211,7 +225,7 @@ doc_events= {
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_submit_grn",
         "on_cancel": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_cancel_grn",
         "before_cancel": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.before_cancel_grn"
-        
+
     },
     "Material Inspection Report": {
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.on_submit_mir"
@@ -320,3 +334,4 @@ doc_events= {
 
 
 boot_session = "erpnext_trackerx_customization.utils.constants.boot_session"
+
