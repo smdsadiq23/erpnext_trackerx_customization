@@ -1,12 +1,23 @@
 app_name = "erpnext_trackerx_customization"
-app_title = "Erpnext Trackerx Customization"
+app_title = "CognitionX Logic"
 app_publisher = "CognitionX"
 app_description = "Customization for ERPNext"
 app_email = "support@cognitionx.tech"
 app_license = "mit"
 
+
+
 # Apps
 # ------------------
+app_logo_url = "/assets/erpnext_trackerx_customization/images/logo.svg"
+brand_html = "CognitionXLogic"
+website_context = {
+    "brand_html": "CognitionXLogic",
+    "favicon": "/assets/erpnext_trackerx_customization/images/logo.png",
+    "splash_image": "/assets/erpnext_trackerx_customization/images/logo.png"
+}
+
+
 
 required_apps = ["erpnext"]
 
@@ -66,8 +77,9 @@ after_migrate = [
     #"erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure"
     "erpnext_trackerx_customization.setup.purchase_receipt_custom_fields.execute",
     "erpnext_trackerx_customization.setup.migrate_quality_roles.execute",
-    "erpnext_trackerx_customization.setup.aql_data_setup.import_aql_fixtures"
-    ]
+    "erpnext_trackerx_customization.setup.aql_data_setup.import_aql_fixtures",
+    "erpnext_trackerx_customization.whitelabel.apply"
+]
 
 # Includes in <head>
 # ------------------
@@ -79,10 +91,13 @@ app_include_js = [
 ]
 
 # Removed Vue.js applications - using traditional interface
+app_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
+# app_include_js = "/assets/erpnext_trackerx_customization/js/erpnext_trackerx_customization.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
 # web_include_js = "/assets/erpnext_trackerx_customization/js/erpnext_trackerx_customization.js"
+web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
 
 # include custom scss in every website theme (without file extension ".scss")
 # website_theme_scss = "erpnext_trackerx_customization/public/scss/website"
@@ -96,8 +111,8 @@ app_include_js = [
 
 # include js in doctype views
 doctype_js = {
-    "Item" : "public/js/item.js", 
-    "BOM": "public/js/bom.js", 
+    "Item" : "public/js/item.js",
+    "BOM": "public/js/bom.js",
     "Material Request": "public/js/material_request.js",
     "Sales Order": "public/js/sales_order.js",
     "Work Order": "public/js/work_order.js",
@@ -360,3 +375,4 @@ override_whitelisted_methods = {
 
 
 boot_session = "erpnext_trackerx_customization.utils.constants.boot_session"
+
