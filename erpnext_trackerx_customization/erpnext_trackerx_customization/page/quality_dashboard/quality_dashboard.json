@@ -1,0 +1,32 @@
+{
+ "content": null,
+ "creation": "2025-08-18 14:16:05.257998",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2025-08-19 11:22:13.054759",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "quality_dashboard",
+ "owner": "Administrator",
+ "page_name": "quality_dashboard",
+ "roles": [
+  {
+   "role": "Quality Inspector"
+  },
+  {
+   "role": "Quality Manager"
+  },
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Administrator"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Quality Dashboard"
+}
