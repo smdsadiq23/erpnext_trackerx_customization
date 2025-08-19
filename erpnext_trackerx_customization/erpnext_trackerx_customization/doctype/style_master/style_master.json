@@ -11,6 +11,8 @@
  ],
  "fields": [
   {
+   "allow_in_quick_entry": 1,
+   "columns": 1,
    "fieldname": "style_name",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -19,15 +21,18 @@
    "unique": 1
   },
   {
+   "allow_in_quick_entry": 1,
+   "columns": 1,
    "fieldname": "style_number",
    "fieldtype": "Data",
+   "in_standard_filter": 1,
    "label": "Style Number"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-19 14:42:42.403449",
+ "modified": "2025-08-19 11:31:39.895739",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Style Master",
@@ -47,6 +52,7 @@
    "write": 1
   }
  ],
+ "quick_entry": 1,
  "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
