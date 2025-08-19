@@ -1267,6 +1267,12 @@ async function checkInspectionStatusOnLoad() {
         } else if (currentStatus === 'Completed') {
             updateUIForCompletedStatus();
             showMessage('This inspection has been completed', 'info');
+        } else if (currentStatus === 'Accepted' || currentStatus === 'Rejected' || currentStatus === 'Conditional Accept') {
+            // Check if current user is Quality Inspector and if inspection should be read-only
+            if (inspectionData.is_readonly) {
+                updateUIForReadOnlyStatus();
+                showMessage(`This inspection is read-only. Only Quality Managers can modify inspections with status '${currentStatus}'`, 'info');
+            }
         }
         
     } catch (error) {
@@ -1391,6 +1397,44 @@ function updateUIForCompletedStatus() {
             `;
             completionNotice.innerHTML = '✅ This inspection has been completed';
             pageHeader.appendChild(completionNotice);
+        }
+    }
+}
+
+// Update UI for read-only status (Quality Inspectors cannot edit Accepted/Rejected/Conditional Accept)
+function updateUIForReadOnlyStatus() {
+    // Disable all editing inputs but keep values visible
+    const inputs = document.querySelectorAll('input:not([readonly]), select, textarea');
+    inputs.forEach(input => {
+        input.disabled = true;
+        input.style.opacity = '0.8'; // Make it visually apparent it's disabled
+    });
+    
+    // Hide action buttons that modify the inspection
+    const editingButtons = document.querySelectorAll('button[onclick*="save"], button[onclick*="submit"], button[onclick*="hold"]');
+    editingButtons.forEach(btn => {
+        btn.style.display = 'none';
+    });
+    
+    // Add read-only notice
+    const pageHeader = document.querySelector('.page-header');
+    if (pageHeader) {
+        let readOnlyNotice = pageHeader.querySelector('.readonly-notice');
+        if (!readOnlyNotice) {
+            readOnlyNotice = document.createElement('div');
+            readOnlyNotice.className = 'readonly-notice';
+            readOnlyNotice.style.cssText = `
+                background: #e3f2fd; 
+                color: #0d47a1; 
+                padding: 10px; 
+                margin-top: 10px; 
+                border-radius: 6px; 
+                border: 1px solid #90caf9;
+                text-align: center;
+                font-weight: 500;
+            `;
+            readOnlyNotice.innerHTML = '🔒 This inspection is read-only. Only Quality Managers can make modifications.';
+            pageHeader.appendChild(readOnlyNotice);
         }
     }
 }

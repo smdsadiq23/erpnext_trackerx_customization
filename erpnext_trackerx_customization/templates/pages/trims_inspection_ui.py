@@ -41,8 +41,13 @@ def get_context(context):
         is_quality_manager = "Quality Manager" in user_roles
         is_system_user = "Administrator" in user_roles or "System Manager" in user_roles
         
-        # Check write permissions (not submitted and has write permission)
-        can_write = inspection_doc.has_permission("write") and inspection_doc.get('inspection_status') != 'Submitted'
+        # Import read-only check function
+        from erpnext_trackerx_customization.api.trims_inspection import is_inspection_readonly_for_user
+        
+        # Check write permissions (has permission, not submitted, and not read-only for user)
+        can_write = (inspection_doc.has_permission("write") and 
+                    inspection_doc.get('inspection_status') != 'Submitted' and
+                    not is_inspection_readonly_for_user(inspection_doc))
         
         # Set context
         context.update({
@@ -53,6 +58,7 @@ def get_context(context):
             'defect_categories': defect_categories,
             'defects_data': defects_data,
             'can_write': can_write,
+            'is_readonly': is_inspection_readonly_for_user(inspection_doc),
             'is_quality_inspector': is_quality_inspector,
             'is_quality_manager': is_quality_manager,
             'is_system_user': is_system_user,

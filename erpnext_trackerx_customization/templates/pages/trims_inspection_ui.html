@@ -1002,6 +1002,7 @@ let inspectionData = {
     defects: {{ defects_data | tojson }},
     items: {{ inspection_items | tojson }},
     canWrite: {{ can_write | tojson }},
+    is_readonly: {{ is_readonly | tojson }},
     material_type: '{{ inspection_doc.material_type or "Trims" }}',
     total_pieces: {{ inspection_doc.total_pieces or 0 }}
 };
