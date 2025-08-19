@@ -112,6 +112,10 @@ def save_progress(inspection_name, defects_data=None, rolls_data=None, checklist
         if not inspection.has_permission("write"):
             frappe.throw(_("You do not have permission to modify this inspection"))
         
+        # Check if inspection is read-only for Quality Inspectors
+        if is_fabric_inspection_readonly_for_user(inspection):
+            frappe.throw(_("This inspection is read-only. Only Quality Managers can modify inspections with status '{0}'").format(inspection.inspection_status))
+        
         # Remove debug logging to avoid character length errors
         
         # Initialize data with safe defaults
@@ -724,3 +728,21 @@ def is_valid_status_transition(current_status, new_status):
     }
     
     return new_status in valid_transitions.get(current_status, [])
+
+
+def is_fabric_inspection_readonly_for_user(inspection):
+    """Check if fabric inspection should be read-only for the current user"""
+    # Get current user roles
+    user_roles = frappe.get_roles(frappe.session.user)
+    
+    # System users and Quality Managers can always edit
+    if any(role in user_roles for role in ["Administrator", "System Manager", "Quality Manager"]):
+        return False
+    
+    # For Quality Inspectors, check if status is in final states
+    if "Quality Inspector" in user_roles:
+        readonly_statuses = ["Accepted", "Rejected", "Conditional Accept", "Submitted"]
+        return inspection.inspection_status in readonly_statuses
+    
+    # For other users, follow standard permissions
+    return False

@@ -17,6 +17,17 @@ def get_context(context):
         
         inspection_doc = frappe.get_doc("Trims Inspection", inspection_name)
         
+        # Populate Purchase Order if missing
+        if not inspection_doc.get('purchase_order_reference') and inspection_doc.get('grn_reference'):
+            try:
+                purchase_order = get_purchase_order_from_grn(inspection_doc.grn_reference)
+                if purchase_order:
+                    inspection_doc.purchase_order_reference = purchase_order
+                    inspection_doc.save()
+                    frappe.db.commit()
+            except Exception as e:
+                frappe.log_error(f"Error updating purchase order reference: {str(e)}")
+        
         # Check permissions
         if not inspection_doc.has_permission("read"):
             frappe.throw(_("You do not have permission to view this inspection"))
@@ -68,6 +79,29 @@ def get_context(context):
     except Exception as e:
         frappe.log_error(f"Error in trims inspection UI context: {str(e)}")
         frappe.throw(_("Error loading inspection: {0}").format(str(e)))
+
+
+def get_purchase_order_from_grn(grn_name):
+    """Get Purchase Order reference from GRN"""
+    try:
+        grn_doc = frappe.get_doc("Goods Receipt Note", grn_name)
+        
+        # Check if GRN has direct purchase_order field
+        if hasattr(grn_doc, 'purchase_order') and grn_doc.purchase_order:
+            return grn_doc.purchase_order
+        elif hasattr(grn_doc, 'reference_docname') and grn_doc.reference_doctype == 'Purchase Order':
+            return grn_doc.reference_docname
+        else:
+            # Try to get from GRN items
+            for item in grn_doc.get('items', []):
+                if hasattr(item, 'purchase_order') and item.purchase_order:
+                    return item.purchase_order
+        
+        return None
+        
+    except Exception as e:
+        frappe.log_error(f"Error getting purchase order from GRN {grn_name}: {str(e)}")
+        return None
 
 
 def get_inspection_items(inspection_doc):

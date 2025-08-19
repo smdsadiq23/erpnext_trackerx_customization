@@ -11,6 +11,7 @@
   "inspector",
   "column_break_1",
   "grn_reference",
+  "purchase_order_reference",
   "supplier",
   "inspection_status",
   "hold_reason",
@@ -34,6 +35,8 @@
   "section_break_3",
   "inspection_checklist",
   "trims_defects",
+  "defects_data",
+  "items_data",
   "section_break_checklist",
   "trims_checklist_items",
   "section_break_4",
@@ -85,6 +88,13 @@
    "label": "GRN Reference",
    "options": "Goods Receipt Note",
    "reqd": 1
+  },
+  {
+   "fieldname": "purchase_order_reference",
+   "fieldtype": "Link",
+   "label": "Purchase Order",
+   "options": "Purchase Order",
+   "read_only": 1
   },
   {
    "fieldname": "supplier",
@@ -231,6 +241,18 @@
    "fieldtype": "Table",
    "label": "Defects Found",
    "options": "Trims Defect Item"
+  },
+  {
+   "fieldname": "defects_data",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Defects Data (JSON)"
+  },
+  {
+   "fieldname": "items_data",
+   "fieldtype": "Long Text", 
+   "hidden": 1,
+   "label": "Items Data (JSON)"
   },
   {
    "fieldname": "section_break_checklist",

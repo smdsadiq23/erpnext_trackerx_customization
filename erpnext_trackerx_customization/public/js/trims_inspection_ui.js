@@ -110,8 +110,8 @@ function populateDefectsUI() {
         for (const defectKey in itemDefects) {
             let countValue = itemDefects[defectKey];
             
-            // Skip if no value or invalid value
-            if (!countValue || countValue === 0 || countValue === "0") continue;
+            // Skip if no value or invalid value (but allow zero counts)
+            if (countValue === null || countValue === undefined || countValue === "") continue;
             
             // Clean the count value - handle malformed data
             if (typeof countValue === 'string') {
@@ -119,9 +119,9 @@ function populateDefectsUI() {
                 countValue = countValue.replace(/[^0-9]/g, '');
             }
             
-            // Convert to number and validate
+            // Convert to number and validate (allow zero counts for trims)
             const cleanCount = parseInt(countValue);
-            if (isNaN(cleanCount) || cleanCount <= 0) {
+            if (isNaN(cleanCount) || cleanCount < 0) {
                 console.warn(`Invalid count value for ${defectKey}: ${itemDefects[defectKey]} -> cleaned: ${countValue} -> parsed: ${cleanCount}`);
                 continue;
             }
@@ -625,11 +625,11 @@ function updateDefectCount(input) {
         trimsInspectionState.defectsData[itemNumber] = {};
     }
     
-    // Clear the specific defect key first to avoid contamination
-    if (count === 0 || isNaN(count)) {
+    // Store all valid counts including zero (important for trims count-based system)
+    if (isNaN(count) || count < 0) {
         delete trimsInspectionState.defectsData[itemNumber][defectKey];
     } else {
-        // Store only positive, valid counts
+        // Store all non-negative counts (including zero)
         trimsInspectionState.defectsData[itemNumber][defectKey] = count;
     }
     
@@ -645,6 +645,9 @@ function updateDefectCount(input) {
     
     // Recalculate all totals
     debounce(calculateTotals, 100)();
+    
+    // Check if submit button should be enabled after defect update
+    debounce(checkTrimsSubmitButtonStatus, 200)();
     
     console.log(`Updated defect ${defectKey} for item ${itemNumber}: ${count}`);
 }
@@ -946,6 +949,12 @@ async function holdTrimsInspection() {
         if (result.message) {
             showMessage('Trims inspection placed on hold', 'warning');
             
+            // Update the global inspection data to reflect new hold status and reason
+            inspectionData.inspection_status = 'Hold';
+            inspectionData.hold_reason = reason.trim();
+            inspectionData.hold_by = frappe.session.user;
+            inspectionData.hold_timestamp = new Date().toISOString();
+            
             // Update UI immediately to reflect hold status
             updateUIForHoldStatus();
             
@@ -954,9 +963,6 @@ async function holdTrimsInspection() {
             if (statusElement) {
                 statusElement.innerHTML = statusElement.innerHTML.replace(/Status: [^|]*/, 'Status: Hold');
             }
-            
-            // Update the global inspection data to reflect new status
-            inspectionData.status = 'Hold';
             
             console.log('Trims inspection successfully placed on hold - no page refresh needed');
         } else {
@@ -1000,6 +1006,12 @@ async function resumeTrimsInspection() {
         
         if (result.message && result.message.success) {
             showMessage('Inspection resumed successfully', 'success');
+            
+            // Update the global inspection data to reflect resumed status
+            inspectionData.inspection_status = 'In Progress';
+            inspectionData.hold_reason = '';
+            inspectionData.hold_by = '';
+            inspectionData.hold_timestamp = '';
             
             // Update UI immediately without page refresh
             updateUIForResumeStatus();
@@ -1102,16 +1114,23 @@ async function updateTrimsInspectionStatus(status) {
 
 // Check if trims inspection is complete and ready for submission
 function checkTrimsInspectionCompleteness() {
+    console.log('=== CHECKING TRIMS INSPECTION COMPLETENESS ===');
+    
     // Check if mandatory physical testing results are completed
     let mandatoryChecklistCompleted = true;
     let mandatoryFailures = 0;
+    let mandatoryItems = [];
     
     if (Array.isArray(trimsInspectionState.checklistData)) {
+        console.log('Checklist data:', trimsInspectionState.checklistData);
         for (const item of trimsInspectionState.checklistData) {
             if (item.is_mandatory) {
+                mandatoryItems.push(item.test_parameter);
                 const status = item.results?.status;
+                console.log(`Mandatory item "${item.test_parameter}": status = "${status}"`);
                 if (!status || status === '') {
                     mandatoryChecklistCompleted = false;
+                    console.log(`❌ Mandatory item "${item.test_parameter}" is incomplete`);
                     break;
                 }
                 if (status === 'Fail') {
@@ -1121,19 +1140,57 @@ function checkTrimsInspectionCompleteness() {
         }
     }
     
-    if (!mandatoryChecklistCompleted) {
-        return { ready: false, reason: 'Mandatory physical testing results are not completed' };
+    console.log(`Mandatory items found: ${mandatoryItems.length}`, mandatoryItems);
+    console.log(`Mandatory checklist completed: ${mandatoryChecklistCompleted}`);
+    
+    // If there are mandatory items but they're not completed, block submission
+    if (mandatoryItems.length > 0 && !mandatoryChecklistCompleted) {
+        const reason = 'Mandatory physical testing results are not completed';
+        console.log(`❌ RESULT: Not ready - ${reason}`);
+        return { ready: false, reason };
     }
     
     // Check if there are any defects or checklist data entered
-    const hasDefects = Object.keys(trimsInspectionState.defectsData).length > 0;
+    const hasDefects = Object.keys(trimsInspectionState.defectsData || {}).length > 0;
     const hasChecklistData = Array.isArray(trimsInspectionState.checklistData) && 
                             trimsInspectionState.checklistData.some(item => item.results?.status);
     
-    if (!hasDefects && !hasChecklistData) {
-        return { ready: false, reason: 'No inspection data has been recorded' };
+    console.log('Defects data:', trimsInspectionState.defectsData);
+    console.log(`Has defects: ${hasDefects}`);
+    console.log(`Has checklist data: ${hasChecklistData}`);
+    
+    // Enhanced defects check - look for actual meaningful defect data
+    let hasValidDefectData = false;
+    if (trimsInspectionState.defectsData && typeof trimsInspectionState.defectsData === 'object') {
+        for (const itemNumber in trimsInspectionState.defectsData) {
+            const itemDefects = trimsInspectionState.defectsData[itemNumber];
+            if (itemDefects && typeof itemDefects === 'object') {
+                for (const defectKey in itemDefects) {
+                    const count = itemDefects[defectKey];
+                    if (count !== null && count !== undefined && count !== '' && !isNaN(count)) {
+                        hasValidDefectData = true;
+                        console.log(`Found valid defect data: ${itemNumber}.${defectKey} = ${count}`);
+                        break;
+                    }
+                }
+                if (hasValidDefectData) break;
+            }
+        }
     }
     
+    console.log(`Has valid defect data: ${hasValidDefectData}`);
+    
+    // Accept if we have either valid defects OR valid checklist data OR both
+    const hasAnyData = hasValidDefectData || hasChecklistData;
+    console.log(`Has any inspection data: ${hasAnyData}`);
+    
+    if (!hasAnyData) {
+        const reason = 'No inspection data has been recorded';
+        console.log(`❌ RESULT: Not ready - ${reason}`);
+        return { ready: false, reason };
+    }
+    
+    console.log('✅ RESULT: Ready for submission');
     return { ready: true };
 }
 
@@ -1305,7 +1362,15 @@ function updateUIForHoldStatus() {
                 text-align: center;
                 font-weight: 500;
             `;
-            holdNotice.innerHTML = '⏸️ This inspection is on hold - Click Resume to continue working';
+            // Create hold message with reason
+            let holdMessage = '⏸️ This inspection is on hold - Click Resume to continue working';
+            if (inspectionData.hold_reason) {
+                holdMessage += `<br><strong>Reason:</strong> ${inspectionData.hold_reason}`;
+            }
+            if (inspectionData.hold_by) {
+                holdMessage += `<br><strong>Hold by:</strong> ${inspectionData.hold_by}`;
+            }
+            holdNotice.innerHTML = holdMessage;
             pageHeader.appendChild(holdNotice);
         }
     }
@@ -1321,9 +1386,10 @@ function updateUIForHoldStatus() {
     if (saveBtn) saveBtn.style.display = 'none';
     
     // Create and show Resume button if it doesn't exist
-    let resumeBtn = document.querySelector('button[onclick*="resumeTrimsInspection"]');
+    let resumeBtn = document.getElementById('resume-trims-inspection-btn');
     if (!resumeBtn) {
         resumeBtn = document.createElement('button');
+        resumeBtn.id = 'resume-trims-inspection-btn';
         resumeBtn.className = 'btn btn-info';
         resumeBtn.onclick = resumeTrimsInspection;
         resumeBtn.innerHTML = '▶️ Resume';
@@ -1353,7 +1419,7 @@ function updateUIForResumeStatus() {
     }
     
     // Hide Resume button and show normal action buttons
-    const resumeBtn = document.querySelector('button[onclick*="resumeTrimsInspection"]');
+    const resumeBtn = document.getElementById('resume-trims-inspection-btn');
     const holdBtn = document.querySelector('button[onclick*="holdTrimsInspection"]');
     const submitBtn = document.querySelector('button[onclick*="submitTrimsInspection"]');
     const saveBtn = document.querySelector('button[onclick*="saveTrimsInspection"]');
