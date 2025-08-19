@@ -79,7 +79,7 @@ after_migrate = [
     "erpnext_trackerx_customization.setup.migrate_quality_roles.execute",
     "erpnext_trackerx_customization.setup.aql_data_setup.import_aql_fixtures",
     "erpnext_trackerx_customization.whitelabel.apply"
-    ]
+]
 
 # Includes in <head>
 # ------------------
