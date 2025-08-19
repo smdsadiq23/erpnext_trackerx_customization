@@ -98,7 +98,7 @@
    "fieldname": "test_category",
    "fieldtype": "Select",
    "label": "Test Category",
-   "options": "Physical Testing\nChemical Testing\nVisual Inspection\nDimensional Check\nColor Matching\nOther"
+   "options": "Physical Properties\nDimensional Stability\nMechanical Properties\nColorfastness\nComfort & Performance\nChemical & Safety\nFlammability\nSpecial Tests\nColor Matching\nOther"
   },
   {
    "fieldname": "section_break_2",

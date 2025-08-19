@@ -17,6 +17,10 @@ def save_progress(inspection_name, defects_data=None, items_data=None, checklist
         if not inspection.has_permission("write"):
             frappe.throw(_("You do not have permission to modify this inspection"))
         
+        # Check if inspection is read-only for Quality Inspectors
+        if is_inspection_readonly_for_user(inspection):
+            frappe.throw(_("This inspection is read-only. Only Quality Managers can modify inspections with status '{0}'").format(inspection.inspection_status))
+        
         # Initialize data with safe defaults
         if defects_data is None:
             defects_data = {}
@@ -48,8 +52,25 @@ def save_progress(inspection_name, defects_data=None, items_data=None, checklist
         if defects_data:
             inspection.defects_data = json.dumps(defects_data)
         
-        # Skip complex calculations for now
-        # Focus on core requirement: save defects and update status
+        # Update checklist data
+        if checklist_data:
+            # Clear existing checklist items
+            inspection.set('trims_checklist_items', [])
+            
+            # Add new checklist items
+            for index, checklist_item in enumerate(checklist_data):
+                if checklist_item.get('results'):
+                    results = checklist_item['results']
+                    inspection.append('trims_checklist_items', {
+                        'test_parameter': checklist_item.get('test_parameter', ''),
+                        'standard_requirement': checklist_item.get('standard_requirement', ''),
+                        'actual_result': results.get('actual_result', ''),
+                        'status': results.get('status', ''),
+                        'remarks': results.get('remarks', ''),
+                        'test_method': checklist_item.get('test_method', ''),
+                        'test_category': checklist_item.get('test_category', ''),
+                        'is_mandatory': checklist_item.get('is_mandatory', 0)
+                    })
         
         # Update status to In Progress (key requirement)
         # Change status to In Progress if it's currently Draft or Hold
@@ -91,6 +112,10 @@ def save_inspection_data(inspection_name, defects_data, items_data, checklist_da
         # Check permissions
         if not inspection_doc.has_permission("write"):
             frappe.throw(_("You do not have permission to modify this inspection"))
+        
+        # Check if inspection is read-only for Quality Inspectors
+        if is_inspection_readonly_for_user(inspection_doc):
+            frappe.throw(_("This inspection is read-only. Only Quality Managers can modify inspections with status '{0}'").format(inspection_doc.inspection_status))
         
         # Parse JSON strings if needed
         if isinstance(defects_data, str):
@@ -323,10 +348,11 @@ def get_inspection_data(inspection_name):
             'defects': defects_data,
             'items': items_data,
             'checklist_items': checklist_items,
-            'canWrite': inspection_doc.has_permission("write"),
+            'canWrite': inspection_doc.has_permission("write") and not is_inspection_readonly_for_user(inspection_doc),
             'inspection_status': inspection_doc.inspection_status,
             'inspection_result': inspection_doc.inspection_result,
-            'quality_grade': inspection_doc.quality_grade
+            'quality_grade': inspection_doc.quality_grade,
+            'is_readonly': is_inspection_readonly_for_user(inspection_doc)
         }
         
     except Exception as e:
@@ -543,7 +569,19 @@ def update_status(inspection_name, status):
         if not inspection.has_permission("write"):
             frappe.throw(_("You do not have permission to modify this inspection"))
         
-        # Validate status transition
+        # Check if inspection is read-only for Quality Inspectors (except for certain status transitions)
+        if is_inspection_readonly_for_user(inspection) and not can_user_change_status(inspection, status):
+            frappe.throw(_("This inspection is read-only. Only Quality Managers can modify inspections with status '{0}'").format(inspection.inspection_status))
+        
+        # Check if trying to transition to the same status (this is allowed for saving progress)
+        if inspection.inspection_status == status:
+            return {
+                'success': True,
+                'message': f'Inspection is already in {status} status',
+                'status': status
+            }
+        
+        # Validate status transition for different statuses
         if not is_valid_trims_status_transition(inspection.inspection_status, status):
             frappe.throw(_("Invalid status transition from {0} to {1}").format(inspection.inspection_status, status))
         
@@ -576,13 +614,28 @@ def validate_trims_inspection_completeness(inspection):
         }
     
     # Check if any data has been entered
-    has_defects = bool(inspection.get('defects_data'))
+    has_defects = False
     has_checklist = bool(inspection.get('trims_checklist_items'))
+    
+    # Check if defects_data contains actual data (not just empty JSON)
+    if inspection.get('defects_data'):
+        try:
+            defects_data = json.loads(inspection.defects_data)
+            # Check if there's actual defect data (not just empty dict)
+            has_defects = bool(defects_data and any(
+                item_defects for item_defects in defects_data.values() 
+                if isinstance(item_defects, dict) and any(
+                    count for count in item_defects.values() 
+                    if count and int(count) > 0
+                )
+            ))
+        except:
+            has_defects = False
     
     if not has_defects and not has_checklist:
         return {
             'valid': False,
-            'reason': 'No inspection data has been recorded'
+            'reason': 'No inspection data has been recorded. Please save your defects and checklist data first using the "Save Progress" button before submitting.'
         }
     
     return {'valid': True}
@@ -614,3 +667,38 @@ def is_valid_trims_status_transition(current_status, new_status):
     }
     
     return new_status in valid_transitions.get(current_status, [])
+
+
+def is_inspection_readonly_for_user(inspection):
+    """Check if inspection should be read-only for the current user"""
+    # Get current user roles
+    user_roles = frappe.get_roles(frappe.session.user)
+    
+    # System users and Quality Managers can always edit
+    if any(role in user_roles for role in ["Administrator", "System Manager", "Quality Manager"]):
+        return False
+    
+    # For Quality Inspectors, check if status is in final states
+    if "Quality Inspector" in user_roles:
+        readonly_statuses = ["Accepted", "Rejected", "Conditional Accept"]
+        return inspection.inspection_status in readonly_statuses
+    
+    # For other users, follow standard permissions
+    return False
+
+
+def can_user_change_status(inspection, new_status):
+    """Check if the current user can change the inspection to the new status"""
+    user_roles = frappe.get_roles(frappe.session.user)
+    
+    # System users and Quality Managers can always change status
+    if any(role in user_roles for role in ["Administrator", "System Manager", "Quality Manager"]):
+        return True
+    
+    # Quality Inspectors cannot change status from final states
+    if "Quality Inspector" in user_roles:
+        readonly_statuses = ["Accepted", "Rejected", "Conditional Accept"]
+        if inspection.inspection_status in readonly_statuses:
+            return False
+    
+    return True
