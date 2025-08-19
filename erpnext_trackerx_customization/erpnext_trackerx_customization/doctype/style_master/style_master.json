@@ -2,7 +2,7 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "field:style_name",
- "creation": "2025-08-19 10:45:13.479747",
+ "creation": "2025-08-19 14:41:49.992011",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -32,7 +32,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-19 11:31:39.895739",
+ "modified": "2025-08-19 14:42:42.403449",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Style Master",
