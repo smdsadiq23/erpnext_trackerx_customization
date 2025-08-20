@@ -76,6 +76,12 @@ frappe.ui.form.on('BOM', {
         frm.trigger("calculate_total_cost");
     },
 
+    item: function(frm) {
+        if (frm.doc.item) {
+            copy_bom_operations_from_item(frm);
+        }
+    }
+
 });
 
 
@@ -323,5 +329,57 @@ function fetch_allowed_item_groups(frm) {
                 }
             }
         });
+    });
+}
+
+
+function copy_bom_operations_from_item(frm) {
+    // Clear existing BOM Operations in the BOM
+    frm.clear_table("operations");
+    
+    // Fetch the Item document to get BOM Operations
+    frappe.call({
+        method: 'frappe.client.get',
+        args: {
+            doctype: 'Item',
+            name: frm.doc.item
+        },
+        callback: function(r) {
+            if(r.message && r.message.custom_with_operations) {
+                frm.set_value("with_operations",r.message.custom_with_operations );
+                frm.refresh_field("with_operations");
+            }
+            if (r.message && r.message.custom_bom_operations) {
+                // Copy each BOM Operation row from Item to BOM
+                r.message.custom_bom_operations.forEach(function(operation) {
+                    let new_row = frm.add_child("operations");
+                    
+                    // Copy all fields from Item BOM Operation to BOM Operation
+                    // Exclude system fields like name, owner, creation, etc.
+                    Object.keys(operation).forEach(function(key) {
+                        if (!['name', 'owner', 'creation', 'modified', 'modified_by', 'docstatus', 'idx', 'parent', 'parentfield', 'parenttype'].includes(key)) {
+                            new_row[key] = operation[key];
+                        }
+                    });
+                });
+                
+                // Refresh the operations table to show the copied data
+                frm.refresh_field("operations");
+                
+                // Show success message
+                frappe.show_alert({
+                    message: __('BOM Operations copied from Item successfully'),
+                    indicator: 'green'
+                });
+            } else {
+                frappe.show_alert({
+                    message: __('No BOM Operations found in the selected Item'),
+                    indicator: 'orange'
+                });
+            }
+        },
+        error: function() {
+            frappe.msgprint(__('Error fetching Item data'));
+        }
     });
 }

@@ -1,13 +1,19 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:style_name",
+ "autoname": "field:style_number",
  "creation": "2025-08-19 14:41:49.992011",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "details_section",
   "style_name",
-  "style_number"
+  "style_number",
+  "brand",
+  "image",
+  "operations_section",
+  "with_operations",
+  "bom_operations"
  ],
  "fields": [
   {
@@ -16,7 +22,8 @@
    "fieldname": "style_name",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Style Name",
+   "in_standard_filter": 1,
+   "label": "Style Description",
    "reqd": 1,
    "unique": 1
   },
@@ -25,14 +32,55 @@
    "columns": 1,
    "fieldname": "style_number",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Style Number"
+   "label": "Style Number",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Details"
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "columns": 1,
+   "fieldname": "brand",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Brand",
+   "options": "Brand"
+  },
+  {
+   "fieldname": "operations_section",
+   "fieldtype": "Section Break",
+   "label": "Operations"
+  },
+  {
+   "depends_on": "eval: doc.with_operations",
+   "fieldname": "bom_operations",
+   "fieldtype": "Table",
+   "label": "Operations",
+   "options": "BOM Operation"
+  },
+  {
+   "fieldname": "image",
+   "fieldtype": "Attach Image",
+   "label": "Image"
+  },
+  {
+   "default": "0",
+   "fieldname": "with_operations",
+   "fieldtype": "Check",
+   "label": "With Operations"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-08-19 14:42:42.403449",
+ "modified": "2025-08-20 20:25:41.376132",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Style Master",
