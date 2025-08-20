@@ -1,6 +1,3 @@
-
-/* ========= My Product UI Theme ========= */
-
 /* Global font + background */
 body,
 .layout-main-section {
@@ -14,15 +11,25 @@ body,
   --brand-green: #96be37;
 }
 
-/* Navbar / Header */
+/* Navbar / Header - FIXED */
 .navbar {
   background: var(--brand-green) !important;
   border-bottom: 2px solid #82a52f;
 }
-.navbar .navbar-brand img,
-.navbar .navbar-brand {
-  filter: brightness(0) invert(1); /* make logo/text white */
+
+/* FIXED: Removed problematic filter that was causing white square */
+.navbar .navbar-brand img {
+  max-height: 40px;
+  width: auto;
+  display: block;
+  /* No filters applied to preserve original logo appearance */
 }
+
+/* Only apply white color to text elements, not images */
+.navbar .navbar-brand {
+  color: #ffffff !important;
+}
+
 .navbar .navbar-nav > li > a {
   color: #ffffff !important;
 }
@@ -118,13 +125,13 @@ body,
   display: none; /* hide "Powered by Frappe/ERPNext" */
 }
 
-
+/* Checkbox styling */
 input[type="checkbox"]:checked {
-    accent-color: #5b8300 /* Modern way to change checkbox color */
+  accent-color: #5b8300; /* Modern way to change checkbox color */
 }
 
-    /* Example: If accent-color doesn't work, you might need to target the background or border */
-.frappe-checkbox-class:checked { /* Replace .frappe-checkbox-class with the actual class */
-    background-color: #5b8300;
-    border-color: #5b8300
+/* Fallback checkbox styling */
+.frappe-checkbox-class:checked {
+  background-color: #5b8300;
+  border-color: #5b8300;
 }
