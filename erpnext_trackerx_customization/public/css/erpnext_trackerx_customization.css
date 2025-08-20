@@ -117,3 +117,14 @@ body,
 .footer-powered {
   display: none; /* hide "Powered by Frappe/ERPNext" */
 }
+
+
+input[type="checkbox"]:checked {
+    accent-color: #5b8300 /* Modern way to change checkbox color */
+}
+
+    /* Example: If accent-color doesn't work, you might need to target the background or border */
+.frappe-checkbox-class:checked { /* Replace .frappe-checkbox-class with the actual class */
+    background-color: #5b8300;
+    border-color: #5b8300
+}
