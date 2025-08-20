@@ -108,37 +108,11 @@ function setup_tree_view(frm) {
                 gap: 8px;
                 flex-shrink: 0;
             }
-            .summary-info {
-                background: rgba(255, 255, 255, 0.15);
-                padding: 12px 16px;
-                border-radius: 6px;
-                display: flex;
-                gap: 20px;
-                align-items: center;
-            }
 
-            .summary-field {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-
-            .summary-field label {
-                font-weight: 600;
-                white-space: nowrap;
-                margin: 0;
-                font-size: 13px;
-                color: white;
-            }
-
-            .summary-field .form-control {
-                width: 80px;
-                font-size: 13px;
-                font-weight: 600;
-                text-align: center;
-                background-color: rgba(255, 255, 255, 0.9);
-                color: #2d3748;
-                border: none;
+            header-field .form-control[readonly] {
+                background-color: #436e89ff;
+                color: #4a5568;
+                border-color: #e2e8f0;
             }
 
             .size-item {
@@ -488,21 +462,38 @@ function render_tree_view(frm) {
                         <input type="datetime-local" class="form-control ex-fty-date-input" style="width: 200px;" 
                                value="${ex_fty_date_val}" data-item-index="${item_index}">
                     </div>
-                    
-                    <div class="summary-info">
-                        <div class="summary-field">
-                            <label>Total Qty:</label>
-                            <input type="text" class="form-control total-qty-display" value="${summary.total_qty}" readonly>
-                        </div>
-                        <div class="summary-field">
-                            <label>Sizes:</label>
-                            <input type="text" class="form-control total-rows-display" value="${summary.total_rows}" readonly>
-                        </div>
-                        <div class="summary-field">
-                            <label>Order Qty:</label>
-                            <input type="text" class="form-control total-order-qty-display" value="${summary.total_order_qty}" readonly>
-                        </div>
+
+                    <div class="header-field">
+                        <label>Total Qty:</label>
+                        <input type="text" class="form-control total-qty-display" style="width: 100px;" 
+                               value="${summary.total_qty}" data-item-index="${item_index}" readonly>
                     </div>
+
+                    <div class="header-field">
+                        <label>Sizes:</label>
+                        <input type="text" class="form-control total-rows-display" style="width: 100px;" 
+                               value="${summary.total_rows}" data-item-index="${item_index}" readonly>
+                    </div>
+
+                    <div class="header-field">
+                        <label>Order Qty:</label>
+                        <input type="text" class="form-control total-order-qty-display" style="width: 100px;" 
+                               value="${summary.total_order_qty}" data-item-index="${item_index}" readonly>
+                    </div>
+
+                    <div class="header-field">
+                        <label>UOM:</label>
+                        <input type="text" class="form-control uom-display" style="width: 100px;" 
+                               value="${item.uom}" data-item-index="${item_index}" readonly>
+                    </div>
+
+                    <div class="header-field">
+                        <label>Conversion factor:</label>
+                        <input type="text" class="form-control conversion-factor-display" style="width: 100px;" 
+                               value="${item.conversion_factor}" data-item-index="${item_index}" readonly>
+                    </div>
+                    
+                   
                     
                     <div class="header-controls">
                         <button class="btn-icon btn-add add-size-btn" data-item-index="${item_index}" title="Add Size">
