@@ -100,6 +100,17 @@ body {
     font-size: 18px;
 }
 
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.section-header .section-title {
+    margin: 0;
+}
+
 .roll-section { 
     border: 1px solid #dee2e6; 
     border-radius: 12px; 
@@ -728,23 +739,7 @@ body {
             <textarea id="manager-comment" placeholder="Enter your comment (required for conditional pass)..." 
                       style="flex: 1; min-width: 300px; padding: 12px; border: none; border-radius: 6px; 
                              font-size: 14px; font-family: inherit; resize: vertical; min-height: 60px;"></textarea>
-            <div style="display: flex; gap: 8px;">
-                {% if inspection_doc.inspection_status == 'Rejected' %}
-                <button class="btn btn-warning" onclick="managerConditionalPassWithPurchaseReceipt()" style="background: #f39c12; border-color: #f39c12; font-weight: 600;">
-                    ⚠️ Conditional Accept & Create Purchase Receipt
-                </button>
-                {% else %}
-                <button class="btn btn-success" onclick="managerPassInspection()" style="background: #27ae60; border-color: #27ae60; font-weight: 600;">
-                    ✅ Pass
-                </button>
-                <button class="btn btn-warning" onclick="managerConditionalPass()" style="background: #f39c12; border-color: #f39c12; font-weight: 600;">
-                    ⚠️ Conditional Accept
-                </button>
-                <button class="btn btn-danger" onclick="managerFailInspection()" style="background: #e74c3c; border-color: #e74c3c; font-weight: 600;">
-                    ❌ Fail
-                </button>
-                {% endif %}
-            </div>
+            <!-- Pass and Fail buttons removed as requested by user -->
         </div>
         <div style="margin-top: 12px; font-size: 13px; color: rgba(255, 255, 255, 0.8);">
             <strong>Note:</strong> Conditional accept requires a mandatory comment explaining the override reason.
@@ -754,43 +749,32 @@ body {
 
     <!-- AQL Configuration -->
     <div class="card">
-        <h2 class="section-title">AQL Configuration</h2>
+        <div class="section-header">
+            <h2 class="section-title">AQL Configuration</h2>
+            <button type="button" class="btn btn-primary btn-sm" onclick="openAQLConfigDialog()" title="Update AQL Configuration">
+                <i class="fa fa-cog"></i> Update Config
+            </button>
+        </div>
         <div class="grid-3">
             <div class="form-row">
                 <label>Inspection Type:</label>
-                <select class="form-control" id="inspection-type" onchange="updateAQLConfiguration()">
+                <select class="form-control" id="inspection-type" onchange="onInspectionTypeChange()">
                     <option value="AQL Based" {{ 'selected' if inspection_doc.inspection_type == 'AQL Based' else '' }}>AQL Based</option>
                     <option value="100% Inspection" {{ 'selected' if inspection_doc.inspection_type == '100% Inspection' else '' }}>100% Inspection</option>
+                    <option value="Custom Sampling" {{ 'selected' if inspection_doc.inspection_type == 'Custom Sampling' else '' }}>Custom Sampling</option>
                 </select>
             </div>
             <div class="form-row">
                 <label>AQL Level:</label>
                 <select class="form-control" id="aql-level" onchange="updateAQLConfiguration()">
-                    <option value="I" {{ 'selected' if inspection_doc.aql_level == 'I' else '' }}>I</option>
-                    <option value="II" {{ 'selected' if inspection_doc.aql_level == 'II' else '' }}>II</option>
-                    <option value="III" {{ 'selected' if inspection_doc.aql_level == 'III' else '' }}>III</option>
-                    <option value="S-1" {{ 'selected' if inspection_doc.aql_level == 'S-1' else '' }}>S-1</option>
-                    <option value="S-2" {{ 'selected' if inspection_doc.aql_level == 'S-2' else '' }}>S-2</option>
-                    <option value="S-3" {{ 'selected' if inspection_doc.aql_level == 'S-3' else '' }}>S-3</option>
-                    <option value="S-4" {{ 'selected' if inspection_doc.aql_level == 'S-4' else '' }}>S-4</option>
+                    <option value="">Loading AQL levels...</option>
                 </select>
             </div>
             <div class="form-row">
                 <label>AQL Value:</label>
                 <select class="form-control" id="aql-value" onchange="updateAQLConfiguration()">
-                    <option value="0.4" {{ 'selected' if inspection_doc.aql_value == '0.4' else '' }}>0.4</option>
-                    <option value="0.65" {{ 'selected' if inspection_doc.aql_value == '0.65' else '' }}>0.65</option>
-                    <option value="1.0" {{ 'selected' if inspection_doc.aql_value == '1.0' else '' }}>1.0</option>
-                    <option value="1.5" {{ 'selected' if inspection_doc.aql_value == '1.5' else '' }}>1.5</option>
-                    <option value="2.5" {{ 'selected' if inspection_doc.aql_value == '2.5' else '' }}>2.5</option>
-                    <option value="4.0" {{ 'selected' if inspection_doc.aql_value == '4.0' else '' }}>4.0</option>
-                    <option value="6.5" {{ 'selected' if inspection_doc.aql_value == '6.5' else '' }}>6.5</option>
-                    <option value="10.0" {{ 'selected' if inspection_doc.aql_value == '10.0' else '' }}>10.0</option>
+                    <option value="">Loading AQL values...</option>
                 </select>
-            </div>
-            <div class="form-row">
-                <label>Sample Size (%):</label>
-                <input type="text" class="form-control" id="sample-size-display" value="{{ inspection_doc.required_sample_size or 0 }}%" readonly>
             </div>
             <div class="form-row">
                 <label>Sample Rolls:</label>
@@ -806,14 +790,23 @@ body {
             </div>
         </div>
         <div class="formula-note" id="aql-summary">
-            <strong>AQL Configuration:</strong> <span id="aql-config-text">{{ inspection_doc.aql_level or 'II' }} level with {{ inspection_doc.aql_value or '2.5' }}% defect tolerance</span><br>
+            <strong>AQL Configuration:</strong> <span id="aql-config-text">Level {{ inspection_doc.aql_level or '2' }} with {{ inspection_doc.aql_value or '2.5' }}% defect tolerance</span><br>
             <strong>Sampling:</strong> <span id="sampling-text">{{ inspection_doc.required_sample_rolls or 0 }} rolls out of {{ inspection_doc.total_rolls or 0 }} total rolls</span><br>
             <strong>Selected for Inspection:</strong> <span id="selected-rolls-text">
-            {% if fabric_rolls %}
-            {{ fabric_rolls|length }} rolls - {% for roll in fabric_rolls %}{{ roll.roll_number }}{% if not loop.last %}, {% endif %}{% endfor %}
-            {% else %}
-            No rolls selected
-            {% endif %}
+                <span id="selected-roll-count">
+                {% if fabric_rolls %}
+                {{ fabric_rolls|length }}
+                {% else %}
+                0
+                {% endif %}
+                </span> rolls - 
+                <span id="selected-roll-details">
+                {% if fabric_rolls %}
+                {% for roll in fabric_rolls %}{{ roll.roll_number }} ({{ roll.roll_length or 0 }}m){% if not loop.last %}, {% endif %}{% endfor %}
+                {% else %}
+                No rolls selected
+                {% endif %}
+                </span>
             </span>
         </div>
     </div>
@@ -837,6 +830,10 @@ body {
             <div class="form-row">
                 <label>GRN Reference:</label>
                 <input type="text" class="form-control" value="{{ inspection_doc.grn_reference or '' }}" readonly>
+            </div>
+            <div class="form-row">
+                <label>Purchase Order:</label>
+                <input type="text" class="form-control" value="{{ inspection_doc.purchase_order_reference or '' }}" readonly>
             </div>
             <div class="form-row">
                 <label>Total Quantity:</label>
@@ -914,10 +911,11 @@ body {
                             <div class="form-row">
                                 <label>Inspected Length (m):</label>
                                 <input type="number" step="0.1" class="form-control" 
-                                       value="{{ roll.roll_length or '' }}"
-                                       data-field="roll_length" 
+                                       value="{{ roll.inspected_length or roll.roll_length or '' }}"
+                                       data-field="inspected_length" 
                                        data-roll="{{ roll.roll_number }}"
-                                       onchange="updateRollMeta(this)">
+                                       onchange="updateRollMeta(this)"
+                                       id="inspected-length-{{ roll.roll_number }}">
                             </div>
                         </div>
                     </div>
@@ -1070,7 +1068,15 @@ let inspectionData = {
     defects: {{ defects_data | tojson }},
     rolls: {{ fabric_rolls | tojson }},
     canWrite: {{ can_write | tojson }},
-    material_type: '{{ inspection_doc.material_type or "Fabrics" }}'
+    material_type: '{{ inspection_doc.material_type or "Fabrics" }}',
+    inspection_type: '{{ inspection_doc.inspection_type or "" }}',
+    aql_level: '{{ inspection_doc.aql_level or "" }}',
+    aql_value: '{{ inspection_doc.aql_value or "" }}',
+    inspection_regime: '{{ inspection_doc.inspection_regime or "" }}',
+    total_quantity: {{ inspection_doc.total_quantity or 0 }},
+    hold_reason: '{{ inspection_doc.hold_reason or "" }}',
+    hold_by: '{{ inspection_doc.hold_by or "" }}',
+    hold_timestamp: '{{ inspection_doc.hold_timestamp or "" }}'
 };
 
 // Make defect categories available globally for point calculation
@@ -1468,3 +1474,6 @@ function managerConditionalPassWithPurchaseReceipt() {
 {% block script %}
 <script src="/assets/erpnext_trackerx_customization/js/fabric_inspection_ui.js"></script>
 {% endblock %}
+<script>
+    window.trimsInspectionState = { isInitializing: true };
+</script>

@@ -12,6 +12,7 @@
   "inspector",
   "column_break_1",
   "grn_reference",
+  "purchase_order_reference",
   "supplier",
   "inspection_status",
   "hold_reason",
@@ -25,7 +26,8 @@
   "total_quantity",
   "unit_of_measure",
   "total_rolls",
-  "section_break_2",
+  "section_Aql_configuration",
+  "total_rolls_to_inspect",
   "aql_level",
   "inspection_regime",
   "aql_value",
@@ -94,6 +96,13 @@
    "label": "GRN Reference",
    "options": "Goods Receipt Note",
    "reqd": 1
+  },
+  {
+   "fieldname": "purchase_order_reference",
+   "fieldtype": "Link",
+   "label": "Purchase Order",
+   "options": "Purchase Order",
+   "read_only": 1
   },
   {
    "fieldname": "supplier",
@@ -182,9 +191,15 @@
    "read_only": 1
   },
   {
-   "fieldname": "section_break_2",
+   "fieldname": "section_Aql_configuration",
    "fieldtype": "Section Break",
    "label": "AQL Configuration"
+  },
+  {
+   "fieldname": "total_rolls_to_inspect",
+   "fieldtype": "Int",
+   "label": "Total Rolls to Inspect",
+   "read_only": 1
   },
   {
    "fieldname": "aql_level",
