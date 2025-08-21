@@ -50,7 +50,13 @@ def save_progress(inspection_name, defects_data=None, items_data=None, checklist
         
         # Update defects data
         if defects_data:
-            inspection.defects_data = json.dumps(defects_data)
+            # Clean the defects data properly for trims inspection
+            cleaned_defects_data = clean_trims_defects_data(defects_data)
+            inspection.defects_data = json.dumps(cleaned_defects_data)
+        
+        # Update items data
+        if items_data:
+            inspection.items_data = json.dumps(items_data)
         
         # Update checklist data
         if checklist_data:
@@ -127,7 +133,7 @@ def save_inspection_data(inspection_name, defects_data, items_data, checklist_da
         
         # Update defects data (stored as JSON) - clean it before saving
         if defects_data:
-            cleaned_defects_data = clean_defects_data(defects_data)
+            cleaned_defects_data = clean_trims_defects_data(defects_data)
             inspection_doc.set('defects_data', json.dumps(cleaned_defects_data))
         
         # Update items data if provided
@@ -160,7 +166,7 @@ def save_inspection_data(inspection_name, defects_data, items_data, checklist_da
         total_minor = 0
         
         if defects_data:
-            cleaned_defects_data = clean_defects_data(defects_data)
+            cleaned_defects_data = clean_trims_defects_data(defects_data)
             for item_number, item_defects in cleaned_defects_data.items():
                 for defect_key, count in item_defects.items():
                     if count and int(count) > 0:
@@ -318,7 +324,7 @@ def get_inspection_data(inspection_name):
         if inspection_doc.get('defects_data'):
             try:
                 raw_defects_data = json.loads(inspection_doc.defects_data)
-                defects_data = clean_defects_data(raw_defects_data)
+                defects_data = clean_trims_defects_data(raw_defects_data)
             except:
                 defects_data = {}
         
@@ -387,10 +393,27 @@ def create_inspection_from_grn(grn_name, item_code, material_type="Trims"):
         if not grn_item:
             frappe.throw(_("Item {0} not found in GRN {1}").format(item_code, grn_name))
         
+        # Get Purchase Order from GRN
+        purchase_order = None
+        try:
+            # Check if GRN has purchase_order field
+            if hasattr(grn_doc, 'purchase_order') and grn_doc.purchase_order:
+                purchase_order = grn_doc.purchase_order
+            elif hasattr(grn_doc, 'reference_docname') and grn_doc.reference_doctype == 'Purchase Order':
+                purchase_order = grn_doc.reference_docname
+            else:
+                # Try to get from GRN items if they have purchase_order reference
+                if hasattr(grn_item, 'purchase_order') and grn_item.purchase_order:
+                    purchase_order = grn_item.purchase_order
+        except Exception as e:
+            frappe.log_error(f"Error getting purchase order from GRN: {str(e)}")
+            purchase_order = None
+        
         # Create trims inspection document
         inspection_doc = frappe.new_doc("Trims Inspection")
         inspection_doc.update({
             'grn_reference': grn_name,
+            'purchase_order_reference': purchase_order,
             'supplier': grn_doc.supplier,
             'item_code': item_code,
             'item_name': grn_item.item_name,
@@ -450,10 +473,42 @@ def clean_defects_data(defects_data):
     return cleaned_data
 
 
+def clean_trims_defects_data(defects_data):
+    """Clean trims defects data - preserves zero counts for count-based system"""
+    if not defects_data or not isinstance(defects_data, dict):
+        return {}
+    
+    cleaned_data = {}
+    
+    for item_number, item_defects in defects_data.items():
+        if not isinstance(item_defects, dict):
+            continue
+            
+        cleaned_item_defects = {}
+        
+        for defect_key, count_value in item_defects.items():
+            # Skip only null/undefined values, but preserve zero counts
+            if count_value is None or count_value == "":
+                continue
+            
+            # Clean the count value
+            cleaned_count = clean_count_value(count_value)
+            
+            # Store all valid numbers including zero (important for trims count-based system)
+            if cleaned_count >= 0:  # Changed from > 0 to >= 0
+                cleaned_item_defects[defect_key] = int(cleaned_count)
+        
+        # Store items even if all counts are zero (to preserve UI state)
+        if cleaned_item_defects:
+            cleaned_data[item_number] = cleaned_item_defects
+    
+    return cleaned_data
+
+
 def clean_count_value(count_value):
     """Clean a single count value, removing malformed data and returning a valid integer"""
     if isinstance(count_value, (int, float)):
-        return int(count_value) if count_value > 0 else 0
+        return int(count_value) if count_value >= 0 else 0
     
     if isinstance(count_value, str):
         import re

@@ -682,7 +682,7 @@ body {
 
     <!-- Quality Manager Actions -->
     {% if show_manager_actions %}
-    <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+  <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
         <h2 class="section-title" style="color: white; margin-bottom: 15px;">Quality Manager Review</h2>
         <div style="background: rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 20px; margin-bottom: 20px;">
             <p style="margin: 0; font-size: 16px; font-weight: 500;">
@@ -703,15 +703,11 @@ body {
                       style="flex: 1; min-width: 300px; padding: 12px; border: none; border-radius: 6px; 
                              font-size: 14px; font-family: inherit; resize: vertical; min-height: 60px;"></textarea>
             <div style="display: flex; gap: 8px;">
-                <button class="btn btn-success" onclick="trimsManagerPassInspection()" style="background: #27ae60; border-color: #27ae60; font-weight: 600;">
-                    ✅ Pass
+                {% if inspection_doc.inspection_status == 'Rejected' %}
+                <button class="btn btn-warning" onclick="trimsManagerConditionalPassWithPurchaseReceipt()" style="background: #f39c12; border-color: #f39c12; font-weight: 600;">
+                    ⚠️ Conditional Accept & Create Purchase Receipt
                 </button>
-                <button class="btn btn-warning" onclick="trimsManagerConditionalPass()" style="background: #f39c12; border-color: #f39c12; font-weight: 600;">
-                    ⚠️ Conditional Pass
-                </button>
-                <button class="btn btn-danger" onclick="trimsManagerFailInspection()" style="background: #e74c3c; border-color: #e74c3c; font-weight: 600;">
-                    ❌ Fail
-                </button>
+                {% endif %}
             </div>
         </div>
         <div style="margin-top: 12px; font-size: 13px; color: rgba(255, 255, 255, 0.8);">
@@ -794,6 +790,10 @@ body {
             <div class="form-row">
                 <label>GRN Reference:</label>
                 <input type="text" class="form-control" value="{{ inspection_doc.grn_reference or '' }}" readonly>
+            </div>
+            <div class="form-row">
+                <label>Purchase Order:</label>
+                <input type="text" class="form-control" value="{{ inspection_doc.purchase_order_reference or '' }}" readonly>
             </div>
             <div class="form-row">
                 <label>Total Quantity:</label>
@@ -947,48 +947,7 @@ body {
 
     <!-- Quality Manager Actions -->
     {% if show_manager_actions %}
-    <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-        <h2 class="section-title" style="color: white; margin-bottom: 15px;">Quality Manager Review</h2>
-        <div style="background: rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 20px; margin-bottom: 20px;">
-            <p style="margin: 0; font-size: 16px; font-weight: 500;">
-                Current Status: <strong>{{ inspection_doc.inspection_status }}</strong> 
-                {% if inspection_doc.inspection_result %}
-                | Result: <strong>{{ inspection_doc.inspection_result }}</strong>
-                {% endif %}
-            </p>
-            {% if inspection_doc.manager_remarks %}
-            <div style="margin-top: 15px; padding: 10px; background: rgba(255, 255, 255, 0.1); border-radius: 4px;">
-                <strong>Previous Manager Comments:</strong><br>
-                <pre style="margin: 5px 0 0 0; font-family: inherit; white-space: pre-wrap;">{{ inspection_doc.manager_remarks }}</pre>
-            </div>
-            {% endif %}
-        </div>
-        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-            <textarea id="trims-manager-comment" placeholder="Enter your comment (required for conditional pass)..." 
-                      style="flex: 1; min-width: 300px; padding: 12px; border: none; border-radius: 6px; 
-                             font-size: 14px; font-family: inherit; resize: vertical; min-height: 60px;"></textarea>
-            <div style="display: flex; gap: 8px;">
-                {% if inspection_doc.inspection_status == 'Rejected' %}
-                <button class="btn btn-warning" onclick="trimsManagerConditionalPassWithPurchaseReceipt()" style="background: #f39c12; border-color: #f39c12; font-weight: 600;">
-                    ⚠️ Conditional Accept & Create Purchase Receipt
-                </button>
-                {% else %}
-                <button class="btn btn-success" onclick="trimsManagerPassInspection()" style="background: #27ae60; border-color: #27ae60; font-weight: 600;">
-                    ✅ Pass
-                </button>
-                <button class="btn btn-warning" onclick="trimsManagerConditionalPass()" style="background: #f39c12; border-color: #f39c12; font-weight: 600;">
-                    ⚠️ Conditional Accept
-                </button>
-                <button class="btn btn-danger" onclick="trimsManagerFailInspection()" style="background: #e74c3c; border-color: #e74c3c; font-weight: 600;">
-                    ❌ Fail
-                </button>
-                {% endif %}
-            </div>
-        </div>
-        <div style="margin-top: 12px; font-size: 13px; color: rgba(255, 255, 255, 0.8);">
-            <strong>Note:</strong> Conditional accept requires a mandatory comment explaining the override reason.
-        </div>
-    </div>
+    
     {% endif %}
 </div>
 
@@ -1004,7 +963,11 @@ let inspectionData = {
     canWrite: {{ can_write | tojson }},
     is_readonly: {{ is_readonly | tojson }},
     material_type: '{{ inspection_doc.material_type or "Trims" }}',
-    total_pieces: {{ inspection_doc.total_pieces or 0 }}
+    total_pieces: {{ inspection_doc.total_pieces or 0 }},
+    inspection_status: '{{ inspection_doc.inspection_status or "" }}',
+    hold_reason: '{{ inspection_doc.hold_reason or "" }}',
+    hold_by: '{{ inspection_doc.hold_by or "" }}',
+    hold_timestamp: '{{ inspection_doc.hold_timestamp or "" }}'
 };
 
 // Initialize the page
