@@ -7,6 +7,10 @@ import json
 
 
 class FabricInspection(Document):
+    def before_insert(self):
+        """Set default values before inserting new document"""
+        self.populate_aql_fields_from_grn()
+    
     def validate(self):
         """Validate fabric inspection before saving"""
         self.validate_inspection_setup()
@@ -423,6 +427,91 @@ class FabricInspection(Document):
         except Exception as e:
             frappe.log_error(f"Error creating quality certificate: {str(e)}")
     
+    def populate_aql_fields_from_grn(self):
+        """Populate AQL configuration fields from GRN and Item master when creating fabric inspection"""
+        if not self.grn_reference or not self.item_code:
+            return
+            
+        try:
+            # Get GRN document to extract roll information
+            grn_doc = frappe.get_doc("Goods Receipt Note", self.grn_reference)
+            
+            # Count total rolls from GRN items
+            total_rolls = 0
+            if hasattr(grn_doc, 'items'):
+                for item in grn_doc.items:
+                    if item.item_code == self.item_code and item.material_type == 'Fabrics':
+                        total_rolls += 1  # Each item record represents one roll for fabrics
+            
+            # Set total rolls to inspect (same as total rolls for now)
+            self.total_rolls_to_inspect = total_rolls
+            
+            # Get Item master document for AQL configuration
+            item_doc = frappe.get_doc("Item", self.item_code)
+            
+            # Copy AQL fields from Item master if they exist
+            if hasattr(item_doc, 'aql_level') and item_doc.aql_level:
+                self.aql_level = item_doc.aql_level
+            
+            if hasattr(item_doc, 'inspection_regime') and item_doc.inspection_regime:
+                self.inspection_regime = item_doc.inspection_regime
+            else:
+                self.inspection_regime = 'Normal'  # Default value
+                
+            if hasattr(item_doc, 'aql_value') and item_doc.aql_value:
+                self.aql_value = item_doc.aql_value
+            
+            # Set inspection type based on business logic
+            # You can customize this logic based on your requirements
+            if hasattr(item_doc, 'inspection_type') and item_doc.inspection_type:
+                # Validate and correct inspection type from Item master
+                item_inspection_type = item_doc.inspection_type
+                
+                # Fix common invalid values
+                if item_inspection_type == 'AQL':
+                    item_inspection_type = 'AQL Based'
+                elif item_inspection_type == '100%':
+                    item_inspection_type = '100% Inspection'
+                elif item_inspection_type == 'Custom':
+                    item_inspection_type = 'Custom Sampling'
+                
+                # Validate against allowed options
+                valid_options = ['AQL Based', '100% Inspection', 'Custom Sampling']
+                if item_inspection_type in valid_options:
+                    self.inspection_type = item_inspection_type
+                else:
+                    frappe.logger().warning(f"Invalid inspection_type '{item_inspection_type}' from Item {self.item_code}, defaulting to 'AQL Based'")
+                    self.inspection_type = 'AQL Based'
+            else:
+                # Default logic: use AQL Based for most items, 100% for critical items
+                if hasattr(item_doc, 'item_group') and item_doc.item_group in ['Critical Fabric', 'High Value Fabric']:
+                    self.inspection_type = '100% Inspection'
+                else:
+                    self.inspection_type = 'AQL Based'
+            
+            frappe.logger().info(f"Populated AQL fields from GRN {self.grn_reference} and Item {self.item_code}: "
+                               f"total_rolls_to_inspect={self.total_rolls_to_inspect}, "
+                               f"aql_level={self.aql_level}, "
+                               f"inspection_regime={self.inspection_regime}, "
+                               f"aql_value={self.aql_value}, "
+                               f"inspection_type={self.inspection_type}")
+                               
+        except Exception as e:
+            frappe.logger().error(f"Error populating AQL fields from GRN: {str(e)}")
+            # Set default values if there's an error
+            if not self.total_rolls_to_inspect:
+                self.total_rolls_to_inspect = cint(self.total_rolls or 0)
+            if not self.inspection_regime:
+                self.inspection_regime = 'Normal'
+            if not self.inspection_type:
+                self.inspection_type = 'AQL Based'
+            
+            # Validate inspection_type even in error handling
+            valid_options = ['AQL Based', '100% Inspection', 'Custom Sampling']
+            if self.inspection_type not in valid_options:
+                frappe.logger().warning(f"Invalid inspection_type '{self.inspection_type}' detected, correcting to 'AQL Based'")
+                self.inspection_type = 'AQL Based'
+    
     @frappe.whitelist()
     def recalculate_all_results(self):
         """Recalculate all roll and overall results"""
@@ -430,6 +519,18 @@ class FabricInspection(Document):
         self.calculate_overall_results()
         self.save()
         return True
+    
+    @frappe.whitelist()
+    def update_aql_fields_from_grn(self):
+        """Method to be called from client-side to update AQL fields"""
+        self.populate_aql_fields_from_grn()
+        return {
+            'total_rolls_to_inspect': self.total_rolls_to_inspect,
+            'aql_level': self.aql_level,
+            'inspection_regime': self.inspection_regime,
+            'aql_value': self.aql_value,
+            'inspection_type': self.inspection_type
+        }
     
     @frappe.whitelist() 
     def get_inspection_statistics(self):

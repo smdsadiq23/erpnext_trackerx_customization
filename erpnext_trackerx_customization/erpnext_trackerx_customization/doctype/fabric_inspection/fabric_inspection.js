@@ -20,6 +20,7 @@ frappe.ui.form.on('Fabric Inspection', {
                     calculate_sample_requirements(frm);
                 });
 
+
                 // Add Four-Point Inspection button
                 frm.add_custom_button(__('🎯 Four-Point Inspection'), function() {
                     open_four_point_inspection(frm);
@@ -58,9 +59,19 @@ frappe.ui.form.on('Fabric Inspection', {
                         
                         // Calculate total rolls from GRN
                         calculate_total_rolls_from_grn(frm, grn);
+                        
+                        // Populate AQL configuration fields from GRN and Item master
+                        populate_aql_fields_from_grn(frm);
                     }
                 }
             });
+        }
+    },
+    
+    item_code: function(frm) {
+        if (frm.doc.item_code && frm.doc.grn_reference) {
+            // When item code changes, update AQL fields from Item master
+            populate_aql_fields_from_grn(frm);
         }
     },
 
@@ -223,18 +234,59 @@ function calculate_total_meters(frm) {
 }
 
 function calculate_total_rolls_from_grn(frm, grn) {
-    // Count unique rolls in GRN items
-    var unique_rolls = new Set();
-    if (grn.items) {
+    // Count rolls for fabric items in GRN
+    var total_rolls = 0;
+    
+    if (grn.items && grn.items.length > 0) {
         grn.items.forEach(function(item) {
-            if (item.roll_number) {
-                unique_rolls.add(item.roll_number);
+            if (item.item_code === frm.doc.item_code && item.material_type === 'Fabrics') {
+                total_rolls += 1; // Each item record represents one roll for fabrics
             }
         });
     }
     
-    var total_rolls = unique_rolls.size || grn.items.length;
     frm.set_value('total_rolls', total_rolls);
+    console.log('Total rolls calculated from GRN:', total_rolls, 'for item:', frm.doc.item_code);
+}
+
+function populate_aql_fields_from_grn(frm) {
+    if (!frm.doc.grn_reference || !frm.doc.item_code) {
+        return;
+    }
+    
+    // Call server-side method to populate AQL fields
+    frappe.call({
+        method: 'update_aql_fields_from_grn',
+        doc: frm.doc,
+        callback: function(r) {
+            if (r.message) {
+                // Update the form with the populated values
+                frm.set_value('total_rolls_to_inspect', r.message.total_rolls_to_inspect);
+                frm.set_value('aql_level', r.message.aql_level);
+                frm.set_value('inspection_regime', r.message.inspection_regime);
+                frm.set_value('aql_value', r.message.aql_value);
+                frm.set_value('inspection_type', r.message.inspection_type);
+                
+                // Show success message
+                frappe.msgprint({
+                    title: __('AQL Configuration Updated'),
+                    message: __('AQL configuration fields have been populated from Item Master and GRN'),
+                    indicator: 'green'
+                });
+                
+                // Calculate sample requirements after updating AQL fields
+                calculate_sample_requirements(frm);
+            }
+        },
+        error: function(err) {
+            console.error('Error populating AQL fields:', err);
+            frappe.msgprint({
+                title: __('Error'),
+                message: __('Error populating AQL configuration fields'),
+                indicator: 'red'
+            });
+        }
+    });
 }
 
 function calculate_roll_results(frm, roll_row) {
@@ -458,3 +510,4 @@ function open_inspection_page(inspection_name) {
         });
     }
 }
+

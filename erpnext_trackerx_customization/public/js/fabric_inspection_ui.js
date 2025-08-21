@@ -27,8 +27,16 @@ async function loadDefectsData() {
             });
         }
         
+        // Load AQL options dynamically
+        await loadAQLOptions();
+        
         // Initialize AQL configuration on page load (silently)
         updateAQLConfiguration(false); // false = don't show toast message
+        
+        // Initialize roll selection display
+        setTimeout(() => {
+            updateRollSelectionDisplay();
+        }, 100);
         
         // Load material type for checklist
         fabricInspectionState.materialType = inspectionData.material_type || 'Fabrics';
@@ -473,6 +481,117 @@ function collapseAllRolls() {
     });
 }
 
+// Load AQL options dynamically from API
+async function loadAQLOptions() {
+    try {
+        const response = await frappe.call({
+            method: 'erpnext_trackerx_customization.api.aql_data.get_aql_options',
+            callback: function(r) {
+                if (r.message && r.message.success) {
+                    const data = r.message.data;
+                    
+                    // Populate AQL Level dropdown
+                    const aqlLevelSelect = document.getElementById('aql-level');
+                    if (aqlLevelSelect && data.aql_levels) {
+                        aqlLevelSelect.innerHTML = '<option value="">Select AQL Level</option>';
+                        
+                        data.aql_levels.forEach(level => {
+                            const option = document.createElement('option');
+                            option.value = level.level_code;
+                            option.textContent = `${level.level_code} - ${level.description || level.level_type}`;
+                            
+                            // Set selected if it matches current inspection doc value
+                            if (inspectionData && inspectionData.aql_level === level.level_code) {
+                                option.selected = true;
+                            }
+                            
+                            aqlLevelSelect.appendChild(option);
+                        });
+                    }
+                    
+                    // Populate AQL Value dropdown
+                    const aqlValueSelect = document.getElementById('aql-value');
+                    if (aqlValueSelect && data.aql_standards) {
+                        aqlValueSelect.innerHTML = '<option value="">Select AQL Value</option>';
+                        
+                        data.aql_standards.forEach(standard => {
+                            const option = document.createElement('option');
+                            option.value = standard.aql_value;
+                            option.textContent = `${standard.aql_value}% ${standard.description ? '- ' + standard.description : 'defective'}`;
+                            
+                            // Set selected if it matches current inspection doc value
+                            if (inspectionData && inspectionData.aql_value === standard.aql_value) {
+                                option.selected = true;
+                            }
+                            
+                            aqlValueSelect.appendChild(option);
+                        });
+                    }
+                    
+                    console.log('AQL options loaded successfully');
+                } else {
+                    console.error('Failed to load AQL options:', r.message?.error);
+                    // Fallback to default options if API fails
+                    loadFallbackAQLOptions();
+                }
+            },
+            error: function(error) {
+                console.error('Error loading AQL options:', error);
+                // Fallback to default options if API fails
+                loadFallbackAQLOptions();
+            }
+        });
+    } catch (error) {
+        console.error('Error calling AQL options API:', error);
+        // Fallback to default options if API fails
+        loadFallbackAQLOptions();
+    }
+}
+
+// Fallback function to load hardcoded options if API fails
+function loadFallbackAQLOptions() {
+    const aqlLevelSelect = document.getElementById('aql-level');
+    if (aqlLevelSelect) {
+        aqlLevelSelect.innerHTML = `
+            <option value="">Select AQL Level</option>
+            <option value="1">1 - Reduced</option>
+            <option value="2">2 - Standard</option>
+            <option value="3">3 - Increased</option>
+            <option value="S1">S1 - Very Small</option>
+            <option value="S2">S2 - Small</option>
+            <option value="S3">S3 - Medium</option>
+            <option value="S4">S4 - Large</option>
+        `;
+        
+        // Set selected value if available
+        if (inspectionData && inspectionData.aql_level) {
+            aqlLevelSelect.value = inspectionData.aql_level;
+        }
+    }
+    
+    const aqlValueSelect = document.getElementById('aql-value');
+    if (aqlValueSelect) {
+        aqlValueSelect.innerHTML = `
+            <option value="">Select AQL Value</option>
+            <option value="0.40">0.40% defective</option>
+            <option value="0.65">0.65% defective</option>
+            <option value="1.0">1.0% defective</option>
+            <option value="1.5">1.5% defective</option>
+            <option value="2.5">2.5% defective</option>
+            <option value="4.0">4.0% defective</option>
+            <option value="6.5">6.5% defective</option>
+            <option value="10">10% defective</option>
+        `;
+        
+        // Set selected value if available
+        if (inspectionData && inspectionData.aql_value) {
+            aqlValueSelect.value = inspectionData.aql_value;
+        }
+    }
+    
+    console.log('Loaded fallback AQL options');
+}
+
 // Update AQL configuration when user changes settings
 async function updateAQLConfiguration(showToast = true) {
     try {
@@ -481,22 +600,72 @@ async function updateAQLConfiguration(showToast = true) {
         const aqlValue = document.getElementById('aql-value').value;
         const inspectionRegime = document.getElementById('inspection-regime').value;
         
-        // Get total rolls from inspection data
+        // Get inspection data
+        const totalQuantity = inspectionData.total_quantity || 0;
         const totalRolls = inspectionData.rolls ? inspectionData.rolls.length : 0;
         
-        // Calculate AQL sample size based on configuration
-        const aqlConfig = calculateAQLSampleSize(totalRolls, aqlLevel, aqlValue, inspectionRegime, inspectionType);
+        let sampleRolls = totalRolls;
+        let samplingMethod = 'all_rolls';
+        let aqlSamplingData = null;
         
-        // Update displays
-        document.getElementById('sample-size-display').value = aqlConfig.samplePercentage + '%';
-        document.getElementById('sample-rolls-display').value = aqlConfig.sampleRolls;
+        if (inspectionType === 'AQL Based' && totalQuantity > 0 && aqlLevel && aqlValue) {
+            // Use API to calculate AQL-based sampling
+            try {
+                const response = await frappe.call({
+                    method: 'erpnext_trackerx_customization.api.aql_data.calculate_aql_sampling',
+                    args: {
+                        total_quantity: totalQuantity,
+                        aql_level: aqlLevel,
+                        aql_value: aqlValue,
+                        inspection_regime: inspectionRegime,
+                        total_rolls: totalRolls
+                    }
+                });
+                
+                if (response.message && response.message.success) {
+                    const samplingData = response.message.data;
+                    aqlSamplingData = samplingData; // Store for roll length calculations
+                    sampleRolls = samplingData.sample_rolls || 1;
+                    samplingMethod = 'aql_based';
+                    
+                    // Update sample display with detailed info
+                    const sampleInfo = `${sampleRolls} rolls (${samplingData.sample_size} units, Code: ${samplingData.sample_code_letter || 'N/A'})`;
+                    document.getElementById('sample-rolls-display').value = sampleInfo;
+                    
+                    console.log('AQL sampling calculated:', samplingData);
+                } else {
+                    console.warn('AQL calculation failed, using fallback');
+                    sampleRolls = Math.max(1, Math.ceil(totalRolls * 0.1)); // 10% fallback
+                    samplingMethod = 'fallback';
+                }
+            } catch (error) {
+                console.error('Error calculating AQL sampling:', error);
+                sampleRolls = Math.max(1, Math.ceil(totalRolls * 0.1)); // 10% fallback
+                samplingMethod = 'fallback';
+            }
+        } else if (inspectionType === '100% Inspection') {
+            sampleRolls = totalRolls;
+            samplingMethod = 'full_inspection';
+            document.getElementById('sample-rolls-display').value = `${sampleRolls} rolls (100% inspection)`;
+        } else if (inspectionType === 'Custom Sampling') {
+            sampleRolls = totalRolls; // Show all rolls, inspector decides lengths
+            samplingMethod = 'custom';
+            document.getElementById('sample-rolls-display').value = `${sampleRolls} rolls (custom lengths)`;
+        } else {
+            // Default case - show simple roll count
+            document.getElementById('sample-rolls-display').value = sampleRolls;
+        }
         
         // Update summary text
-        document.getElementById('aql-config-text').textContent = `${aqlLevel} level with ${aqlValue}% defect tolerance`;
-        document.getElementById('sampling-text').textContent = `${aqlConfig.sampleRolls} rolls out of ${totalRolls} total rolls`;
+        const levelText = aqlLevel ? `Level ${aqlLevel}` : 'No level selected';
+        const valueText = aqlValue ? `${aqlValue}% defect tolerance` : 'No value selected';
+        document.getElementById('aql-config-text').textContent = `${levelText} with ${valueText}`;
         
-        // Refresh the rolls display based on new AQL configuration
-        await refreshRollsBasedOnAQL(aqlConfig);
+        const samplingText = getSamplingDescription(inspectionType, sampleRolls, totalRolls, samplingMethod);
+        document.getElementById('sampling-text').textContent = samplingText;
+        
+        // Update roll selection display based on inspection type with AQL data
+        updateRollSelectionDisplay(inspectionType, sampleRolls, totalRolls, aqlSamplingData);
         
         // Mark as dirty only if this is a user-triggered change
         if (showToast) {
@@ -505,12 +674,27 @@ async function updateAQLConfiguration(showToast = true) {
         
         // Only show toast message if requested (user interaction)
         if (showToast) {
-            showMessage(`AQL configuration updated: ${aqlConfig.sampleRolls} rolls selected for inspection`, 'success');
+            showMessage(`AQL configuration updated: ${sampleRolls} rolls selected for inspection`, 'success');
         }
         
     } catch (error) {
         console.error('Error updating AQL configuration:', error);
         showMessage('Error updating AQL configuration: ' + error.message, 'error');
+    }
+}
+
+// Helper function to generate sampling description text
+function getSamplingDescription(inspectionType, sampleRolls, totalRolls, method) {
+    switch (inspectionType) {
+        case 'AQL Based':
+            const methodText = method === 'aql_based' ? 'AQL Table' : method === 'fallback' ? 'estimated' : 'calculated';
+            return `${sampleRolls} rolls out of ${totalRolls} total rolls (${methodText})`;
+        case '100% Inspection':
+            return `${sampleRolls} rolls - complete inspection of all rolls`;
+        case 'Custom Sampling':
+            return `${sampleRolls} rolls - inspector determines inspection lengths`;
+        default:
+            return `${sampleRolls} rolls out of ${totalRolls} total rolls`;
     }
 }
 
@@ -1614,7 +1798,19 @@ function updateUIForHoldStatus() {
                 text-align: center;
                 font-weight: 500;
             `;
-            holdNotice.innerHTML = '⏸️ This inspection is on hold - Click Resume to continue working';
+            // Create hold message with reason (matching trims inspection format)
+            let holdMessage = '⏸️ This inspection is on hold - Click Resume to continue working';
+            if (inspectionData.hold_reason) {
+                holdMessage += `<br><strong>Reason:</strong> ${inspectionData.hold_reason}`;
+            }
+            if (inspectionData.hold_by) {
+                holdMessage += `<br><strong>Hold by:</strong> ${inspectionData.hold_by}`;
+            }
+            if (inspectionData.hold_timestamp) {
+                const holdDate = new Date(inspectionData.hold_timestamp).toLocaleString();
+                holdMessage += `<br><strong>Hold timestamp:</strong> ${holdDate}`;
+            }
+            holdNotice.innerHTML = holdMessage;
             pageHeader.appendChild(holdNotice);
         }
     }
@@ -1726,3 +1922,545 @@ function forceRecalculateAll() {
 
 // Add to global scope for manual debugging
 window.forceRecalculate = forceRecalculateAll;
+
+/**
+ * Inspection Type Change Handler
+ */
+function onInspectionTypeChange() {
+    const inspectionType = document.getElementById('inspection-type').value;
+    
+    // Update inspection data
+    inspectionData.inspection_type = inspectionType;
+    
+    console.log(`Inspection type changed to: ${inspectionType}`);
+    
+    // Recalculate roll selection based on inspection type
+    updateRollSelectionDisplay();
+    
+    // Update AQL configuration (this will also update the summary)
+    updateAQLConfiguration();
+}
+
+/**
+ * Dynamic Roll Selection Logic
+ */
+function updateRollSelectionDisplay(inspectionType, sampleRolls, totalRolls, aqlData) {
+    // Use provided parameters or fallback to current state
+    inspectionType = inspectionType || document.getElementById('inspection-type')?.value || inspectionData.inspection_type;
+    const allRolls = inspectionData.rolls || [];
+    totalRolls = totalRolls || allRolls.length;
+    sampleRolls = sampleRolls || totalRolls;
+    
+    let selectedRolls = [];
+    
+    if (inspectionType === '100% Inspection') {
+        // Select ALL rolls for 100% inspection with full lengths
+        selectedRolls = allRolls.map(roll => ({
+            ...roll,
+            inspection_length: parseFloat(roll.roll_length) || 0, // Full length
+            selected_for_inspection: true,
+            inspection_reason: '100% Inspection - Full length of all rolls'
+        }));
+        
+    } else if (inspectionType === 'AQL Based') {
+        // For AQL Based inspection, show all rolls but calculate appropriate inspection lengths
+        // The user can still choose which rolls to actually inspect
+        selectedRolls = allRolls.map((roll, index) => ({
+            ...roll,
+            inspection_length: calculateAQLInspectionLength(roll, inspectionType, aqlData),
+            selected_for_inspection: true,
+            inspection_reason: aqlData ? 
+                `AQL Based - ${aqlData.sample_size}m total sample distributed proportionally` :
+                'AQL Based inspection'
+        }));
+        
+    } else if (inspectionType === 'Custom Sampling') {
+        // Show all rolls for custom sampling - inspector decides lengths
+        selectedRolls = allRolls.map(roll => ({
+            ...roll,
+            inspection_length: parseFloat(roll.roll_length) || 0, // Default to full length
+            selected_for_inspection: true,
+            inspection_reason: 'Custom Sampling - Inspector determines inspection length'
+        }));
+    }
+    
+    // Update the input fields with calculated inspection lengths
+    updateRollLengthInputs(selectedRolls);
+    
+    // Update summary display with selected rolls information
+    updateSelectedRollsSummary(selectedRolls, totalRolls);
+    
+    // Store selected rolls in global state for reference
+    inspectionData.selectedRolls = selectedRolls;
+    
+    console.log(`Roll selection updated: ${selectedRolls.length} rolls selected for ${inspectionType}`);
+}
+
+// Helper function to calculate inspection length for AQL-based sampling
+function calculateAQLInspectionLength(roll, inspectionType, aqlData) {
+    const rollLength = parseFloat(roll.roll_length) || 0;
+    
+    if (inspectionType === 'AQL Based' && aqlData) {
+        // Use AQL sample size to determine inspection length per roll
+        const totalQuantity = inspectionData.total_quantity || 0;
+        const selectedRolls = aqlData.sample_rolls || 1;
+        const totalSampleSize = aqlData.sample_size || 0;
+        
+        if (totalSampleSize > 0 && selectedRolls > 0) {
+            // Distribute the total sample size proportionally across selected rolls
+            const rollProportion = rollLength / totalQuantity;
+            const thisRollSampleSize = Math.round(totalSampleSize * rollProportion);
+            
+            // Ensure minimum 1m and maximum roll length
+            return Math.max(1, Math.min(thisRollSampleSize, rollLength));
+        }
+        
+        // Fallback: Use 50% of roll length for AQL-based inspection
+        return Math.max(1, Math.round(rollLength * 0.5));
+    } else if (inspectionType === '100% Inspection') {
+        // 100% inspection means full roll length
+        return rollLength;
+    } else if (inspectionType === 'Custom Sampling') {
+        // Custom sampling - start with full length, inspector can modify
+        return rollLength;
+    }
+    
+    // Default to full length
+    return rollLength;
+}
+
+// Function to update roll length input fields with calculated inspection lengths
+function updateRollLengthInputs(selectedRolls) {
+    selectedRolls.forEach(roll => {
+        const lengthInput = document.getElementById(`inspected-length-${roll.roll_number}`);
+        if (lengthInput && roll.inspection_length !== undefined) {
+            lengthInput.value = roll.inspection_length;
+            
+            // Add visual indicator for calculated lengths
+            lengthInput.style.backgroundColor = '#e8f4fd'; // Light blue background
+            lengthInput.title = `Calculated inspection length: ${roll.inspection_length}m (${roll.inspection_reason})`;
+            
+            console.log(`Updated roll ${roll.roll_number} inspection length to ${roll.inspection_length}m`);
+        }
+    });
+    
+    // Reset styling for non-selected rolls
+    const allRolls = inspectionData.rolls || [];
+    const selectedRollNumbers = selectedRolls.map(r => r.roll_number);
+    
+    allRolls.forEach(roll => {
+        if (!selectedRollNumbers.includes(roll.roll_number)) {
+            const lengthInput = document.getElementById(`inspected-length-${roll.roll_number}`);
+            if (lengthInput) {
+                lengthInput.style.backgroundColor = ''; // Reset background
+                lengthInput.title = 'Roll not selected for current inspection type';
+            }
+        }
+    });
+}
+
+// Helper function to update the selected rolls summary display
+function updateSelectedRollsSummary(selectedRolls, totalRolls) {
+    const selectedRollCount = document.getElementById('selected-roll-count');
+    const selectedRollDetails = document.getElementById('selected-roll-details');
+    
+    if (selectedRollCount) {
+        selectedRollCount.textContent = selectedRolls.length;
+    }
+    
+    if (selectedRollDetails && selectedRolls.length > 0) {
+        const rollDetails = selectedRolls.map(roll => 
+            `${roll.roll_number} (${roll.inspection_length || roll.roll_length || 0}m)`
+        ).join(', ');
+        selectedRollDetails.textContent = rollDetails;
+    } else if (selectedRollDetails) {
+        selectedRollDetails.textContent = 'No rolls selected';
+    }
+}
+
+/**
+ * Calculate AQL Sample Requirements
+ */
+function calculateAQLSampleRequirements() {
+    const totalRolls = inspectionData.total_rolls || 0;
+    const aqlLevel = inspectionData.aql_level || '2';
+    const aqlValue = parseFloat(inspectionData.aql_value) || 2.5;
+    const inspectionRegime = inspectionData.inspection_regime || 'Normal';
+    
+    // Simple AQL calculation logic
+    const aqlLevelMap = {
+        '1': 0.8, '2': 1.0, '3': 1.25,
+        'S1': 0.4, 'S2': 0.6, 'S3': 0.8, 'S4': 1.0
+    };
+    
+    const levelMultiplier = aqlLevelMap[aqlLevel] || 1.0;
+    
+    // Basic sample size calculation
+    let baseSampleRate = 0.1; // 10% base rate
+    if (aqlValue <= 1.0) baseSampleRate = 0.15; // 15% for strict AQL
+    if (aqlValue >= 4.0) baseSampleRate = 0.05; // 5% for loose AQL
+    
+    // Adjust for inspection regime
+    if (inspectionRegime === 'Tightened') baseSampleRate *= 1.5;
+    if (inspectionRegime === 'Reduced') baseSampleRate *= 0.7;
+    
+    // Apply level multiplier
+    baseSampleRate *= levelMultiplier;
+    
+    // Calculate sample rolls
+    const sampleRolls = Math.max(1, Math.ceil(totalRolls * baseSampleRate));
+    const samplePercentage = Math.min(100, (sampleRolls / totalRolls) * 100);
+    
+    return {
+        samplePercentage: Math.round(samplePercentage * 100) / 100,
+        requiredSampleRolls: Math.min(sampleRolls, totalRolls),
+        requiredSampleMeters: sampleRolls * 50 // Estimate based on average roll length
+    };
+}
+
+/**
+ * Calculate AQL Inspection Length for a Roll
+ */
+function calculateAQLInspectionLength(roll) {
+    const rollLength = parseFloat(roll.roll_length) || 0;
+    const aqlValue = parseFloat(inspectionData.aql_value) || 2.5;
+    
+    // AQL-based inspection length calculation
+    let inspectionPercentage = 1.0; // Default 100% for critical inspection
+    
+    // Adjust inspection length based on AQL value
+    if (aqlValue <= 1.0) {
+        inspectionPercentage = 1.0; // 100% for strict AQL
+    } else if (aqlValue <= 2.5) {
+        inspectionPercentage = 0.8; // 80% for standard AQL
+    } else if (aqlValue <= 4.0) {
+        inspectionPercentage = 0.6; // 60% for lenient AQL
+    } else {
+        inspectionPercentage = 0.4; // 40% for very lenient AQL
+    }
+    
+    const inspectionLength = rollLength * inspectionPercentage;
+    return Math.round(inspectionLength * 100) / 100; // Round to 2 decimal places
+}
+
+/**
+ * Update Selected Rolls Summary Display
+ */
+function updateSelectedRollsSummary(selectedRolls, totalRolls) {
+    const selectedCount = selectedRolls.length;
+    
+    // Update count
+    const selectedRollCount = document.getElementById('selected-roll-count');
+    if (selectedRollCount) {
+        selectedRollCount.textContent = selectedCount;
+    }
+    
+    const samplingText = document.getElementById('sampling-text');
+    if (samplingText) {
+        samplingText.textContent = `${selectedCount} rolls out of ${totalRolls} total rolls`;
+    }
+    
+    // Update roll details with inspection lengths
+    const selectedRollDetails = document.getElementById('selected-roll-details');
+    if (selectedRollDetails) {
+        if (selectedCount === 0) {
+            selectedRollDetails.textContent = 'No rolls selected';
+        } else {
+            const rollDetails = selectedRolls.map(roll => 
+                `${roll.roll_number} (${roll.inspection_length}m)`
+            ).join(', ');
+            selectedRollDetails.textContent = rollDetails;
+        }
+    }
+}
+
+/**
+ * Update AQL Configuration - Save current dropdown values to doctype
+ */
+function openAQLConfigDialog() {
+    // Get current values from the dropdowns
+    const inspectionType = document.getElementById('inspection-type').value;
+    const aqlLevel = document.getElementById('aql-level').value;
+    const aqlValue = document.getElementById('aql-value').value;
+    const inspectionRegime = document.getElementById('inspection-regime').value;
+    
+    // Basic validation
+    if (!inspectionType) {
+        showAlert('Please select an Inspection Type', 'warning');
+        return;
+    }
+    
+    if (inspectionType === 'AQL Based' && (!aqlLevel || !aqlValue)) {
+        showAlert('Please select AQL Level and AQL Value for AQL Based inspection', 'warning');
+        return;
+    }
+
+    // Show loading state on button
+    const updateButton = document.querySelector('[onclick="openAQLConfigDialog()"]');
+    const originalText = updateButton.innerHTML;
+    updateButton.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Updating...';
+    updateButton.disabled = true;
+
+    // Prepare data to save
+    const updateData = {
+        inspection_type: inspectionType,
+        aql_level: aqlLevel || '',
+        aql_value: aqlValue || '',
+        inspection_regime: inspectionRegime || 'Normal'
+    };
+
+    console.log('Saving AQL Configuration to doctype:', updateData);
+
+    // Save to Fabric Inspection doctype
+    frappe.call({
+        method: 'frappe.client.set_value',
+        args: {
+            doctype: 'Fabric Inspection',
+            name: inspectionData.name,
+            fieldname: updateData
+        },
+        callback: function(response) {
+            if (response.message) {
+                console.log('AQL Configuration saved successfully');
+                
+                // Update local inspectionData
+                inspectionData.inspection_type = inspectionType;
+                inspectionData.aql_level = aqlLevel;
+                inspectionData.aql_value = aqlValue;
+                inspectionData.inspection_regime = inspectionRegime;
+                
+                // Trigger AQL configuration calculations with new values
+                updateAQLConfiguration(true);
+                
+                // Show success message
+                showAlert('AQL configuration updated and saved successfully!', 'success');
+                
+            } else {
+                showAlert('Failed to save AQL configuration', 'error');
+            }
+        },
+        error: function(error) {
+            console.error('Error saving AQL configuration:', error);
+            showAlert('Error saving AQL configuration: ' + (error.message || 'Unknown error'), 'error');
+        },
+        always: function() {
+            // Restore button
+            updateButton.innerHTML = originalText;
+            updateButton.disabled = false;
+        }
+    });
+}
+
+/**
+ * Update AQL Summary Display
+ */
+function updateAQLSummaryDisplay() {
+    const aqlLevel = inspectionData.aql_level || '2';
+    const aqlValue = inspectionData.aql_value || '2.5';
+    const inspectionType = inspectionData.inspection_type || 'AQL Based';
+    
+    // AQL Level display mapping
+    const aqlLevelDisplayMap = {
+        '1': 'I', '2': 'II', '3': 'III',
+        'S1': 'S-1', 'S2': 'S-2', 'S3': 'S-3', 'S4': 'S-4'
+    };
+    
+    // Update AQL configuration text
+    const aqlLevelDisplay = aqlLevelDisplayMap[aqlLevel] || aqlLevel;
+    const aqlConfigText = document.getElementById('aql-config-text');
+    if (aqlConfigText) {
+        aqlConfigText.textContent = `Level ${aqlLevelDisplay} with ${aqlValue}% defect tolerance`;
+    }
+    
+    console.log(`Updated AQL summary: Level ${aqlLevelDisplay} with ${aqlValue}% defect tolerance`);
+}
+
+/**
+ * Recalculate inspection requirements based on updated AQL configuration
+ */
+function recalculateInspectionRequirements() {
+    const inspectionType = inspectionData.inspection_type;
+    const totalRolls = inspectionData.total_rolls || 0;
+    
+    let requiredSampleSize = 0;
+    let requiredSampleRolls = 0;
+    let requiredSampleMeters = 0;
+    
+    if (inspectionType === '100% Inspection') {
+        // 100% inspection requires all rolls
+        requiredSampleSize = 100;
+        requiredSampleRolls = totalRolls;
+        
+        // Calculate total meters from all rolls
+        if (inspectionData.rolls && inspectionData.rolls.length > 0) {
+            requiredSampleMeters = inspectionData.rolls.reduce((total, roll) => {
+                return total + (parseFloat(roll.roll_length) || 0);
+            }, 0);
+        }
+    } else if (inspectionType === 'AQL Based') {
+        // Calculate AQL sample requirements
+        const aqlSample = calculateAQLSampleSize(
+            totalRolls, 
+            inspectionData.aql_level,
+            inspectionData.aql_value,
+            inspectionData.inspection_regime
+        );
+        
+        requiredSampleSize = aqlSample.samplePercentage || 0;
+        requiredSampleRolls = aqlSample.sampleRolls || 0;
+        requiredSampleMeters = aqlSample.sampleMeters || 0;
+    }
+    
+    // Update inspection data
+    inspectionData.required_sample_size = requiredSampleSize;
+    inspectionData.required_sample_rolls = requiredSampleRolls;
+    inspectionData.required_sample_meters = requiredSampleMeters;
+    
+    // Update display fields
+    const sampleSizeDisplay = document.getElementById('sample-size-display');
+    const sampleRollsDisplay = document.getElementById('sample-rolls-display');
+    
+    if (sampleSizeDisplay) {
+        sampleSizeDisplay.value = requiredSampleSize + '%';
+    }
+    if (sampleRollsDisplay) {
+        sampleRollsDisplay.value = requiredSampleRolls;
+    }
+    
+    // Update the AQL summary text
+    updateAQLSummaryText();
+    
+    // Update roll inspection lengths based on sample requirements
+    updateRollInspectionLengths();
+    
+    console.log('Recalculated inspection requirements:', {
+        requiredSampleSize,
+        requiredSampleRolls,
+        requiredSampleMeters
+    });
+}
+
+/**
+ * Calculate AQL sample size based on lot size and AQL parameters
+ */
+function calculateAQLSampleSize(lotSize, aqlLevel, aqlValue, inspectionRegime) {
+    // Simple AQL calculation logic
+    const aqlLevelMap = {
+        'I': 0.8,
+        'II': 1.0,
+        'III': 1.25,
+        'S-1': 0.4,
+        'S-2': 0.6,
+        'S-3': 0.8,
+        'S-4': 1.0
+    };
+    
+    const levelMultiplier = aqlLevelMap[aqlLevel] || 1.0;
+    const aqlValueNum = parseFloat(aqlValue) || 2.5;
+    
+    // Basic sample size calculation
+    let baseSampleRate = 0.1; // 10% base rate
+    if (aqlValueNum <= 1.0) baseSampleRate = 0.15; // 15% for strict AQL
+    if (aqlValueNum >= 4.0) baseSampleRate = 0.05; // 5% for loose AQL
+    
+    // Adjust for inspection regime
+    if (inspectionRegime === 'Tightened') baseSampleRate *= 1.5;
+    if (inspectionRegime === 'Reduced') baseSampleRate *= 0.7;
+    
+    // Apply level multiplier
+    baseSampleRate *= levelMultiplier;
+    
+    // Calculate sample rolls
+    const sampleRolls = Math.max(1, Math.ceil(lotSize * baseSampleRate));
+    const samplePercentage = Math.min(100, (sampleRolls / lotSize) * 100);
+    
+    // Estimate sample meters (assuming average 50m per roll)
+    const avgRollLength = 50;
+    const sampleMeters = sampleRolls * avgRollLength;
+    
+    return {
+        samplePercentage: Math.round(samplePercentage * 100) / 100,
+        sampleRolls: Math.min(sampleRolls, lotSize),
+        sampleMeters: sampleMeters
+    };
+}
+
+/**
+ * Update AQL summary text display
+ */
+function updateAQLSummaryText() {
+    const aqlConfigText = document.getElementById('aql-config-text');
+    const samplingText = document.getElementById('sampling-text');
+    
+    if (aqlConfigText) {
+        aqlConfigText.textContent = `${inspectionData.aql_level || 'II'} level with ${inspectionData.aql_value || '2.5'}% defect tolerance`;
+    }
+    
+    if (samplingText) {
+        samplingText.textContent = `${inspectionData.required_sample_rolls || 0} rolls out of ${inspectionData.total_rolls || 0} total rolls`;
+    }
+}
+
+/**
+ * Update roll inspection lengths based on sample requirements
+ */
+function updateRollInspectionLengths() {
+    if (!inspectionData.rolls || inspectionData.rolls.length === 0) return;
+    
+    const inspectionType = inspectionData.inspection_type;
+    const samplePercentage = inspectionData.required_sample_size || 0;
+    
+    // Update each roll's inspection length
+    inspectionData.rolls.forEach((roll, index) => {
+        const rollLength = parseFloat(roll.roll_length) || 0;
+        let inspectionLength = rollLength;
+        
+        if (inspectionType === 'AQL Based') {
+            // For AQL based, use sample percentage
+            inspectionLength = Math.round((rollLength * samplePercentage / 100) * 100) / 100;
+        } else if (inspectionType === '100% Inspection') {
+            // For 100% inspection, inspect full length
+            inspectionLength = rollLength;
+        }
+        
+        // Update the roll data
+        roll.sample_length = inspectionLength;
+        
+        // Update UI if elements exist
+        const rollCard = document.querySelector(`[data-roll="${roll.roll_number}"]`);
+        if (rollCard) {
+            const sampleLengthElement = rollCard.querySelector('.sample-length');
+            if (sampleLengthElement) {
+                sampleLengthElement.textContent = `${inspectionLength}m`;
+            }
+        }
+    });
+    
+    console.log('Updated roll inspection lengths for', inspectionData.rolls.length, 'rolls');
+}
+
+// Helper function to show alerts (if not already defined)
+function showAlert(message, type = 'info') {
+    // Create alert element
+    const alertHTML = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+            ${message}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    `;
+    
+    // Add to page
+    document.body.insertAdjacentHTML('afterbegin', alertHTML);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            if (alert.textContent.trim().startsWith(message.substring(0, 20))) {
+                $(alert).alert('close');
+            }
+        });
+    }, 5000);
+}

@@ -30,19 +30,34 @@ def create_inspections_on_grn_submit(doc, method):
         
         # Process items requiring inspection
         if inspection_required_items:
-            # Group inspection items by material type
-            items_by_material = {}
+            # Group inspection items by material type AND item code to prevent duplicate inspections
+            items_by_material_and_item = {}
             
             for item in inspection_required_items:
                 material_type = get_material_type_from_item(item)
                 if material_type:
-                    if material_type not in items_by_material:
-                        items_by_material[material_type] = []
-                    items_by_material[material_type].append(item)
+                    # Normalize material type to prevent case sensitivity issues
+                    material_type_normalized = material_type.strip().title()  # Convert to Title Case
+                    
+                    # Create unique key combining material_type and item_code to prevent duplicates
+                    key = f"{material_type_normalized}_{item.item_code}"
+                    if key not in items_by_material_and_item:
+                        items_by_material_and_item[key] = {
+                            'material_type': material_type_normalized,
+                            'item_code': item.item_code,
+                            'items': []
+                        }
+                    items_by_material_and_item[key]['items'].append(item)
             
-            # Create inspection for each material type
-            for material_type, items in items_by_material.items():
+            frappe.logger().info(f"GRN {doc.name}: Found {len(items_by_material_and_item)} unique material-item combinations: {list(items_by_material_and_item.keys())}")
+            
+            # Create inspection for each unique material type + item code combination
+            for key, group_data in items_by_material_and_item.items():
                 try:
+                    material_type = group_data['material_type']
+                    items = group_data['items']
+                    
+                    frappe.logger().info(f"Creating inspection for {material_type} with {len(items)} items (Key: {key})")
                     inspection_name = create_inspection_for_material_type(doc, material_type, items)
                     if inspection_name:
                         inspections_created.append(inspection_name)
@@ -184,7 +199,7 @@ def get_material_type_from_item(item):
     try:
         # First try to get from item's material_type field
         if hasattr(item, 'material_type') and item.material_type:
-            return item.material_type.strip()
+            return item.material_type.strip().title()  # Normalize to Title Case
         
         # Try to get from item master
         if item.item_code:
@@ -192,19 +207,19 @@ def get_material_type_from_item(item):
             
             # Primary check: custom_select_master field from item master
             if hasattr(item_doc, 'custom_select_master') and item_doc.custom_select_master:
-                material_type = item_doc.custom_select_master.strip()
+                material_type = item_doc.custom_select_master.strip().title()  # Normalize to Title Case
                 frappe.logger().info(f"Material type from custom_select_master for {item.item_code}: {material_type}")
                 return material_type
             
             # Check item master's material_type field as fallback
             if hasattr(item_doc, 'material_type') and item_doc.material_type:
-                return item_doc.material_type.strip()
+                return item_doc.material_type.strip().title()  # Normalize to Title Case
             
             # Fall back to item group
             if item_doc.item_group:
                 item_group_lower = item_doc.item_group.lower()
                 if any(keyword in item_group_lower for keyword in ['fabric', 'cloth', 'textile']):
-                    return 'Fabric'
+                    return 'Fabrics'  # Standardized to plural form
                 elif any(keyword in item_group_lower for keyword in ['trim', 'button', 'zipper', 'thread']):
                     return 'Trims'
                 elif any(keyword in item_group_lower for keyword in ['accessory', 'accessories', 'label']):
@@ -216,7 +231,7 @@ def get_material_type_from_item(item):
             
             for text in [item_name_lower, item_code_lower]:
                 if any(keyword in text for keyword in ['fabric', 'cloth', 'textile', 'fabrics']):
-                    return 'Fabric'
+                    return 'Fabrics'  # Standardized to plural form
                 elif any(keyword in text for keyword in ['trim', 'button', 'zipper', 'thread','trims']):
                     return 'Trims'
                 elif any(keyword in text for keyword in ['accessory', 'accessories', 'label', 'tag']):
@@ -238,13 +253,19 @@ def create_inspection_for_material_type(grn_doc, material_type, items):
         # All Others → Trims Inspection (count-based)
         material_type_lower = (material_type or "").strip().lower()
 
-        if material_type_lower == 'fabrics' or material_type_lower == 'fabric':
+        # Handle case variations of fabric material types
+        fabric_keywords = ['fabrics', 'fabric']
+        trims_keywords = ['trims', 'accessories', 'machine', 'labels', 'packing materials', 'trim']
+        
+        if any(keyword in material_type_lower for keyword in fabric_keywords):
             doctype_name = 'Fabric Inspection'
-        elif material_type_lower in ['trims', 'accessories', 'machine', 'labels', 'packing materials']:
+            frappe.logger().info(f"Material type '{material_type}' mapped to Fabric Inspection")
+        elif any(keyword in material_type_lower for keyword in trims_keywords):
             doctype_name = 'Trims Inspection'
+            frappe.logger().info(f"Material type '{material_type}' mapped to Trims Inspection")
         else:
             # For any other material types, default to Trims Inspection
-            frappe.logger().info(f"Unknown material type {material_type}, defaulting to Trims Inspection")
+            frappe.logger().info(f"Unknown material type '{material_type}', defaulting to Trims Inspection")
             doctype_name = 'Trims Inspection'
         
         # Check if doctype exists
@@ -265,12 +286,16 @@ def create_inspection_for_material_type(grn_doc, material_type, items):
             frappe.logger().warning(f"Could not fetch item name for {primary_item.item_code}: {e}")
             item_name = primary_item.item_code
         
+        # Get Purchase Order reference from GRN
+        purchase_order_ref = get_purchase_order_from_grn(grn_doc)
+        
         # Create inspection document
         inspection_data = {
             "doctype": doctype_name,
             "inspection_date": today(),
             "inspector": frappe.session.user,
             "grn_reference": grn_doc.name,
+            "purchase_order_reference": purchase_order_ref,
             "supplier": grn_doc.supplier,
             "inspection_status": "Draft",
             "item_code": primary_item.item_code,
@@ -282,7 +307,7 @@ def create_inspection_for_material_type(grn_doc, material_type, items):
         if doctype_name == 'Fabric Inspection':
             # Fabric inspection - point-based system
             total_quantity = sum(float(item.received_quantity or 0) for item in items)
-            total_rolls = estimate_total_rolls(items)
+            total_rolls = len(items)  # Each item record represents one roll for fabrics
             
             inspection_data.update({
                 "total_quantity": total_quantity,
@@ -335,17 +360,50 @@ def create_inspection_for_material_type(grn_doc, material_type, items):
         frappe.logger().error(f"Error creating inspection for material type {material_type}: {str(e)}")
         raise e
 
-def estimate_total_rolls(items):
+# Note: estimate_total_rolls() function removed - now using len(items) directly
+# since each GRN item record represents one roll for fabric materials
+
+def get_purchase_order_from_grn(grn_doc):
     """
-    Estimate total rolls for fabric items
-    """
-    total_quantity = sum(float(item.received_quantity or 0) for item in items)
+    Extract Purchase Order reference from GRN document
     
-    # Simple estimation: assume 50-100 meters per roll
-    if total_quantity > 100:
-        return max(1, int(total_quantity / 75))  # Assume 75m average per roll
-    else:
-        return 1
+    Args:
+        grn_doc: GRN document object
+        
+    Returns:
+        str: Purchase Order reference or empty string if not found
+    """
+    try:
+        # Method 1: Check if GRN has direct purchase order reference
+        if hasattr(grn_doc, 'purchase_order') and grn_doc.purchase_order:
+            return grn_doc.purchase_order
+        
+        # Method 2: Check GRN items for purchase order references
+        for item in grn_doc.items:
+            if hasattr(item, 'purchase_order') and item.purchase_order:
+                return item.purchase_order
+            if hasattr(item, 'prevdoc_docname') and item.prevdoc_docname:
+                # Check if prevdoc_docname is a Purchase Order
+                if frappe.db.exists("Purchase Order", item.prevdoc_docname):
+                    return item.prevdoc_docname
+        
+        # Method 3: Look for linked Purchase Receipt and get its PO reference
+        purchase_receipts = frappe.get_all(
+            "Purchase Receipt", 
+            filters={"grn_reference": grn_doc.name},
+            fields=["name", "purchase_order_reference"]
+        )
+        
+        for pr in purchase_receipts:
+            if pr.purchase_order_reference:
+                return pr.purchase_order_reference
+        
+        frappe.logger().info(f"No Purchase Order reference found for GRN: {grn_doc.name}")
+        return ""
+        
+    except Exception as e:
+        frappe.logger().error(f"Error getting Purchase Order from GRN {grn_doc.name}: {str(e)}")
+        return ""
 
 # Test function for debugging
 @frappe.whitelist()
