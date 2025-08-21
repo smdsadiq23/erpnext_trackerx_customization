@@ -65,11 +65,21 @@ frappe.ui.form.on('BOM', {
         
         maybe_update_costing_size_options(frm);
         set_item_filter(frm);
+
+        $('[data-fieldname="item"]').on('click', function() {
+            if (!frm.doc.custom_bom_type) {
+                frappe.throw("Please select BOM Type first");
+            }
+        });
     },
 
     custom_costing_formula(frm) {
         maybe_update_costing_size_options(frm);
         frm.trigger("calculate_total_cost");
+    },
+
+    custom_bom_type(frm) {
+        set_item_filter(frm);
     },
 
     custom_costing_size(frm) {
@@ -81,7 +91,6 @@ frappe.ui.form.on('BOM', {
             copy_bom_operations_from_item(frm);
         }
     }
-
 });
 
 
@@ -89,14 +98,25 @@ function set_item_filter(frm) {
     // Get Style item group details first
    
    // Set filter for item_code field in BOM Item child table
-   item_groups = ["Finished Goods"]
+   console.log("item filters");
+
+   item_types = []
+   if(frm.doc.custom_bom_type)
+   {
+        
+        console.log(frappe.boot.item_constants);
+        bom_type_filters = frappe.boot.item_constants.bom_type_to_item_type_filters;
+        item_types = bom_type_filters[frm.doc.custom_bom_type] 
+        console.log(item_types);
+        
+    }
     frm.set_query( 'item', function() {
-        return {
-            filters: {
-                'item_group': ['in', item_groups],
-                'disabled': 0
-            }
-        };
+            return {
+                filters: {
+                    'custom_select_master': ['in', item_types],
+                    'disabled': 0
+                }
+            };
     });                         
 }
 

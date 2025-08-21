@@ -27,10 +27,13 @@ def on_submit(doc,method):
         "custom_packing_materials_items": "Packing Materials"
     }
 
-    for table_name in item_tables:
-        child_items = getattr(doc, table_name, [])
-        if not child_items:
-            frappe.throw(f"Atleast 1 {item_tables_to_name[table_name]} required")
+    if doc.custom_bom_type == "Finished Goods": # each type required at least 1 item
+        for table_name in item_tables:
+            child_items = getattr(doc, table_name, [])
+            if not child_items:
+                frappe.throw(f"Atleast 1 {item_tables_to_name[table_name]} required")
+    
+    
 
 
 

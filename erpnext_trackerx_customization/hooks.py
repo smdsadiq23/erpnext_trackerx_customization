@@ -259,7 +259,10 @@ doc_events= {
     },
     "Goods Receipt Note": {
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.create_inspections_on_grn_submit"
-    }
+    },
+    "Supplier Group": {
+        "before_delete": "erpnext_trackerx_customization.erpnext_doctype_hooks.supplier_group.before_delete"
+    },
 }
 
 # Scheduled Tasks
