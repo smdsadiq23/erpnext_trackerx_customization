@@ -1,0 +1,14 @@
+[
+ {
+  "accounts": [],
+  "docstatus": 0,
+  "doctype": "Supplier Group",
+  "is_group": 0,
+  "modified": "2025-08-21 16:17:36.771163",
+  "name": "Sub Contractors",
+  "old_parent": "All Supplier Groups",
+  "parent_supplier_group": "All Supplier Groups",
+  "payment_terms": null,
+  "supplier_group_name": "Sub Contractors"
+ }
+]

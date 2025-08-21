@@ -1,0 +1,82 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-08-21 16:21:51.720415",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "process_type",
+  "rate_per_unit",
+  "min_order_qty",
+  "max_capacity_per_day",
+  "lead_time"
+ ],
+ "fields": [
+  {
+   "allow_in_quick_entry": 1,
+   "columns": 2,
+   "fieldname": "process_type",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Process Type",
+   "options": "Operation",
+   "reqd": 1
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "columns": 2,
+   "fieldname": "rate_per_unit",
+   "fieldtype": "Currency",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Rate per unit",
+   "non_negative": 1,
+   "reqd": 1
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "columns": 2,
+   "fieldname": "min_order_qty",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Min order qty",
+   "non_negative": 1
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "columns": 2,
+   "fieldname": "max_capacity_per_day",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Max capacity per day",
+   "non_negative": 1
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "columns": 1,
+   "fieldname": "lead_time",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Lead time",
+   "non_negative": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-08-21 17:56:20.155624",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Supplier Specialization",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
