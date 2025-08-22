@@ -234,10 +234,10 @@ override_doctype_class = {
 # }
 doc_events= {
     "Item Group": {
-        "before_delete": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_group_hooks.prevent_item_group_deletion"
+        "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_group_hooks.prevent_item_group_deletion"
     },
     "Role": {
-        "before_delete": "erpnext_trackerx_customization.erpnext_doctype_hooks.role_hooks.prevent_role_deletion"
+        "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.role_hooks.prevent_role_deletion"
     },
 	"Item": {
         "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.set_item_code_before_insert",
@@ -261,7 +261,7 @@ doc_events= {
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.workflow.grn_workflow.create_inspections_on_grn_submit"
     },
     "Supplier Group": {
-        "before_delete": "erpnext_trackerx_customization.erpnext_doctype_hooks.supplier_group.before_delete"
+        "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.supplier_group.before_delete"
     },
 }
 
