@@ -25,10 +25,14 @@
   "total_quantity",
   "unit_of_measure",
   "total_pieces",
+  "column_break_pieces",
+  "total_boxes",
+  "pieces_per_box",
   "section_break_2",
   "aql_level",
   "inspection_regime",
   "aql_value",
+  "inspection_type",
   "column_break_3",
   "required_sample_size",
   "required_sample_pieces",
@@ -37,6 +41,7 @@
   "trims_defects",
   "defects_data",
   "items_data",
+  "sampling_plan",
   "section_break_checklist",
   "trims_checklist_items",
   "section_break_4",
@@ -183,6 +188,22 @@
    "read_only": 1
   },
   {
+   "fieldname": "column_break_pieces",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_boxes",
+   "fieldtype": "Int",
+   "label": "Total Boxes/Packs",
+   "default": 1
+  },
+  {
+   "fieldname": "pieces_per_box",
+   "fieldtype": "Int",
+   "label": "Pieces per Box",
+   "read_only": 1
+  },
+  {
    "fieldname": "section_break_2",
    "fieldtype": "Section Break",
    "label": "AQL Configuration"
@@ -207,6 +228,14 @@
    "fieldtype": "Link",
    "label": "AQL Value",
    "options": "AQL Standard",
+   "reqd": 1
+  },
+  {
+   "default": "AQL Based",
+   "fieldname": "inspection_type",
+   "fieldtype": "Select",
+   "label": "Inspection Type",
+   "options": "AQL Based\n100% Inspection",
    "reqd": 1
   },
   {
@@ -253,6 +282,12 @@
    "fieldtype": "Long Text", 
    "hidden": 1,
    "label": "Items Data (JSON)"
+  },
+  {
+   "fieldname": "sampling_plan",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "AQL Sampling Plan (JSON)"
   },
   {
    "fieldname": "section_break_checklist",

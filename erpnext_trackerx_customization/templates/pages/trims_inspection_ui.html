@@ -491,6 +491,14 @@ body {
     border: 1px solid #c3e6cb;
 }
 
+.formula-note {
+    background: #e3f2fd;
+    border-left: 4px solid var(--primary-color);
+    padding: 15px;
+    margin: 15px 0;
+    border-radius: 0 6px 6px 0;
+}
+
 /* Enhanced Button Styling */
 .btn {
     display: inline-block;
@@ -722,34 +730,21 @@ body {
         <div class="grid-3">
             <div class="form-row">
                 <label>Inspection Type:</label>
-                <select class="form-control" id="inspection-type" onchange="updateAQLConfiguration()">
+                <select class="form-control" id="inspection-type">
                     <option value="AQL Based" {{ 'selected' if inspection_doc.inspection_type == 'AQL Based' else '' }}>AQL Based</option>
                     <option value="100% Inspection" {{ 'selected' if inspection_doc.inspection_type == '100% Inspection' else '' }}>100% Inspection</option>
                 </select>
             </div>
             <div class="form-row">
                 <label>AQL Level:</label>
-                <select class="form-control" id="aql-level" onchange="updateAQLConfiguration()">
-                    <option value="I" {{ 'selected' if inspection_doc.aql_level == 'I' else '' }}>I</option>
-                    <option value="II" {{ 'selected' if inspection_doc.aql_level == 'II' else '' }}>II</option>
-                    <option value="III" {{ 'selected' if inspection_doc.aql_level == 'III' else '' }}>III</option>
-                    <option value="S-1" {{ 'selected' if inspection_doc.aql_level == 'S-1' else '' }}>S-1</option>
-                    <option value="S-2" {{ 'selected' if inspection_doc.aql_level == 'S-2' else '' }}>S-2</option>
-                    <option value="S-3" {{ 'selected' if inspection_doc.aql_level == 'S-3' else '' }}>S-3</option>
-                    <option value="S-4" {{ 'selected' if inspection_doc.aql_level == 'S-4' else '' }}>S-4</option>
+                <select class="form-control" id="aql-level">
+                    <option value="">Loading AQL levels...</option>
                 </select>
             </div>
             <div class="form-row">
                 <label>AQL Value:</label>
-                <select class="form-control" id="aql-value" onchange="updateAQLConfiguration()">
-                    <option value="0.4" {{ 'selected' if inspection_doc.aql_value == '0.4' else '' }}>0.4</option>
-                    <option value="0.65" {{ 'selected' if inspection_doc.aql_value == '0.65' else '' }}>0.65</option>
-                    <option value="1.0" {{ 'selected' if inspection_doc.aql_value == '1.0' else '' }}>1.0</option>
-                    <option value="1.5" {{ 'selected' if inspection_doc.aql_value == '1.5' else '' }}>1.5</option>
-                    <option value="2.5" {{ 'selected' if inspection_doc.aql_value == '2.5' else '' }}>2.5</option>
-                    <option value="4.0" {{ 'selected' if inspection_doc.aql_value == '4.0' else '' }}>4.0</option>
-                    <option value="6.5" {{ 'selected' if inspection_doc.aql_value == '6.5' else '' }}>6.5</option>
-                    <option value="10.0" {{ 'selected' if inspection_doc.aql_value == '10.0' else '' }}>10.0</option>
+                <select class="form-control" id="aql-value">
+                    <option value="">Loading AQL values...</option>
                 </select>
             </div>
             <div class="form-row">
@@ -757,17 +752,30 @@ body {
                 <input type="text" class="form-control" id="sample-size-display" value="{{ inspection_doc.required_sample_pieces or 0 }}" readonly>
             </div>
             <div class="form-row">
-                <label>Sample %:</label>
-                <input type="text" class="form-control" id="sample-percentage-display" value="0%" readonly>
-            </div>
-            <div class="form-row">
                 <label>Inspection Regime:</label>
-                <select class="form-control" id="inspection-regime" onchange="updateAQLConfiguration()">
+                <select class="form-control" id="inspection-regime">
                     <option value="Normal" {{ 'selected' if inspection_doc.inspection_regime == 'Normal' else '' }}>Normal</option>
                     <option value="Tightened" {{ 'selected' if inspection_doc.inspection_regime == 'Tightened' else '' }}>Tightened</option>
                     <option value="Reduced" {{ 'selected' if inspection_doc.inspection_regime == 'Reduced' else '' }}>Reduced</option>
                 </select>
             </div>
+        </div>
+        <div class="form-row" style="margin-top: 15px;">
+            <button class="btn btn-primary" onclick="updateAQLConfiguration()">🔄 Update AQL</button>
+        </div>
+        <div class="formula-note" id="aql-summary">
+            <strong>AQL Configuration:</strong> <span id="aql-config-text">Level {{ inspection_doc.aql_level or '2' }} with {{ inspection_doc.aql_value or '2.5' }}% defect tolerance</span><br>
+            <strong>Sampling:</strong> <span id="sampling-text">{{ inspection_doc.required_sample_items or 0 }} items out of {{ inspection_doc.total_items or 0 }} total items</span><br>
+            <strong>Selected for Inspection:</strong> <span id="selected-items-text">
+                <span id="selected-item-count">{{ inspection_doc.items|length if inspection_doc.items else 0 }}</span> items - 
+                <span id="selected-item-details">
+                {% if inspection_doc.items %}
+                {% for item in inspection_doc.items %}{{ item.item_number }} ({{ item.pieces or 0 }} pieces){% if not loop.last %}, {% endif %}{% endfor %}
+                {% else %}
+                No items selected
+                {% endif %}
+                </span>
+            </span>
         </div>
     </div>
 
@@ -824,7 +832,8 @@ body {
                 <div class="item-header" onclick="toggleItem('{{ item.item_number }}')">
                     <div>
                         <strong>Item: {{ item.item_number }}</strong>
-                        <span class="pill">Pieces: {{ item.pieces }}</span>
+                        <span class="pill">Total Pieces: {{ item.pieces }}</span>
+                        <span class="pill" id="inspection-pieces-{{ item.item_number }}">Pieces to Inspect: Calculating...</span>
                         <span class="pill">Description: {{ item.description }}</span>
                         <span class="pill status-badge status-ok" id="item-status-{{ item.item_number }}">{{ item.status }}</span>
                     </div>
@@ -967,13 +976,23 @@ let inspectionData = {
     inspection_status: '{{ inspection_doc.inspection_status or "" }}',
     hold_reason: '{{ inspection_doc.hold_reason or "" }}',
     hold_by: '{{ inspection_doc.hold_by or "" }}',
-    hold_timestamp: '{{ inspection_doc.hold_timestamp or "" }}'
+    hold_timestamp: '{{ inspection_doc.hold_timestamp or "" }}',
+    aql_level: '{{ inspection_doc.aql_level or "" }}',
+    aql_value: '{{ inspection_doc.aql_value or "" }}'
 };
 
 // Initialize the page
 document.addEventListener('DOMContentLoaded', function() {
     loadTrimsData();
     calculateTotals();
+    
+    // Load AQL options dynamically
+    if (typeof loadAQLOptions === 'function') {
+        console.log('✅ Loading AQL options dynamically');
+        loadAQLOptions();
+    } else {
+        console.error('❌ loadAQLOptions function not available');
+    }
 });
 
 // Quality Manager Actions for Trims

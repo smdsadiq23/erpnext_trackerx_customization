@@ -339,15 +339,52 @@ def create_inspection_for_material_type(grn_doc, material_type, items):
             # Trims inspection - count-based system for all non-fabric materials
             total_quantity = sum(float(item.received_quantity or 0) for item in items)
             
+            # Calculate total boxes from GRN items
+            total_boxes = sum(int(getattr(item, 'no_of_boxespacks', 0) or 0) for item in items)
+            if total_boxes == 0:
+                total_boxes = 1  # Default to 1 if no boxes specified
+            
+            # Calculate pieces per box (total pieces divided by total boxes)
+            pieces_per_box = int(total_quantity / total_boxes) if total_boxes > 0 else int(total_quantity)
+            
             inspection_data.update({
                 "total_quantity": total_quantity,
                 "total_pieces": total_quantity,  # Set pieces equal to quantity for trims
+                "total_boxes": total_boxes,  # Map from GRN no_of_boxespacks
+                "pieces_per_box": pieces_per_box,  # Calculate pieces per box
                 "required_sample_size": 100,  # Default 100% for trims
                 "required_sample_pieces": total_quantity,  # Sample all pieces initially
                 "aql_level": "2",  # Default - AQL Level II corresponds to level_code "2"
                 "aql_value": "2.5",  # Default AQL value
                 "inspection_regime": "Normal"  # Default inspection regime
             })
+            
+            frappe.logger().info(f"Trims inspection mapping: total_boxes={total_boxes}, pieces_per_box={pieces_per_box}, total_quantity={total_quantity}")
+            
+            # Create items data for Trims Inspection UI
+            items_data = []
+            for idx, item in enumerate(items, 1):
+                # Calculate pieces for this specific item
+                item_boxes = int(getattr(item, 'no_of_boxespacks', 0) or 1)
+                item_pieces = int(item.received_quantity or 0)
+                
+                item_data = {
+                    "item_number": f"ITEM-{idx:03d}",
+                    "pieces": item_pieces,
+                    "quantity": item_pieces,
+                    "boxes": item_boxes,
+                    "description": getattr(item, 'description', f'Item from {item.item_code}'),
+                    "status": "Pending",
+                    "item_code": item.item_code,
+                    "grn_item_reference": item.name
+                }
+                items_data.append(item_data)
+            
+            # Store items data as JSON for the UI
+            import json
+            inspection_data["items_data"] = json.dumps(items_data)
+            
+            frappe.logger().info(f"Created {len(items_data)} items for Trims Inspection UI")
         
         # Create the document
         inspection_doc = frappe.get_doc(inspection_data)
@@ -418,6 +455,85 @@ def test_grn_inspection_creation(grn_name):
     except Exception as e:
         frappe.log_error(f"GRN inspection test failed: {str(e)}", "GRN Inspection Test")
         return {"success": False, "error": str(e)}
+
+@frappe.whitelist()
+def test_box_mapping_fix(grn_name):
+    """
+    Test function to verify the box mapping fix for a specific GRN
+    """
+    try:
+        # Get the GRN document
+        grn_doc = frappe.get_doc("Goods Receipt Note", grn_name)
+        
+        results = {
+            "grn_name": grn_name,
+            "grn_items": [],
+            "trims_inspections": [],
+            "mapping_verification": []
+        }
+        
+        # Analyze GRN items
+        for item in grn_doc.items:
+            item_info = {
+                "item_code": item.item_code,
+                "received_quantity": item.received_quantity,
+                "no_of_boxespacks": getattr(item, 'no_of_boxespacks', 'NOT_FOUND'),
+                "material_type": get_material_type_from_item(item)
+            }
+            results["grn_items"].append(item_info)
+        
+        # Find related Trims Inspections
+        trims_inspections = frappe.get_all(
+            "Trims Inspection",
+            filters={"grn_reference": grn_name},
+            fields=["name", "total_boxes", "total_pieces", "pieces_per_box", "items_data"]
+        )
+        
+        for inspection in trims_inspections:
+            inspection_doc = frappe.get_doc("Trims Inspection", inspection.name)
+            inspection_info = {
+                "name": inspection.name,
+                "total_boxes": inspection_doc.total_boxes,
+                "total_pieces": inspection_doc.total_pieces,
+                "pieces_per_box": inspection_doc.pieces_per_box,
+                "items_data_exists": bool(inspection_doc.items_data),
+                "items_count": 0
+            }
+            
+            # Check items data
+            if inspection_doc.items_data:
+                try:
+                    items_data = json.loads(inspection_doc.items_data)
+                    inspection_info["items_count"] = len(items_data) if isinstance(items_data, list) else 0
+                    inspection_info["sample_items"] = items_data[:2] if isinstance(items_data, list) else []
+                except:
+                    inspection_info["items_data_error"] = "Failed to parse JSON"
+            
+            results["trims_inspections"].append(inspection_info)
+        
+        # Verification
+        for grn_item in results["grn_items"]:
+            grn_boxes = grn_item.get("no_of_boxespacks", 0)
+            for inspection in results["trims_inspections"]:
+                inspection_boxes = inspection.get("total_boxes", 0)
+                
+                verification = {
+                    "grn_item": grn_item["item_code"],
+                    "grn_boxes": grn_boxes,
+                    "inspection_name": inspection["name"],
+                    "inspection_boxes": inspection_boxes,
+                    "mapping_correct": grn_boxes == inspection_boxes,
+                    "status": "✅ PASS" if grn_boxes == inspection_boxes else "❌ FAIL"
+                }
+                results["mapping_verification"].append(verification)
+        
+        return {"success": True, "results": results}
+        
+    except Exception as e:
+        frappe.log_error(f"Box mapping test failed: {str(e)}", "Box Mapping Test")
+        return {"success": False, "error": str(e)}
+
+import json
 
 @frappe.whitelist()
 def run_complete_grn_test():
