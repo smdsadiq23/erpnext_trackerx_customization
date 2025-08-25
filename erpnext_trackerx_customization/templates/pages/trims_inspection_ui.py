@@ -105,21 +105,38 @@ def get_purchase_order_from_grn(grn_name):
 
 
 def get_inspection_items(inspection_doc):
-    """Get items for inspection (simulated data for now)"""
+    """Get items for inspection from items_data JSON field or create default items"""
     items = []
     
-    # For now, create sample items based on total pieces
-    total_pieces = inspection_doc.get('total_pieces', 100)
-    pieces_per_item = max(1, total_pieces // 10)  # Divide into max 10 items
+    # First try to get items from items_data JSON field
+    if inspection_doc.get('items_data'):
+        try:
+            items_data = json.loads(inspection_doc.items_data)
+            if items_data and isinstance(items_data, list):
+                frappe.logger().info(f"Loaded {len(items_data)} items from items_data JSON field")
+                return items_data
+        except Exception as e:
+            frappe.logger().error(f"Error parsing items_data JSON: {str(e)}")
     
-    for i in range(1, min(11, total_pieces + 1)):
+    # Fallback: create sample items based on total pieces and boxes
+    total_pieces = inspection_doc.get('total_pieces', 100)
+    total_boxes = inspection_doc.get('total_boxes', 1)
+    pieces_per_box = inspection_doc.get('pieces_per_box', total_pieces)
+    
+    frappe.logger().info(f"Creating fallback items: total_pieces={total_pieces}, total_boxes={total_boxes}, pieces_per_box={pieces_per_box}")
+    
+    # Create items based on boxes
+    for i in range(1, total_boxes + 1):
         items.append({
             'item_number': f"ITEM-{i:03d}",
-            'description': f"Sample item {i}",
-            'pieces': pieces_per_item if i < 10 else (total_pieces - (pieces_per_item * 9)),
+            'description': f"Box {i} of {total_boxes}",
+            'pieces': pieces_per_box,
+            'quantity': pieces_per_box,
+            'boxes': 1,
             'status': 'Pending'
         })
     
+    frappe.logger().info(f"Created {len(items)} fallback items for inspection")
     return items
 
 
