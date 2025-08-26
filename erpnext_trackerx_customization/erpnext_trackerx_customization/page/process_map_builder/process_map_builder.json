@@ -1,0 +1,19 @@
+{
+ "content": null,
+ "creation": "2025-08-22 15:15:34.183477",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2025-08-22 15:15:34.183477",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "process-map-builder",
+ "owner": "Administrator",
+ "page_name": "process-map-builder",
+ "roles": [],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "process-map-builder"
+}
