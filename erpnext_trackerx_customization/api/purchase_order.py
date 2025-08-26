@@ -116,3 +116,61 @@ def get_item_rate(item_code, company):
     valuation_rate = frappe.db.get_value('Item', item_code, 'valuation_rate')
     
     return valuation_rate or 0
+
+
+# File: erpnext_trackerx_customization/api/purchase_order.py
+
+import frappe
+from frappe.model.mapper import get_mapped_doc
+
+@frappe.whitelist()
+def make_goods_receipt_note(source_name, target_doc=None):
+    def set_missing_values(source, target):
+        target.run_method("set_missing_values")
+        target.run_method("calculate_taxes_and_totals")
+
+    def update_item(source_doc, target_doc, source_parent):
+        target_doc.qty = source_doc.qty - source_doc.received_qty
+        target_doc.ordered_quantity = source_doc.qty
+        target_doc.received_quantity = source_doc.qty - source_doc.received_qty
+        
+        # Copy custom fields if they exist
+        if hasattr(source_doc, 'color'):
+            target_doc.color = source_doc.color
+        if hasattr(source_doc, 'composition'):
+            target_doc.composition = source_doc.composition
+        if hasattr(source_doc, 'material_type'):
+            target_doc.material_type = source_doc.material_type
+        # Add other custom field mappings as needed
+
+    doc = get_mapped_doc("Purchase Order", source_name, {
+        "Purchase Order": {
+            "doctype": "Goods Receipt Note",
+            "field_map": {
+                "supplier": "supplier",
+                "supplier_name": "supplier_name",
+                "company": "company",
+                "currency": "currency",
+                "buying_price_list": "buying_price_list",
+            },
+            "validation": {
+                "docstatus": ["=", 1]
+            }
+        },
+        "Purchase Order Item": {
+            "doctype": "Goods Receipt Item",
+            "field_map": {
+                "name": "purchase_order_item",
+                "parent": "purchase_order",
+                "item_code": "item_code",
+                "uom": "uom",
+                "warehouse": "accepted_warehouse",
+                "rate": "rate",
+                "amount": "amount",
+            },
+            "postprocess": update_item,
+            "condition": lambda doc: doc.received_qty < doc.qty
+        }
+    }, target_doc, set_missing_values)
+
+    return doc

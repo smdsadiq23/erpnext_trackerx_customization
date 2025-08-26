@@ -17,6 +17,10 @@ def save_progress(inspection_name, defects_data=None, items_data=None, checklist
         if not inspection.has_permission("write"):
             frappe.throw(_("You do not have permission to modify this inspection"))
         
+        # Check if inspection is read-only for Quality Inspectors
+        if is_inspection_readonly_for_user(inspection):
+            frappe.throw(_("This inspection is read-only. Only Quality Managers can modify inspections with status '{0}'").format(inspection.inspection_status))
+        
         # Initialize data with safe defaults
         if defects_data is None:
             defects_data = {}
@@ -46,10 +50,33 @@ def save_progress(inspection_name, defects_data=None, items_data=None, checklist
         
         # Update defects data
         if defects_data:
-            inspection.defects_data = json.dumps(defects_data)
+            # Clean the defects data properly for trims inspection
+            cleaned_defects_data = clean_trims_defects_data(defects_data)
+            inspection.defects_data = json.dumps(cleaned_defects_data)
         
-        # Skip complex calculations for now
-        # Focus on core requirement: save defects and update status
+        # Update items data
+        if items_data:
+            inspection.items_data = json.dumps(items_data)
+        
+        # Update checklist data
+        if checklist_data:
+            # Clear existing checklist items
+            inspection.set('trims_checklist_items', [])
+            
+            # Add new checklist items
+            for index, checklist_item in enumerate(checklist_data):
+                if checklist_item.get('results'):
+                    results = checklist_item['results']
+                    inspection.append('trims_checklist_items', {
+                        'test_parameter': checklist_item.get('test_parameter', ''),
+                        'standard_requirement': checklist_item.get('standard_requirement', ''),
+                        'actual_result': results.get('actual_result', ''),
+                        'status': results.get('status', ''),
+                        'remarks': results.get('remarks', ''),
+                        'test_method': checklist_item.get('test_method', ''),
+                        'test_category': checklist_item.get('test_category', ''),
+                        'is_mandatory': checklist_item.get('is_mandatory', 0)
+                    })
         
         # Update status to In Progress (key requirement)
         # Change status to In Progress if it's currently Draft or Hold
@@ -92,6 +119,10 @@ def save_inspection_data(inspection_name, defects_data, items_data, checklist_da
         if not inspection_doc.has_permission("write"):
             frappe.throw(_("You do not have permission to modify this inspection"))
         
+        # Check if inspection is read-only for Quality Inspectors
+        if is_inspection_readonly_for_user(inspection_doc):
+            frappe.throw(_("This inspection is read-only. Only Quality Managers can modify inspections with status '{0}'").format(inspection_doc.inspection_status))
+        
         # Parse JSON strings if needed
         if isinstance(defects_data, str):
             defects_data = json.loads(defects_data)
@@ -102,7 +133,7 @@ def save_inspection_data(inspection_name, defects_data, items_data, checklist_da
         
         # Update defects data (stored as JSON) - clean it before saving
         if defects_data:
-            cleaned_defects_data = clean_defects_data(defects_data)
+            cleaned_defects_data = clean_trims_defects_data(defects_data)
             inspection_doc.set('defects_data', json.dumps(cleaned_defects_data))
         
         # Update items data if provided
@@ -135,7 +166,7 @@ def save_inspection_data(inspection_name, defects_data, items_data, checklist_da
         total_minor = 0
         
         if defects_data:
-            cleaned_defects_data = clean_defects_data(defects_data)
+            cleaned_defects_data = clean_trims_defects_data(defects_data)
             for item_number, item_defects in cleaned_defects_data.items():
                 for defect_key, count in item_defects.items():
                     if count and int(count) > 0:
@@ -293,7 +324,7 @@ def get_inspection_data(inspection_name):
         if inspection_doc.get('defects_data'):
             try:
                 raw_defects_data = json.loads(inspection_doc.defects_data)
-                defects_data = clean_defects_data(raw_defects_data)
+                defects_data = clean_trims_defects_data(raw_defects_data)
             except:
                 defects_data = {}
         
@@ -323,10 +354,11 @@ def get_inspection_data(inspection_name):
             'defects': defects_data,
             'items': items_data,
             'checklist_items': checklist_items,
-            'canWrite': inspection_doc.has_permission("write"),
+            'canWrite': inspection_doc.has_permission("write") and not is_inspection_readonly_for_user(inspection_doc),
             'inspection_status': inspection_doc.inspection_status,
             'inspection_result': inspection_doc.inspection_result,
-            'quality_grade': inspection_doc.quality_grade
+            'quality_grade': inspection_doc.quality_grade,
+            'is_readonly': is_inspection_readonly_for_user(inspection_doc)
         }
         
     except Exception as e:
@@ -361,10 +393,27 @@ def create_inspection_from_grn(grn_name, item_code, material_type="Trims"):
         if not grn_item:
             frappe.throw(_("Item {0} not found in GRN {1}").format(item_code, grn_name))
         
+        # Get Purchase Order from GRN
+        purchase_order = None
+        try:
+            # Check if GRN has purchase_order field
+            if hasattr(grn_doc, 'purchase_order') and grn_doc.purchase_order:
+                purchase_order = grn_doc.purchase_order
+            elif hasattr(grn_doc, 'reference_docname') and grn_doc.reference_doctype == 'Purchase Order':
+                purchase_order = grn_doc.reference_docname
+            else:
+                # Try to get from GRN items if they have purchase_order reference
+                if hasattr(grn_item, 'purchase_order') and grn_item.purchase_order:
+                    purchase_order = grn_item.purchase_order
+        except Exception as e:
+            frappe.log_error(f"Error getting purchase order from GRN: {str(e)}")
+            purchase_order = None
+        
         # Create trims inspection document
         inspection_doc = frappe.new_doc("Trims Inspection")
         inspection_doc.update({
             'grn_reference': grn_name,
+            'purchase_order_reference': purchase_order,
             'supplier': grn_doc.supplier,
             'item_code': item_code,
             'item_name': grn_item.item_name,
@@ -424,10 +473,42 @@ def clean_defects_data(defects_data):
     return cleaned_data
 
 
+def clean_trims_defects_data(defects_data):
+    """Clean trims defects data - preserves zero counts for count-based system"""
+    if not defects_data or not isinstance(defects_data, dict):
+        return {}
+    
+    cleaned_data = {}
+    
+    for item_number, item_defects in defects_data.items():
+        if not isinstance(item_defects, dict):
+            continue
+            
+        cleaned_item_defects = {}
+        
+        for defect_key, count_value in item_defects.items():
+            # Skip only null/undefined values, but preserve zero counts
+            if count_value is None or count_value == "":
+                continue
+            
+            # Clean the count value
+            cleaned_count = clean_count_value(count_value)
+            
+            # Store all valid numbers including zero (important for trims count-based system)
+            if cleaned_count >= 0:  # Changed from > 0 to >= 0
+                cleaned_item_defects[defect_key] = int(cleaned_count)
+        
+        # Store items even if all counts are zero (to preserve UI state)
+        if cleaned_item_defects:
+            cleaned_data[item_number] = cleaned_item_defects
+    
+    return cleaned_data
+
+
 def clean_count_value(count_value):
     """Clean a single count value, removing malformed data and returning a valid integer"""
     if isinstance(count_value, (int, float)):
-        return int(count_value) if count_value > 0 else 0
+        return int(count_value) if count_value >= 0 else 0
     
     if isinstance(count_value, str):
         import re
@@ -543,7 +624,19 @@ def update_status(inspection_name, status):
         if not inspection.has_permission("write"):
             frappe.throw(_("You do not have permission to modify this inspection"))
         
-        # Validate status transition
+        # Check if inspection is read-only for Quality Inspectors (except for certain status transitions)
+        if is_inspection_readonly_for_user(inspection) and not can_user_change_status(inspection, status):
+            frappe.throw(_("This inspection is read-only. Only Quality Managers can modify inspections with status '{0}'").format(inspection.inspection_status))
+        
+        # Check if trying to transition to the same status (this is allowed for saving progress)
+        if inspection.inspection_status == status:
+            return {
+                'success': True,
+                'message': f'Inspection is already in {status} status',
+                'status': status
+            }
+        
+        # Validate status transition for different statuses
         if not is_valid_trims_status_transition(inspection.inspection_status, status):
             frappe.throw(_("Invalid status transition from {0} to {1}").format(inspection.inspection_status, status))
         
@@ -576,13 +669,28 @@ def validate_trims_inspection_completeness(inspection):
         }
     
     # Check if any data has been entered
-    has_defects = bool(inspection.get('defects_data'))
+    has_defects = False
     has_checklist = bool(inspection.get('trims_checklist_items'))
+    
+    # Check if defects_data contains actual data (not just empty JSON)
+    if inspection.get('defects_data'):
+        try:
+            defects_data = json.loads(inspection.defects_data)
+            # Check if there's actual defect data (not just empty dict)
+            has_defects = bool(defects_data and any(
+                item_defects for item_defects in defects_data.values() 
+                if isinstance(item_defects, dict) and any(
+                    count for count in item_defects.values() 
+                    if count and int(count) > 0
+                )
+            ))
+        except:
+            has_defects = False
     
     if not has_defects and not has_checklist:
         return {
             'valid': False,
-            'reason': 'No inspection data has been recorded'
+            'reason': 'No inspection data has been recorded. Please save your defects and checklist data first using the "Save Progress" button before submitting.'
         }
     
     return {'valid': True}
@@ -614,3 +722,38 @@ def is_valid_trims_status_transition(current_status, new_status):
     }
     
     return new_status in valid_transitions.get(current_status, [])
+
+
+def is_inspection_readonly_for_user(inspection):
+    """Check if inspection should be read-only for the current user"""
+    # Get current user roles
+    user_roles = frappe.get_roles(frappe.session.user)
+    
+    # System users and Quality Managers can always edit
+    if any(role in user_roles for role in ["Administrator", "System Manager", "Quality Manager"]):
+        return False
+    
+    # For Quality Inspectors, check if status is in final states
+    if "Quality Inspector" in user_roles:
+        readonly_statuses = ["Accepted", "Rejected", "Conditional Accept"]
+        return inspection.inspection_status in readonly_statuses
+    
+    # For other users, follow standard permissions
+    return False
+
+
+def can_user_change_status(inspection, new_status):
+    """Check if the current user can change the inspection to the new status"""
+    user_roles = frappe.get_roles(frappe.session.user)
+    
+    # System users and Quality Managers can always change status
+    if any(role in user_roles for role in ["Administrator", "System Manager", "Quality Manager"]):
+        return True
+    
+    # Quality Inspectors cannot change status from final states
+    if "Quality Inspector" in user_roles:
+        readonly_statuses = ["Accepted", "Rejected", "Conditional Accept"]
+        if inspection.inspection_status in readonly_statuses:
+            return False
+    
+    return True
