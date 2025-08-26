@@ -1,43 +1,16 @@
 frappe.ui.form.on('Item', {
 
     onload: function(frm) {
+
         console.log("Item form loaded."); // Debugging log
 
         setItemMasterOptions(frm);
-        
-
-        // --- Auto-add row to 'components' child table on new Item creation ---
-        // if (frm.is_new()) {
-        //     console.log("New Item document created. Adding default row to 'components' child table.");
-        //     let new_component_row = frm.add_child('custom_fg_components'); // 'components' is the fieldname of your child table
-        //     new_component_row.component_name = frm.doc.item_name; // Set child field from parent's item_name
-        //     new_component_row.tracking_required=true;
-        //     frm.refresh_field('custom_fg_components'); // Refresh the child table grid to show the new row
-        // }
-
-        
-    },
-
-    custom_fg_components: function(frm) {
-        console.log("Changed child table")
-    },
-
-    item_name: function(frm) {
-        
-        // // This will update the component_name in the first row if item_name changes
-        // // after the initial load, or if the user types in item_name first.
-        // if (frm.doc.custom_fg_components && frm.doc.custom_fg_components.length > 0) {
-        //     frm.doc.custom_fg_components[0].component_name = frm.doc.item_name;
-        //     frm.refresh_field('custom_fg_components');
-        //     console.log("Component name updated in child table from Item Name.");
-        // }
     },
 
     refresh: function(frm) {
 
 
         console.log("Item form refreshed.");
-        
 
         // Always remove stray dropdowns first
         $('#custom-master-type-select').remove();
@@ -61,8 +34,6 @@ frappe.ui.form.on('Item', {
 
         filterCustomSelectMasterOptionsBasedOnRole(frm);
         
-        // --- New Logic: Filter 'construction_type' Link field ---
-        // This function will be called on refresh and when custom_select_master changes
         setConstructionTypeFilter(frm);        
 
         setItemGroupFilter(frm);
@@ -101,9 +72,10 @@ frappe.ui.form.on('Item', {
         }
     }
 
-    
-    
 });
+
+
+
 
 function populate_measurement_table_sample_data(frm) {
     // Only proceed if both fields are selected
@@ -480,4 +452,34 @@ function copy_operations_from_style_master(frm) {
             frappe.msgprint(__('Error fetching Item data'));
         }
     });
+}
+
+
+
+
+
+
+// Handle item location changes
+frappe.ui.form.on('FG Components', {
+    component_name: function(frm, cdt, cdn) {
+        
+        set_parent_component_options(frm, cdt, cdn);
+    },
+    
+});
+
+// A helper function to fetch the component names and set the options.
+function set_parent_component_options(frm) {
+    // Collect all the component names from the "custom_fg_components" child table.
+    let component_names = frm.doc.custom_fg_components.filter(row => row.component_name).map(row => row.component_name);
+
+    frm.doc.custom_fg_components.forEach(function(row, index) {
+            let field = frm.fields_dict.custom_fg_components.grid.grid_rows[index].docfields.find(f => f.fieldname === 'parent_component');
+            if (field) {
+                field.options = component_names;
+            }
+        });
+    
+   
+    frm.refresh_fields('custom_fg_components');
 }
