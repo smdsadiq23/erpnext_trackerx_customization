@@ -649,8 +649,13 @@ def manager_submit_for_purchase_receipt(inspection_name, manager_remarks=""):
         frappe.throw(_("Error creating purchase receipt: {0}").format(str(e)))
 
 def create_purchase_receipt_from_inspection(inspection_doc):
-    """Create a Purchase Receipt based on the fabric inspection"""
+    """Create a Purchase Receipt based on the fabric inspection using enhanced field mapping"""
     try:
+        # Import enhanced field mapping utility
+        from erpnext_trackerx_customization.erpnext_trackerx_customization.utils.purchase_receipt_field_mapper import (
+            create_enhanced_purchase_receipt_item, log_field_mapping_summary
+        )
+        
         # Get the linked GRN
         if not inspection_doc.grn_reference:
             frappe.throw(_("No GRN reference found in inspection"))
@@ -674,10 +679,20 @@ def create_purchase_receipt_from_inspection(inspection_doc):
         purchase_receipt.grn_reference = inspection_doc.grn_reference
         purchase_receipt.linked_grn = inspection_doc.grn_reference
         
-        # Add items from inspection
+        # Add items from inspection with enhanced field mapping
         total_accepted_qty = 0
-        for roll in inspection_doc.get('fabric_rolls_tab', []):
-            if roll.get('roll_result') in ['First Quality', 'Accepted', 'Conditional Accept']:
+        pr_items_created = []
+        
+        # Debug: Log fabric rolls data
+        fabric_rolls = inspection_doc.get('fabric_rolls_tab', [])
+        frappe.logger().info(f"Fabric Inspection {inspection_doc.name}: Found {len(fabric_rolls)} fabric rolls")
+        
+        for roll in fabric_rolls:
+            roll_result = roll.get('roll_result')
+            roll_number = getattr(roll, 'roll_number', 'N/A')
+            frappe.logger().info(f"Roll {roll_number}: result = '{roll_result}'")
+            
+            if roll_result in ['First Quality', 'Accepted', 'Conditional Accept']:
                 # Find corresponding item in GRN
                 grn_item = None
                 for grn_item_row in grn_doc.get('items', []):
@@ -687,47 +702,67 @@ def create_purchase_receipt_from_inspection(inspection_doc):
                 
                 if grn_item:
                     try:
-                        # Calculate quantities and amounts
+                        # Calculate quantities for inspection overrides
                         received_qty = roll.roll_length or 1
-                        rate = getattr(grn_item, 'rate', 0) or 0
-                        if rate == 0 and hasattr(grn_item, 'amount') and hasattr(grn_item, 'received_quantity'):
-                            rate = grn_item.amount / max(grn_item.received_quantity, 1)
                         
-                        # Get item name from Item master
-                        item_name = grn_item.item_code
-                        try:
-                            item_doc = frappe.get_doc("Item", grn_item.item_code)
-                            item_name = item_doc.item_name or grn_item.item_code
-                        except:
-                            pass
+                        # Create enhanced inspection remarks
+                        inspection_remarks = f"Fabric Inspection: {inspection_doc.name} | Quality Grade: {getattr(roll, 'roll_grade', 'N/A')} | Defect Points: {getattr(roll, 'total_defect_points', 0)} | Roll No: {getattr(roll, 'roll_number', 'N/A')} | Roll Result: {getattr(roll, 'roll_result', 'N/A')}"
                         
-                        # Ensure all required fields have valid values
-                        uom = grn_item.uom or 'Meter'
-                        if not uom:
-                            uom = 'Meter'
+                        # Use enhanced field mapping with inspection-specific overrides
+                        pr_item_data = create_enhanced_purchase_receipt_item(
+                            grn_item, 
+                            grn_doc,
+                            qty=received_qty,  # Override with inspection-approved quantity
+                            remarks=inspection_remarks  # Override with inspection details
+                        )
                         
-                        # Create Purchase Receipt item with minimal fields to avoid validation issues
-                        purchase_receipt.append('items', {
-                            'item_code': grn_item.item_code,
-                            'item_name': item_name or grn_item.item_code,
-                            'description': item_name or grn_item.item_code,
-                            'received_qty': received_qty,
-                            'qty': received_qty,
-                            'uom': uom,
-                            'stock_uom': uom,
-                            'conversion_factor': 1,
-                            'rate': rate or 0,
-                            'base_rate': rate or 0,
-                            'amount': received_qty * (rate or 0),
-                            'base_amount': received_qty * (rate or 0),
-                            'warehouse': grn_doc.get('set_warehouse'),
-                            'remarks': f"Quality Grade: {getattr(roll, 'roll_grade', 'N/A')}, Points: {getattr(roll, 'total_defect_points', 0)}, Roll: {getattr(roll, 'roll_number', 'N/A')} | Quality Inspection: {inspection_doc.name}"
-                        })
+                        # Add to Purchase Receipt
+                        purchase_receipt.append('items', pr_item_data)
+                        pr_items_created.append(pr_item_data)
                         total_accepted_qty += received_qty
+                        
+                        frappe.logger().info(f"Added roll {roll_number} to Purchase Receipt with qty {received_qty}")
                         
                     except Exception as item_error:
                         frappe.log_error(f"Error processing roll {getattr(roll, 'roll_number', 'unknown')}: {str(item_error)}")
                         continue
+        
+        # If no accepted rolls found, add the item anyway with conditional acceptance
+        if not pr_items_created:
+            frappe.logger().warning(f"No accepted rolls found for inspection {inspection_doc.name}, adding item with conditional acceptance")
+            
+            # Find GRN item
+            grn_item = None
+            for grn_item_row in grn_doc.get('items', []):
+                if grn_item_row.item_code == inspection_doc.item_code:
+                    grn_item = grn_item_row
+                    break
+            
+            if grn_item:
+                # Use a minimal quantity for conditional acceptance
+                conditional_qty = 1
+                total_accepted_qty = conditional_qty
+                
+                inspection_remarks = f"Fabric Inspection: {inspection_doc.name} | Conditional Acceptance - No specific roll acceptance data | Quality Manager Decision: {inspection_doc.get('manager_remarks', 'N/A')}"
+                
+                pr_item_data = create_enhanced_purchase_receipt_item(
+                    grn_item, 
+                    grn_doc,
+                    qty=conditional_qty,
+                    remarks=inspection_remarks
+                )
+                
+                purchase_receipt.append('items', pr_item_data)
+                pr_items_created.append(pr_item_data)
+                
+                frappe.logger().info(f"Added conditional acceptance item with qty {conditional_qty}")
+        
+        # Ensure we have at least one item before proceeding
+        if not pr_items_created:
+            frappe.throw(_("No items could be added to Purchase Receipt. Please check the inspection data and try again."))
+        
+        # Log field mapping summary for monitoring
+        log_field_mapping_summary(pr_items_created, "Fabric Inspection")
         
         # Add inspection summary in remarks
         purchase_receipt.remarks = f"""Purchase Receipt created from Quality Inspection: {inspection_doc.name}
@@ -739,6 +774,20 @@ Overall Quality Grade: {inspection_doc.quality_grade}
 
 Manager Remarks:
 {inspection_doc.get('manager_remarks', 'No additional remarks')}"""
+        
+        # Initialize financial totals to prevent None errors
+        purchase_receipt.total_qty = sum(item.get('qty', 0) for item in pr_items_created)
+        purchase_receipt.total = sum(item.get('amount', 0) for item in pr_items_created)
+        purchase_receipt.net_total = purchase_receipt.total
+        purchase_receipt.grand_total = purchase_receipt.total
+        purchase_receipt.base_total = purchase_receipt.total
+        purchase_receipt.base_net_total = purchase_receipt.total  
+        purchase_receipt.base_grand_total = purchase_receipt.total
+        purchase_receipt.base_rounded_total = purchase_receipt.total
+        purchase_receipt.rounded_total = purchase_receipt.total
+        
+        # Calculate totals before saving to prevent validation errors
+        purchase_receipt.run_method("calculate_taxes_and_totals")
         
         # Save the Purchase Receipt
         purchase_receipt.save()

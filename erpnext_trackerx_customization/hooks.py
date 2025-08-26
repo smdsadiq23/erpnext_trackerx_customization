@@ -64,7 +64,7 @@ aql_fixtures = [
 after_migrate = [
     #"erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute", 
     #"erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure"
-   # "erpnext_trackerx_customization.setup.purchase_receipt_custom_fields.execute"
+    "erpnext_trackerx_customization.setup.purchase_receipt_custom_fields.execute",
     "erpnext_trackerx_customization.setup.migrate_quality_roles.execute",
     "erpnext_trackerx_customization.setup.aql_data_setup.import_aql_fixtures"
     ]

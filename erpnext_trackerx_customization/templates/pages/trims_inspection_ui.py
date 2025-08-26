@@ -446,8 +446,13 @@ def manager_submit_trims_for_purchase_receipt(inspection_name, manager_remarks="
         frappe.throw(_("Error creating purchase receipt: {0}").format(str(e)))
 
 def create_trims_purchase_receipt_from_inspection(inspection_doc):
-    """Create a Purchase Receipt based on the trims inspection"""
+    """Create a Purchase Receipt based on the trims inspection using enhanced field mapping"""
     try:
+        # Import enhanced field mapping utility
+        from erpnext_trackerx_customization.erpnext_trackerx_customization.utils.purchase_receipt_field_mapper import (
+            create_enhanced_purchase_receipt_item, log_field_mapping_summary
+        )
+        
         # Get the linked GRN
         if not inspection_doc.grn_reference:
             frappe.throw(_("No GRN reference found in inspection"))
@@ -474,6 +479,7 @@ def create_trims_purchase_receipt_from_inspection(inspection_doc):
         # Calculate accepted quantity based on inspection results
         total_accepted_qty = 0
         accepted_percentage = 100  # Default to 100% if no specific rejection data
+        pr_items_created = []
         
         # Check if there are specific defect counts that indicate rejections
         if hasattr(inspection_doc, 'total_critical_defects') and hasattr(inspection_doc, 'total_pieces'):
@@ -491,47 +497,32 @@ def create_trims_purchase_receipt_from_inspection(inspection_doc):
         
         if grn_item:
             try:
-                # Calculate accepted quantity and rate
+                # Calculate accepted quantity
                 accepted_qty = getattr(grn_item, 'received_quantity', 1) * (accepted_percentage / 100)
                 total_accepted_qty = accepted_qty
-                rate = getattr(grn_item, 'rate', 0) or 0
-                if rate == 0 and hasattr(grn_item, 'amount') and hasattr(grn_item, 'received_quantity'):
-                    rate = grn_item.amount / max(grn_item.received_quantity, 1)
                 
-                # Get item name from Item master
-                item_name = grn_item.item_code
-                try:
-                    item_doc = frappe.get_doc("Item", grn_item.item_code)
-                    item_name = item_doc.item_name or grn_item.item_code
-                except:
-                    pass
+                # Create enhanced inspection remarks
+                inspection_remarks = f"Trims Inspection: {inspection_doc.name} | Quality Grade: {getattr(inspection_doc, 'quality_grade', 'N/A')} | Acceptance Rate: {accepted_percentage:.1f}% | Critical Defects: {getattr(inspection_doc, 'total_critical_defects', 0)} | Major Defects: {getattr(inspection_doc, 'total_major_defects', 0)} | Minor Defects: {getattr(inspection_doc, 'total_minor_defects', 0)}"
                 
-                # Ensure all required fields have valid values
-                uom = grn_item.uom or 'Pcs'
-                if not uom:
-                    uom = 'Pcs'
+                # Use enhanced field mapping with inspection-specific overrides
+                pr_item_data = create_enhanced_purchase_receipt_item(
+                    grn_item, 
+                    grn_doc,
+                    qty=accepted_qty,  # Override with inspection-approved quantity
+                    remarks=inspection_remarks  # Override with inspection details
+                )
                 
-                # Create Purchase Receipt item with minimal fields to avoid validation issues
-                purchase_receipt.append('items', {
-                    'item_code': grn_item.item_code,
-                    'item_name': item_name or grn_item.item_code,
-                    'description': item_name or grn_item.item_code,
-                    'received_qty': accepted_qty,
-                    'qty': accepted_qty,
-                    'uom': uom,
-                    'stock_uom': uom,
-                    'conversion_factor': 1,
-                    'rate': rate or 0,
-                    'base_rate': rate or 0,
-                    'amount': accepted_qty * (rate or 0),
-                    'base_amount': accepted_qty * (rate or 0),
-                    'warehouse': grn_doc.get('set_warehouse'),
-                    'remarks': f"Quality Grade: {getattr(inspection_doc, 'quality_grade', 'N/A')}, Acceptance Rate: {accepted_percentage:.1f}% | Quality Inspection: {inspection_doc.name}"
-                })
+                # Add to Purchase Receipt
+                purchase_receipt.append('items', pr_item_data)
+                pr_items_created.append(pr_item_data)
                 
             except Exception as item_error:
                 frappe.log_error(f"Error processing trims item: {str(item_error)}")
                 pass
+        
+        # Log field mapping summary for monitoring
+        if pr_items_created:
+            log_field_mapping_summary(pr_items_created, "Trims Inspection")
         
         # Add inspection summary in remarks
         purchase_receipt.remarks = f"""Purchase Receipt created from Trims Inspection: {inspection_doc.name}
@@ -548,6 +539,20 @@ Minor Defects: {getattr(inspection_doc, 'total_minor_defects', 0)}
 
 Manager Remarks:
 {inspection_doc.get('manager_remarks', 'No additional remarks')}"""
+        
+        # Initialize financial totals to prevent None errors
+        purchase_receipt.total_qty = sum(item.get('qty', 0) for item in pr_items_created)
+        purchase_receipt.total = sum(item.get('amount', 0) for item in pr_items_created)
+        purchase_receipt.net_total = purchase_receipt.total
+        purchase_receipt.grand_total = purchase_receipt.total
+        purchase_receipt.base_total = purchase_receipt.total
+        purchase_receipt.base_net_total = purchase_receipt.total  
+        purchase_receipt.base_grand_total = purchase_receipt.total
+        purchase_receipt.base_rounded_total = purchase_receipt.total
+        purchase_receipt.rounded_total = purchase_receipt.total
+        
+        # Calculate totals before saving to prevent validation errors
+        purchase_receipt.run_method("calculate_taxes_and_totals")
         
         # Save the Purchase Receipt
         purchase_receipt.save()

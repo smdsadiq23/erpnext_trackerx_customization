@@ -133,7 +133,8 @@ def create_purchase_receipt_for_items(grn_doc, items):
             "items": []
         }
         
-        # Add items to purchase receipt
+        # Add items to purchase receipt with comprehensive field mapping
+        mapped_fields_count = 0
         for item in items:
             # Get warehouse - use item warehouse or GRN warehouse or a default
             warehouse = None
@@ -165,7 +166,9 @@ def create_purchase_receipt_for_items(grn_doc, items):
             except Exception:
                 item_name = item.item_code
             
+            # Enhanced field mapping - copy ALL available GRN fields to Purchase Receipt
             pr_item = {
+                # Standard ERPNext fields
                 "item_code": item.item_code,
                 "item_name": item_name,
                 "description": getattr(item, 'description', item_name),
@@ -175,17 +178,76 @@ def create_purchase_receipt_for_items(grn_doc, items):
                 "amount": (item.received_quantity or getattr(item, 'ordered_quantity', 0)) * getattr(item, 'rate', 0),
                 "warehouse": warehouse,
                 "uom": getattr(item, 'uom', 'Nos'),
-                "stock_uom": getattr(item, 'uom', 'Nos'),  # Use same as uom since stock_uom doesn't exist
+                "stock_uom": getattr(item, 'uom', 'Nos'),
                 "conversion_factor": getattr(item, 'conversion_factor', 1),
-                "grn_item_reference": item.name
+                
+                # Map existing ERPNext fields where possible (skip batch_no to avoid validation)
+                "supplier_part_no": getattr(item, 'supplier_part_no__code', None),
+                
+                # Custom fields for comprehensive GRN data mapping
+                "custom_color": getattr(item, 'color', None),
+                "custom_composition": getattr(item, 'composition', None),
+                "custom_material_type": getattr(item, 'material_type', None),
+                "custom_shade": getattr(item, 'shade', None),
+                
+                # Physical specifications
+                "custom_roll_no": getattr(item, 'roll_no', None),
+                "custom_fabric_length": getattr(item, 'fabric_length', None),
+                "custom_fabric_width": getattr(item, 'fabric_width', None),
+                "custom_no_of_boxespacks": getattr(item, 'no_of_boxespacks', None),
+                "custom_size_spec": getattr(item, 'size_spec', None),
+                "custom_consumption": getattr(item, 'consumption', None),
+                
+                # Tracking and reference information
+                "custom_lot_no": getattr(item, 'lot_no', None),
+                "custom_supplier_part_no_code": getattr(item, 'supplier_part_no__code', None),
+                "custom_ordered_quantity": getattr(item, 'ordered_quantity', None),
+                "custom_accepted_warehouse": getattr(item, 'accepted_warehouse', None),
+                "custom_shelf_life_months": getattr(item, 'shelf_life_months', None),
+                "custom_expiration_date": getattr(item, 'expiration_date', None),
+                
+                # GRN reference and notes
+                "custom_grn_reference": grn_doc.name,
+                "custom_grn_item_reference": item.name,
+                "custom_grn_batch_no": getattr(item, 'batch_no', None),
+                "custom_grn_remarks": getattr(item, 'remarks', None)
             }
+            
+            # Count successful field mappings for logging
+            mapped_fields = sum(1 for field, value in pr_item.items() 
+                              if field.startswith('custom_') and value is not None)
+            mapped_fields_count += mapped_fields
+            
             purchase_receipt_data["items"].append(pr_item)
+            
+            frappe.logger().info(f"Mapped {mapped_fields} custom fields for item {item.item_code}")
         
         # Create the purchase receipt document
         purchase_receipt_doc = frappe.get_doc(purchase_receipt_data)
+        
+        # Initialize financial totals to prevent None errors
+        purchase_receipt_doc.total_qty = sum(item.get('qty', 0) for item in purchase_receipt_data.get("items", []))
+        purchase_receipt_doc.total = sum(item.get('amount', 0) for item in purchase_receipt_data.get("items", []))
+        purchase_receipt_doc.net_total = purchase_receipt_doc.total
+        purchase_receipt_doc.grand_total = purchase_receipt_doc.total
+        purchase_receipt_doc.base_total = purchase_receipt_doc.total
+        purchase_receipt_doc.base_net_total = purchase_receipt_doc.total  
+        purchase_receipt_doc.base_grand_total = purchase_receipt_doc.total
+        purchase_receipt_doc.base_rounded_total = purchase_receipt_doc.total
+        purchase_receipt_doc.rounded_total = purchase_receipt_doc.total
+        
+        # Calculate totals before saving to prevent validation errors
+        purchase_receipt_doc.run_method("calculate_taxes_and_totals")
+        
         purchase_receipt_doc.insert(ignore_permissions=True)
         
+        # Enhanced success logging
+        total_items = len(items)
+        avg_fields_per_item = mapped_fields_count / total_items if total_items > 0 else 0
+        
         frappe.logger().info(f"Successfully created purchase receipt: {purchase_receipt_doc.name} (Draft)")
+        frappe.logger().info(f"Enhanced field mapping: {mapped_fields_count} total custom fields mapped across {total_items} items (avg: {avg_fields_per_item:.1f} fields/item)")
+        
         return purchase_receipt_doc.name
         
     except Exception as e:
@@ -534,6 +596,109 @@ def test_box_mapping_fix(grn_name):
         return {"success": False, "error": str(e)}
 
 import json
+
+@frappe.whitelist()
+def test_enhanced_field_mapping(grn_name):
+    """
+    Test function to verify the enhanced field mapping functionality
+    """
+    try:
+        grn_doc = frappe.get_doc("Goods Receipt Note", grn_name)
+        
+        results = {
+            "test_name": "Enhanced Field Mapping Test",
+            "grn_name": grn_name,
+            "grn_items": [],
+            "field_mapping_analysis": {},
+            "missing_fields": [],
+            "recommendations": []
+        }
+        
+        # Analyze GRN items and available fields
+        total_fields_available = 0
+        fields_with_data = 0
+        
+        for item in grn_doc.items:
+            item_analysis = {
+                "item_code": item.item_code,
+                "available_fields": {},
+                "fields_with_data": 0
+            }
+            
+            # Check all the fields we're trying to map
+            field_mapping = {
+                "color": getattr(item, 'color', None),
+                "composition": getattr(item, 'composition', None),
+                "material_type": getattr(item, 'material_type', None),
+                "shade": getattr(item, 'shade', None),
+                "roll_no": getattr(item, 'roll_no', None),
+                "fabric_length": getattr(item, 'fabric_length', None),
+                "fabric_width": getattr(item, 'fabric_width', None),
+                "no_of_boxespacks": getattr(item, 'no_of_boxespacks', None),
+                "size_spec": getattr(item, 'size_spec', None),
+                "consumption": getattr(item, 'consumption', None),
+                "lot_no": getattr(item, 'lot_no', None),
+                "batch_no": getattr(item, 'batch_no', None),
+                "supplier_part_no__code": getattr(item, 'supplier_part_no__code', None),
+                "ordered_quantity": getattr(item, 'ordered_quantity', None),
+                "accepted_warehouse": getattr(item, 'accepted_warehouse', None),
+                "shelf_life_months": getattr(item, 'shelf_life_months', None),
+                "expiration_date": getattr(item, 'expiration_date', None),
+                "remarks": getattr(item, 'remarks', None)
+            }
+            
+            for field, value in field_mapping.items():
+                total_fields_available += 1
+                item_analysis["available_fields"][field] = {
+                    "value": value,
+                    "has_data": value is not None and value != ""
+                }
+                if value is not None and value != "":
+                    fields_with_data += 1
+                    item_analysis["fields_with_data"] += 1
+            
+            results["grn_items"].append(item_analysis)
+        
+        # Overall analysis
+        results["field_mapping_analysis"] = {
+            "total_fields_checked": total_fields_available,
+            "fields_with_data": fields_with_data,
+            "data_coverage_percentage": (fields_with_data / total_fields_available * 100) if total_fields_available > 0 else 0,
+            "items_analyzed": len(grn_doc.items)
+        }
+        
+        # Check if custom fields exist in Purchase Receipt Item
+        pr_item_meta = frappe.get_meta("Purchase Receipt Item")
+        expected_custom_fields = [
+            "custom_color", "custom_composition", "custom_material_type", "custom_shade",
+            "custom_roll_no", "custom_fabric_length", "custom_fabric_width", 
+            "custom_no_of_boxespacks", "custom_size_spec", "custom_consumption",
+            "custom_lot_no", "custom_supplier_part_no_code", "custom_ordered_quantity",
+            "custom_accepted_warehouse", "custom_shelf_life_months", "custom_expiration_date",
+            "custom_grn_reference", "custom_grn_item_reference", "custom_grn_remarks"
+        ]
+        
+        for field_name in expected_custom_fields:
+            if not any(f.fieldname == field_name for f in pr_item_meta.fields):
+                results["missing_fields"].append(field_name)
+        
+        # Generate recommendations
+        if results["missing_fields"]:
+            results["recommendations"].append(f"Missing {len(results['missing_fields'])} custom fields in Purchase Receipt Item")
+        
+        coverage = results["field_mapping_analysis"]["data_coverage_percentage"]
+        if coverage < 50:
+            results["recommendations"].append(f"Low data coverage ({coverage:.1f}%) - consider populating more GRN fields")
+        elif coverage > 80:
+            results["recommendations"].append(f"Excellent data coverage ({coverage:.1f}%) - field mapping will be very effective")
+        
+        results["status"] = "PASS" if not results["missing_fields"] else "WARNING"
+        
+        return {"success": True, "results": results}
+        
+    except Exception as e:
+        frappe.log_error(f"Enhanced field mapping test failed: {str(e)}", "Enhanced Field Mapping Test")
+        return {"success": False, "error": str(e)}
 
 @frappe.whitelist()
 def run_complete_grn_test():
