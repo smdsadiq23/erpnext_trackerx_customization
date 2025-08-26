@@ -63,37 +63,13 @@ frappe.ui.form.on('Item', {
         
         // --- New Logic: Filter 'construction_type' Link field ---
         // This function will be called on refresh and when custom_select_master changes
-        setConstructionTypeFilter(frm);
-
-        // setTimeout(() => {
-        //     frm.fields_dict.custom_fg_components.grid.wrapper
-        //         .on('click', '.grid-remove-rows', function (e) {
-        //             const grid = frm.fields_dict.custom_fg_components.grid;
-        //             const selected = grid.get_selected();
-
-        //             if (selected && selected.length > 0) {
-        //                 const firstRowName = grid.grid_rows[0]?.doc.name;
-        //                 if (selected.includes(firstRowName)) {
-        //                     frappe.msgprint(__('FG cannot be deleted'));
-        //                     // Stop bubbling
-        //                     setTimeout(()=>{
-        //                         let new_component_row = frm.add_child('custom_fg_components'); // 'components' is the fieldname of your child table
-        //                         new_component_row.component_name = frm.doc.item_name; 
-        //                         new_component_row.tracking_required=true;
-        //                         // Set child field from parent's item_name
-        //                         frm.refresh_field('custom_fg_components'); 
-        //                     },100)
-        //                                     // Explicit cancel
-        //                 }
-        //             }
-        //         });
-        // }, 100);
-
-        
+        setConstructionTypeFilter(frm);        
 
         setItemGroupFilter(frm);
 
         setFieldsToReadyOnly(frm);
+
+        setMeasurementUploadAttachExtensionRestriction(frm);
 
 
         setTimeout(function() {
@@ -128,6 +104,55 @@ frappe.ui.form.on('Item', {
     
     
 });
+
+function populate_measurement_table_sample_data(frm) {
+    // Only proceed if both fields are selected
+    if (frm.doc.custom_size_filter && frm.doc.custom_size_standard) {
+        
+        // Clear existing rows in the child table
+        frm.clear_table('item_measurement_chart');
+
+        frappe.call({
+            method: "erpnext_trackerx_customization.utils.measurement_data_importer.get_measurement_data",
+            args: {
+                custom_size_filter: frm.doc.custom_size_filter,
+                custom_size_standard: frm.doc.custom_size_standard
+            },
+            callback: function(r) {
+                if (r.message && r.message.length) {
+                    r.message.forEach(row => {
+                        // Add each row to the child table
+                        let new_row = frm.add_child('item_measurement_chart');
+                        new_row.type = row.type;
+                        new_row.measurement_point = row.measurement_point;
+                        new_row.size = row.size;
+                        new_row.value = row.value;
+                        new_row.tolerance = row.tolerance;
+                    });
+                    frm.refresh_field('item_measurement_chart');
+                } else {
+                    frappe.msgprint("No measurement data found for the selected combination.");
+                }
+            }
+        });
+    }
+}
+
+function setMeasurementUploadAttachExtensionRestriction(frm) {
+    const attach_field = frm.fields_dict['custom_attach_measurement_chart'];
+        attach_field.on_attach_click = function() {
+            attach_field.set_upload_options();
+            attach_field.upload_options.restrictions.allowed_file_types = [
+                "application/pdf",
+                "image/jpeg",
+                "image/png",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "application/vnd.ms-excel"
+            ];
+            attach_field.file_uploader = new frappe.ui.FileUploader(attach_field.upload_options);
+        };
+}
+
 
 
 function setItemNameAndItemNumberProps(frm){
