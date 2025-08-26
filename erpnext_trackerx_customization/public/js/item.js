@@ -18,8 +18,11 @@ frappe.ui.form.on('Item', {
         
     },
 
-    custom_fg_components: function(frm) {
+    custom_fg_components_on_change: function(frm) {
         console.log("Changed child table")
+    },
+    custom_fg_components_add: function(frm) {
+        console.log("add child table")
     },
 
     item_name: function(frm) {
@@ -104,6 +107,9 @@ frappe.ui.form.on('Item', {
     
     
 });
+
+
+
 
 function populate_measurement_table_sample_data(frm) {
     // Only proceed if both fields are selected
@@ -480,4 +486,34 @@ function copy_operations_from_style_master(frm) {
             frappe.msgprint(__('Error fetching Item data'));
         }
     });
+}
+
+
+
+
+
+
+// Handle item location changes
+frappe.ui.form.on('FG Components', {
+    component_name: function(frm, cdt, cdn) {
+        
+        set_parent_component_options(frm, cdt, cdn);
+    },
+    
+});
+
+// A helper function to fetch the component names and set the options.
+function set_parent_component_options(frm) {
+    // Collect all the component names from the "custom_fg_components" child table.
+    let component_names = frm.doc.custom_fg_components.filter(row => row.component_name).map(row => row.component_name);
+
+    frm.doc.custom_fg_components.forEach(function(row, index) {
+            let field = frm.fields_dict.custom_fg_components.grid.grid_rows[index].docfields.find(f => f.fieldname === 'parent_component');
+            if (field) {
+                field.options = component_names;
+            }
+        });
+    
+   
+    frm.refresh_fields('custom_fg_components');
 }
