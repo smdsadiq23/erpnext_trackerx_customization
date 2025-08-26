@@ -1,0 +1,76 @@
+{
+ "actions": [],
+ "creation": "2025-08-22 10:45:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "defect_name",
+  "column_break_2",
+  "count",
+  "column_break_3", 
+  "action_taken",
+  "column_break_4",
+  "scoring_impact"
+ ],
+ "fields": [
+  {
+   "fieldname": "defect_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Defect Name",
+   "reqd": 1,
+   "width": "250px"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "count",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Count",
+   "reqd": 1,
+   "width": "80px"
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "action_taken",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Action Taken",
+   "width": "200px"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "scoring_impact",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Score Impact",
+   "precision": "1",
+   "width": "100px"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-08-22 10:45:00.000000",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Lay Cut Defect Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

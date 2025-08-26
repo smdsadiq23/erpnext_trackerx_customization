@@ -5,20 +5,20 @@ frappe.ui.form.on('Purchase Order', {
     onload: function(frm) {
         // Remove existing Material Request get_items button
         setInterval(function()  {
-            frm.remove_custom_button(__('Material Request'), __('Get Items From'));
+            frm.remove_custom_button(('Material Request'), ('Get Items From'));
         }, 300);
-        frm.remove_custom_button(__('Material Request'), __('Get Items From'));
-        
+        frm.remove_custom_button(('Material Request'), ('Get Items From'));
+                
         // Add custom get items button for Material Requirement Plan
-        frm.add_custom_button(__('Material Requirement Plan'), function() {
+        frm.add_custom_button(('Material Requirement Plan'), function() {
             // Open dialog to select Material Requirement Plan
             let dialog = new frappe.ui.Dialog({
-                title: __('Select Material Requirement Plan'),
+                title: ('Select Material Requirement Plan'),
                 fields: [
                     {
                         fieldname: 'material_requirement_plan',
                         fieldtype: 'Link',
-                        label: __('Material Requirement Plan'),
+                        label: ('Material Requirement Plan'),
                         options: 'Material Requirement Plan',
                         reqd: 1,
                         get_query: function() {
@@ -29,18 +29,9 @@ frappe.ui.form.on('Purchase Order', {
                                 }
                             };
                         }
-                    },
-                    // {
-                    //     fieldname: 'source_table',
-                    //     fieldtype: 'Select',
-                    //     label: __('Source Table'),
-                    //     options: 'Items\nItems Summary',
-                    //     default: 'Items',
-                    //     reqd: 1,
-                    //     description: __('Select which table to pull items from')
-                    // }
+                    }
                 ],
-                primary_action_label: __('Get Items'),
+                primary_action_label: ('Get Items'),
                 primary_action: function() {
                     let values = dialog.get_values();
                     if (values) {
@@ -50,7 +41,21 @@ frappe.ui.form.on('Purchase Order', {
                 }
             });
             dialog.show();
-        }, __('Get Items From'));
+        }, ('Get Items From'));
+        
+        // Add custom button to create Goods Receipt Note
+        frm.add_custom_button(('Goods Receipt Note'), function() {
+            create_goods_receipt_note(frm);
+        }, ('Create'));
+    },
+    
+    refresh: function(frm) {
+        // Add button only if PO is submitted and not fully received
+        if (frm.doc.docstatus === 1 && frm.doc.per_received < 100) {
+            frm.add_custom_button(('Goods Receipt Note'), function() {
+                create_goods_receipt_note(frm);
+            }, ('Create'));
+        }
     }
 });
 
@@ -66,18 +71,67 @@ function get_items_from_material_requirement_plan(frm, values) {
             if (r.message) {
                 // Clear existing items
                 frm.clear_table('items');
-                
+                                
                 // Add new items
                 r.message.forEach(function(item) {
                     let row = frm.add_child('items');
                     Object.assign(row, item);
                 });
-                
+                                
                 // Refresh the items table
                 frm.refresh_field('items');
                 // frm.save();
-                
-                frappe.msgprint(__('Items added successfully'));
+                                
+                frappe.msgprint(('Items added successfully'));
+            }
+        }
+    });
+}
+
+function create_goods_receipt_note(frm) {
+    // Check if PO is submitted
+    if (frm.doc.docstatus !== 1) {
+        frappe.msgprint(__('Please submit the Purchase Order first'));
+        return;
+    }
+    
+    // Check if already fully received
+    if (frm.doc.per_received >= 100) {
+        frappe.msgprint(__('Purchase Order is already fully received'));
+        return;
+    }
+    
+    // Create new Goods Receipt Note
+    frappe.model.open_mapped_doc({
+        method: 'erpnext_trackerx_customization.api.purchase_order.make_goods_receipt_note',
+        frm: frm,
+        run_link_triggers: true
+    });
+}
+
+// Alternative implementation if the mapped doc approach doesn't work
+function create_goods_receipt_note_alternative(frm) {
+    // Check if PO is submitted
+    if (frm.doc.docstatus !== 1) {
+        frappe.msgprint(__('Please submit the Purchase Order first'));
+        return;
+    }
+    
+    // Check if already fully received
+    if (frm.doc.per_received >= 100) {
+        frappe.msgprint(__('Purchase Order is already fully received'));
+        return;
+    }
+    
+    // Create new Goods Receipt Note
+    frappe.call({
+        method: 'erpnext_trackerx_customization.api.purchase_order.make_goods_receipt_note',
+        args: {
+            source_name: frm.doc.name
+        },
+        callback: function(r) {
+            if (r.message) {
+                frappe.set_route('Form', 'Goods Receipt Note', r.message);
             }
         }
     });

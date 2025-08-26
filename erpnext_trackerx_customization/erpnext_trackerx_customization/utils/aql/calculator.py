@@ -156,7 +156,7 @@ class AQLCalculator:
 
 
 @frappe.whitelist()
-def calculate_aql_criteria(item_code, quantity):
+def calculate_aql_criteria(item_code=None, quantity=None):
 	"""
 	Whitelisted API method for AQL criteria calculation
 	
@@ -168,6 +168,15 @@ def calculate_aql_criteria(item_code, quantity):
 		dict: AQL criteria with sample_size, acceptance_number, rejection_number, etc.
 	"""
 	try:
+		# Handle JSON request data
+		if not item_code or not quantity:
+			data = frappe.local.form_dict
+			item_code = data.get('item_code')
+			quantity = data.get('quantity')
+		
+		if not item_code or not quantity:
+			frappe.throw("Both item_code and quantity are required")
+		
 		quantity = int(quantity)
 		return AQLCalculator.calculate_aql_criteria(item_code, quantity)
 	except Exception as e:

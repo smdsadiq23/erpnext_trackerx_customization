@@ -13,6 +13,125 @@ let trimsInspectionState = {
     materialType: null
 };
 
+// Load AQL options dynamically (same as fabric inspection)
+async function loadAQLOptions() {
+    try {
+        const response = await frappe.call({
+            method: 'erpnext_trackerx_customization.api.aql_data.get_aql_options'
+        });
+        if (response && response.message) {
+            // Check if API call was successful
+            if (!response.message.success) {
+                console.error('AQL options API call failed:', response.message);
+                throw new Error('API returned success: false');
+            }
+            
+            const data = response.message.data;
+            
+            // Populate AQL Level dropdown
+            const aqlLevelSelect = document.getElementById('aql-level');
+            if (aqlLevelSelect && data.aql_levels) {
+                // Store current value to restore it
+                const currentLevel = inspectionData.aql_level || '';
+                
+                aqlLevelSelect.innerHTML = '';
+                
+                // Add default option
+                const defaultLevelOption = document.createElement('option');
+                defaultLevelOption.value = '';
+                defaultLevelOption.textContent = 'Select AQL Level';
+                aqlLevelSelect.appendChild(defaultLevelOption);
+                
+                // Add AQL level options - extract level_code from objects
+                data.aql_levels.forEach(levelObj => {
+                    const option = document.createElement('option');
+                    option.value = levelObj.level_code;
+                    option.textContent = levelObj.level_code;
+                    if (levelObj.level_code === currentLevel) {
+                        option.selected = true;
+                    }
+                    aqlLevelSelect.appendChild(option);
+                });
+                
+                console.log('AQL Levels loaded:', data.aql_levels.map(l => l.level_code));
+            }
+            
+            // Populate AQL Value dropdown - using aql_standards array
+            const aqlValueSelect = document.getElementById('aql-value');
+            if (aqlValueSelect && data.aql_standards) {
+                // Store current value to restore it
+                const currentValue = inspectionData.aql_value || '';
+                
+                aqlValueSelect.innerHTML = '';
+                
+                // Add default option
+                const defaultValueOption = document.createElement('option');
+                defaultValueOption.value = '';
+                defaultValueOption.textContent = 'Select AQL Value';
+                aqlValueSelect.appendChild(defaultValueOption);
+                
+                // Add AQL value options - extract aql_value from objects
+                data.aql_standards.forEach(standardObj => {
+                    const option = document.createElement('option');
+                    option.value = standardObj.aql_value;
+                    option.textContent = standardObj.aql_value;
+                    if (standardObj.aql_value === currentValue) {
+                        option.selected = true;
+                    }
+                    aqlValueSelect.appendChild(option);
+                });
+                
+                console.log('AQL Standards loaded:', data.aql_standards.map(s => s.aql_value));
+            }
+            
+            console.log('AQL options loaded successfully for trims inspection');
+        }
+    } catch (error) {
+        console.error('Error loading AQL options:', error);
+        
+        // Fallback to hardcoded options if API fails
+        const aqlLevelSelect = document.getElementById('aql-level');
+        const aqlValueSelect = document.getElementById('aql-value');
+        
+        if (aqlLevelSelect) {
+            aqlLevelSelect.innerHTML = `
+                <option value="">Select AQL Level</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="S1">S1</option>
+                <option value="S2">S2</option>
+                <option value="S3">S3</option>
+                <option value="S4">S4</option>
+            `;
+        }
+        
+        if (aqlValueSelect) {
+            aqlValueSelect.innerHTML = `
+                <option value="">Select AQL Value</option>
+                <option value="0.065">0.065</option>
+                <option value="0.10">0.10</option>
+                <option value="0.15">0.15</option>
+                <option value="0.25">0.25</option>
+                <option value="0.40">0.40</option>
+                <option value="0.65">0.65</option>
+                <option value="1.0">1.0</option>
+                <option value="1.5">1.5</option>
+                <option value="2.5">2.5</option>
+                <option value="4.0">4.0</option>
+                <option value="6.5">6.5</option>
+                <option value="10">10</option>
+                <option value="15">15</option>
+                <option value="25">25</option>
+                <option value="40">40</option>
+                <option value="65">65</option>
+                <option value="100">100</option>
+                <option value="150">150</option>
+            `;
+        }
+    }
+}
+
 // Initialize inspection data from the server
 async function loadTrimsData() {
     try {
@@ -20,24 +139,350 @@ async function loadTrimsData() {
         await loadExistingDefectsData();
         
         // Load items data
-        if (inspectionData.items) {
+        if (inspectionData.items && Array.isArray(inspectionData.items) && inspectionData.items.length > 0) {
             trimsInspectionState.itemsData = {};
-            inspectionData.items.forEach(item => {
-                trimsInspectionState.itemsData[item.item_number] = item;
+            inspectionData.items.forEach((item, index) => {
+                if (item && item.item_number) {
+                    trimsInspectionState.itemsData[item.item_number] = item;
+                } else {
+                    console.warn(`Invalid item at index ${index}:`, item);
+                }
             });
+            console.log(`✅ Loaded ${Object.keys(trimsInspectionState.itemsData).length} items from inspection data`);
+        } else {
+            console.warn('No valid items data found, trying DOM fallback');
+            // Fallback: try to get items from DOM
+            const itemElements = document.querySelectorAll('.item-section[data-item]');
+            if (itemElements.length > 0) {
+                trimsInspectionState.itemsData = {};
+                itemElements.forEach(element => {
+                    const itemNumber = element.getAttribute('data-item');
+                    const piecesElement = element.querySelector('.pill');
+                    const piecesText = piecesElement ? piecesElement.textContent : '';
+                    const piecesMatch = piecesText.match(/Total Pieces: (\d+)/);
+                    const pieces = piecesMatch ? parseInt(piecesMatch[1]) : 200;
+                    
+                    trimsInspectionState.itemsData[itemNumber] = {
+                        item_number: itemNumber,
+                        pieces: pieces,
+                        quantity: pieces
+                    };
+                });
+                console.log(`✅ Created ${Object.keys(trimsInspectionState.itemsData).length} items from DOM fallback`);
+            }
         }
         
         // Load material type for checklist
         trimsInspectionState.materialType = inspectionData.material_type || 'Trims';
-        
-        // Initialize AQL configuration
-        updateAQLConfiguration();
         
         // Load checklist data
         loadChecklistData();
         
         // Check inspection status and apply UI updates if needed
         checkInspectionStatusOnLoad();
+        
+        // Initialize AQL configuration from existing document data
+        console.log('🔍 Checking for existing AQL configuration in document:', {
+            aql_level: inspectionData.aql_level,
+            aql_value: inspectionData.aql_value,
+            inspection_type: inspectionData.inspection_type,
+            inspection_regime: inspectionData.inspection_regime,
+            required_sample_size: inspectionData.required_sample_size,
+            required_sample_pieces: inspectionData.required_sample_pieces,
+            total_pieces: inspectionData.total_pieces
+        });
+        
+        if (inspectionData.aql_level && inspectionData.aql_value) {
+            // Calculate lot size from items data or use total_pieces
+            let calculatedLotSize = inspectionData.total_pieces || 0;
+            if (!calculatedLotSize && trimsInspectionState.itemsData) {
+                calculatedLotSize = Object.values(trimsInspectionState.itemsData).reduce((sum, item) => {
+                    return sum + parseInt(item.pieces || item.quantity || 0);
+                }, 0);
+            }
+            
+            // If no sample size is calculated yet, trigger automatic calculation
+            if (!inspectionData.required_sample_size && calculatedLotSize > 0) {
+                console.log('🔄 No sample size found - automatically calculating AQL configuration...');
+                
+                // Delay the automatic calculation to ensure the page is fully loaded and reduce concurrency issues
+                setTimeout(async () => {
+                    try {
+                        console.log('🔄 Starting automatic AQL calculation after page load delay...');
+                        await calculateAQLSamplingAutomatically(inspectionData.aql_level, inspectionData.aql_value, calculatedLotSize);
+                    } catch (error) {
+                        console.error('Error in automatic AQL calculation:', error);
+                        // Fallback: Initialize with 0 sample size but still show UI
+                        initializeAQLConfigWithoutSampleSize();
+                        
+                        // Still update the UI even if calculation failed
+                        setTimeout(() => {
+                            selectItemsForInspection();
+                            updateAQLSummaryDisplay();
+                            updateSelectedItemsSummary();
+                            updateItemInspectionPieces();
+                            console.log('✅ Updated UI with fallback configuration');
+                        }, 100);
+                    }
+                }, 2500); // Increased delay to 2.5 seconds to avoid concurrency issues
+            } else {
+                // Initialize with existing sample size
+                initializeAQLConfigWithExistingSampleSize(calculatedLotSize);
+            }
+        } else {
+            console.log('⚠️ No existing AQL configuration found in document - will need to set up AQL config');
+        }
+        
+        // Helper function to initialize AQL config with existing sample size
+        function initializeAQLConfigWithExistingSampleSize(calculatedLotSize) {
+            trimsInspectionState.aqlConfiguration = {
+                aql_level: inspectionData.aql_level,
+                aql_value: inspectionData.aql_value,
+                lot_size: calculatedLotSize,
+                sample_size: inspectionData.required_sample_size || 0,
+                acceptance_number: 0,
+                rejection_number: 0,
+                sample_code_letter: '',
+                lot_size_range: '',
+                calculation_method: 'aql_table',
+                inspection_type: inspectionData.inspection_type || 'AQL Based',
+                inspection_regime: inspectionData.inspection_regime || 'Normal'
+            };
+            console.log('✅ Initialized AQL configuration from document:', trimsInspectionState.aqlConfiguration);
+            
+            // Populate form fields
+            setTimeout(() => {
+                const aqlLevelSelect = document.getElementById('aql-level');
+                const aqlValueSelect = document.getElementById('aql-value');
+                const inspectionTypeSelect = document.getElementById('inspection-type');
+                const sampleSizeDisplay = document.getElementById('sample-size-display');
+                
+                if (aqlLevelSelect) aqlLevelSelect.value = inspectionData.aql_level;
+                if (aqlValueSelect) aqlValueSelect.value = inspectionData.aql_value;
+                if (inspectionTypeSelect) inspectionTypeSelect.value = inspectionData.inspection_type || 'AQL Based';
+                if (sampleSizeDisplay) sampleSizeDisplay.value = inspectionData.required_sample_size || 0;
+                
+                console.log('✅ Populated AQL form fields with existing values');
+            }, 500);
+        }
+        
+        // Helper function to initialize with 0 sample size
+        function initializeAQLConfigWithoutSampleSize() {
+            // Calculate lot size again since it's not in scope
+            let lotSize = inspectionData.total_pieces || 0;
+            if (!lotSize && trimsInspectionState.itemsData) {
+                lotSize = Object.values(trimsInspectionState.itemsData).reduce((sum, item) => {
+                    return sum + parseInt(item.pieces || item.quantity || 0);
+                }, 0);
+            }
+            
+            trimsInspectionState.aqlConfiguration = {
+                aql_level: inspectionData.aql_level,
+                aql_value: inspectionData.aql_value,
+                lot_size: lotSize,
+                sample_size: 0,
+                acceptance_number: 0,
+                rejection_number: 0,
+                sample_code_letter: '',
+                lot_size_range: '',
+                calculation_method: 'aql_table',
+                inspection_type: inspectionData.inspection_type || 'AQL Based',
+                inspection_regime: inspectionData.inspection_regime || 'Normal'
+            };
+            console.log('⚠️ Initialized AQL configuration with 0 sample size');
+        }
+        
+        // Automatic AQL calculation function
+        async function calculateAQLSamplingAutomatically(aqlLevel, aqlValue, lotSize) {
+            console.log(`🔄 Auto-calculating AQL sampling for: Level=${aqlLevel}, Value=${aqlValue}, LotSize=${lotSize}`);
+            
+            const inspectionRegime = inspectionData.inspection_regime || 'Normal';
+            
+            const response = await frappe.call({
+                method: 'erpnext_trackerx_customization.api.aql_data.calculate_aql_sampling',
+                args: {
+                    total_quantity: lotSize,
+                    aql_level: aqlLevel,
+                    aql_value: aqlValue,
+                    inspection_regime: inspectionRegime
+                }
+            });
+            
+            if (response && response.message) {
+                let samplingData;
+                if (response.message.data) {
+                    samplingData = response.message.data;
+                } else if (response.message.sample_size) {
+                    samplingData = response.message;
+                } else {
+                    throw new Error('Invalid API response structure');
+                }
+                
+                console.log('✅ Auto-calculated AQL sampling data:', samplingData);
+                
+                // Initialize AQL configuration with calculated values
+                trimsInspectionState.aqlConfiguration = {
+                    aql_level: aqlLevel,
+                    aql_value: aqlValue,
+                    lot_size: lotSize,
+                    sample_size: samplingData.sample_size || 0,
+                    acceptance_number: samplingData.acceptance_number || 0,
+                    rejection_number: samplingData.rejection_number || 0,
+                    sample_code_letter: samplingData.sample_code_letter || '',
+                    lot_size_range: samplingData.lot_size_range || '',
+                    calculation_method: samplingData.calculation_method || 'aql_table',
+                    inspection_type: inspectionData.inspection_type || 'AQL Based',
+                    inspection_regime: inspectionRegime
+                };
+                
+                console.log('✅ Auto-initialized AQL configuration:', trimsInspectionState.aqlConfiguration);
+                
+                // Update the UI displays
+                const sampleSizeDisplay = document.getElementById('sample-size-display');
+                if (sampleSizeDisplay) {
+                    sampleSizeDisplay.value = samplingData.sample_size || 0;
+                }
+                
+                // Update form fields
+                setTimeout(() => {
+                    const aqlLevelSelect = document.getElementById('aql-level');
+                    const aqlValueSelect = document.getElementById('aql-value');
+                    const inspectionTypeSelect = document.getElementById('inspection-type');
+                    
+                    if (aqlLevelSelect) aqlLevelSelect.value = aqlLevel;
+                    if (aqlValueSelect) aqlValueSelect.value = aqlValue;
+                    if (inspectionTypeSelect) inspectionTypeSelect.value = inspectionData.inspection_type || 'AQL Based';
+                    
+                    console.log('✅ Auto-populated AQL form fields');
+                }, 500);
+                
+                // Save the calculated values to the document with retry logic
+                if (inspectionData && inspectionData.name) {
+                    try {
+                        await saveAQLConfigurationWithRetry(samplingData, inspectionRegime);
+                        console.log('✅ Auto-saved AQL configuration to document');
+                    } catch (error) {
+                        console.warn('⚠️ Could not auto-save AQL configuration:', error.message);
+                        console.log('💡 AQL configuration will be available in memory for this session');
+                        // Still continue with UI updates even if save fails
+                    }
+                }
+                
+                // Trigger item selection and UI updates
+                setTimeout(() => {
+                    selectItemsForInspection();
+                    updateAQLSummaryDisplay();
+                    updateSelectedItemsSummary();
+                    updateItemInspectionPieces();
+                    console.log('✅ Auto-updated all AQL displays');
+                }, 100);
+                
+            } else {
+                throw new Error('No response from AQL calculation API');
+            }
+        }
+        
+        // Helper function to save AQL configuration with retry logic
+        async function saveAQLConfigurationWithRetry(samplingData, inspectionRegime, maxRetries = 3) {
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    console.log(`💾 Attempting to save AQL configuration (attempt ${attempt}/${maxRetries})...`);
+                    
+                    await frappe.call({
+                        method: 'frappe.client.set_value',
+                        args: {
+                            doctype: 'Trims Inspection',
+                            name: inspectionData.name,
+                            fieldname: {
+                                'required_sample_size': samplingData.sample_size,
+                                'required_sample_pieces': samplingData.sample_size,
+                                'inspection_type': inspectionData.inspection_type || 'AQL Based',
+                                'inspection_regime': inspectionRegime,
+                                'sampling_plan': JSON.stringify(samplingData)
+                            }
+                        }
+                    });
+                    
+                    console.log(`✅ Successfully saved AQL configuration on attempt ${attempt}`);
+                    return; // Success, exit the retry loop
+                    
+                } catch (error) {
+                    console.warn(`❌ Save attempt ${attempt} failed:`, error.message);
+                    
+                    if (attempt === maxRetries) {
+                        // Last attempt failed, throw the error
+                        throw new Error(`Failed to save AQL configuration after ${maxRetries} attempts: ${error.message}`);
+                    }
+                    
+                    // Wait before retrying (exponential backoff)
+                    const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+                    console.log(`⏳ Waiting ${delay}ms before retry...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+        
+        // Helper function to save manual AQL configuration with retry logic
+        async function saveAQLConfigurationWithRetryManual(samplingData, inspectionRegime, aqlLevel, aqlValue, inspectionType, maxRetries = 3) {
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    console.log(`💾 Attempting to save manual AQL configuration (attempt ${attempt}/${maxRetries})...`);
+                    
+                    await frappe.call({
+                        method: 'frappe.client.set_value',
+                        args: {
+                            doctype: 'Trims Inspection',
+                            name: inspectionData.name,
+                            fieldname: {
+                                'aql_level': aqlLevel,
+                                'aql_value': aqlValue,
+                                'required_sample_size': samplingData.sample_size,
+                                'required_sample_pieces': samplingData.sample_size,
+                                'inspection_type': inspectionType,
+                                'inspection_regime': inspectionRegime,
+                                'sampling_plan': JSON.stringify(samplingData)
+                            }
+                        }
+                    });
+                    
+                    console.log(`✅ Successfully saved manual AQL configuration on attempt ${attempt}`);
+                    return; // Success, exit the retry loop
+                    
+                } catch (error) {
+                    console.warn(`❌ Manual save attempt ${attempt} failed:`, error.message);
+                    
+                    if (attempt === maxRetries) {
+                        // Last attempt failed, throw the error
+                        throw new Error(`Failed to save manual AQL configuration after ${maxRetries} attempts: ${error.message}`);
+                    }
+                    
+                    // Wait before retrying (shorter delays for manual actions)
+                    const delay = 1000 * attempt; // 1s, 2s, 3s
+                    console.log(`⏳ Waiting ${delay}ms before manual retry...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+        
+        // Initialize AQL summary displays and item selection
+        // Only run if not auto-calculating (to avoid duplicate calls)
+        if (inspectionData.required_sample_size || !inspectionData.aql_level || !inspectionData.aql_value) {
+            setTimeout(() => {
+                console.log('🔄 Initializing AQL displays with loaded data...');
+                
+                // First, select items based on current inspection type
+                selectItemsForInspection();
+                
+                // Then update all displays with calculated values
+                updateAQLSummaryDisplay();
+                updateSelectedItemsSummary();
+                updateItemInspectionPieces();
+                
+                console.log('✅ Initial AQL displays configured');
+            }, 1000); // Delay to ensure AQL config is available
+        } else {
+            console.log('⏳ Skipping initial display setup - waiting for auto-calculation to complete');
+        }
         
         console.log('Trims inspection data loaded successfully');
     } catch (error) {
@@ -110,8 +555,8 @@ function populateDefectsUI() {
         for (const defectKey in itemDefects) {
             let countValue = itemDefects[defectKey];
             
-            // Skip if no value or invalid value
-            if (!countValue || countValue === 0 || countValue === "0") continue;
+            // Skip if no value or invalid value (but allow zero counts)
+            if (countValue === null || countValue === undefined || countValue === "") continue;
             
             // Clean the count value - handle malformed data
             if (typeof countValue === 'string') {
@@ -119,9 +564,9 @@ function populateDefectsUI() {
                 countValue = countValue.replace(/[^0-9]/g, '');
             }
             
-            // Convert to number and validate
+            // Convert to number and validate (allow zero counts for trims)
             const cleanCount = parseInt(countValue);
-            if (isNaN(cleanCount) || cleanCount <= 0) {
+            if (isNaN(cleanCount) || cleanCount < 0) {
                 console.warn(`Invalid count value for ${defectKey}: ${itemDefects[defectKey]} -> cleaned: ${countValue} -> parsed: ${cleanCount}`);
                 continue;
             }
@@ -130,15 +575,25 @@ function populateDefectsUI() {
             const parts = defectKey.split('_');
             const defectCode = parts[parts.length - 1];
             
-            // Find the input element
-            const input = document.querySelector(`input[data-item="${itemNumber}"][data-defect="${defectCode}"]`);
+            // Find the input element with robust selector
+            let input = document.querySelector(`input[data-item="${itemNumber}"][data-defect="${defectCode}"]`);
+            
+            // If not found, try escaping the item number
+            if (!input) {
+                try {
+                    const escapedItemNumber = CSS.escape(itemNumber);
+                    input = document.querySelector(`input[data-item="${escapedItemNumber}"][data-defect="${defectCode}"]`);
+                } catch (error) {
+                    console.warn(`CSS.escape failed for item number: ${itemNumber}`, error);
+                }
+            }
+            
             if (input) {
                 input.value = cleanCount;
                 console.log(`Set defect ${defectCode} for item ${itemNumber} to ${cleanCount} (original: ${itemDefects[defectKey]})`);
                 
                 // Also update the total count display
-                const totalElement = document.getElementById(`total-${itemNumber}-${defectCode}`);
-                if (totalElement) totalElement.textContent = cleanCount;
+                updateElement(`total-${itemNumber}-${defectCode}`, cleanCount);
                 
             } else {
                 console.warn(`Input not found for item ${itemNumber}, defect ${defectCode}`);
@@ -447,9 +902,24 @@ function updateOverallInspectionStatus(hasFailures) {
 
 // Toggle item section
 function toggleItem(itemNumber) {
-    const itemBody = document.getElementById(`item-body-${itemNumber}`);
+    // Use more robust element finding for toggle
+    let itemBody = document.getElementById(`item-body-${itemNumber}`);
+    
+    // If getElementById fails, try with CSS.escape
+    if (!itemBody) {
+        try {
+            const escapedId = CSS.escape(`item-body-${itemNumber}`);
+            itemBody = document.querySelector(`#${escapedId}`);
+        } catch (error) {
+            // Try attribute selector as fallback
+            itemBody = document.querySelector(`[id="item-body-${itemNumber}"]`);
+        }
+    }
+    
     if (itemBody) {
         itemBody.classList.toggle('expanded');
+    } else {
+        console.warn(`Could not find item body for: ${itemNumber}`);
     }
 }
 
@@ -469,143 +939,501 @@ function collapseAllItems() {
 
 // Update AQL configuration
 async function updateAQLConfiguration() {
+    console.log('updateAQLConfiguration called');
+    
+    const aqlLevel = document.getElementById('aql-level').value;
+    const aqlValue = document.getElementById('aql-value').value; // Keep as string to preserve format like "4.0"
+    
+    if (!aqlLevel || !aqlValue) {
+        console.log('Missing AQL Level or AQL Value');
+        return;
+    }
+    
+    // Show loading state - declare originalText in proper scope
+    const button = document.querySelector('[onclick="updateAQLConfiguration()"]');
+    const originalText = button ? button.textContent : 'Update AQL Config';
+    if (button) {
+        button.textContent = 'Updating...';
+        button.disabled = true;
+    }
+    
     try {
-        const inspectionType = document.getElementById('inspection-type')?.value || 'AQL Based';
-        const aqlLevel = document.getElementById('aql-level')?.value || 'II';
-        const aqlValue = document.getElementById('aql-value')?.value || '2.5';
-        const inspectionRegime = document.getElementById('inspection-regime')?.value || 'Normal';
         
-        // Get total pieces from inspection data
-        const totalPieces = inspectionData.total_pieces || 0;
-        
-        if (inspectionType === 'AQL Based' && totalPieces > 0) {
-            // Use backend AQL calculator for accurate results
-            try {
-                const response = await fetch('/api/method/erpnext_trackerx_customization.erpnext_trackerx_customization.utils.aql.calculator.calculate_aql_criteria', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Frappe-CSRF-Token': frappe.csrf_token
-                    },
-                    body: JSON.stringify({
-                        item_code: inspectionData.item_code,
-                        quantity: totalPieces
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.message) {
-                    const aqlConfig = result.message;
-                    
-                    // Update displays with backend-calculated values
-                    if (document.getElementById('sample-size-display')) {
-                        document.getElementById('sample-size-display').value = aqlConfig.sample_size;
-                    }
-                    if (document.getElementById('sample-percentage-display')) {
-                        const percentage = Math.round((aqlConfig.sample_size / totalPieces) * 100);
-                        document.getElementById('sample-percentage-display').value = percentage + '%';
-                    }
-                    
-                    console.log('Backend AQL calculation:', aqlConfig);
-                    
-                } else {
-                    throw new Error('Backend AQL calculation failed');
-                }
-                
-            } catch (backendError) {
-                console.warn('Backend AQL calculation failed, using fallback:', backendError);
-                // Fallback to client-side calculation
-                const aqlConfig = calculateAQLSampleSize(totalPieces, aqlLevel, aqlValue, inspectionRegime, inspectionType);
-                
-                if (document.getElementById('sample-size-display')) {
-                    document.getElementById('sample-size-display').value = aqlConfig.samplePieces;
-                }
-                if (document.getElementById('sample-percentage-display')) {
-                    document.getElementById('sample-percentage-display').value = aqlConfig.samplePercentage + '%';
-                }
-            }
-        } else {
-            // For 100% inspection or fallback
-            const aqlConfig = calculateAQLSampleSize(totalPieces, aqlLevel, aqlValue, inspectionRegime, inspectionType);
+        // Ensure items data is loaded before calculating lot size
+        if (!trimsInspectionState.itemsData || Object.keys(trimsInspectionState.itemsData).length === 0) {
+            console.log('⚠️ Items data not loaded, attempting to reload...');
             
-            if (document.getElementById('sample-size-display')) {
-                document.getElementById('sample-size-display').value = aqlConfig.samplePieces;
-            }
-            if (document.getElementById('sample-percentage-display')) {
-                document.getElementById('sample-percentage-display').value = aqlConfig.samplePercentage + '%';
+            // Try to reload items from inspection data
+            if (inspectionData.items && Array.isArray(inspectionData.items) && inspectionData.items.length > 0) {
+                trimsInspectionState.itemsData = {};
+                inspectionData.items.forEach(item => {
+                    if (item && item.item_number) {
+                        trimsInspectionState.itemsData[item.item_number] = item;
+                        console.log(`✅ Reloaded item ${item.item_number}`);
+                    }
+                });
+            } else {
+                // Final fallback: create items from inspection document data
+                console.log('🔄 Creating fallback items from inspection document');
+                const totalPieces = parseInt(inspectionData.total_pieces || 0);
+                const totalBoxes = parseInt(inspectionData.total_boxes || 1);
+                const piecesPerBox = Math.floor(totalPieces / totalBoxes) || totalPieces;
+                
+                trimsInspectionState.itemsData = {};
+                for (let i = 1; i <= totalBoxes; i++) {
+                    const itemNumber = `ITEM-${i.toString().padStart(3, '0')}`;
+                    trimsInspectionState.itemsData[itemNumber] = {
+                        item_number: itemNumber,
+                        pieces: piecesPerBox,
+                        quantity: piecesPerBox,
+                        description: `Box ${i} of ${totalBoxes}`,
+                        status: 'Pending'
+                    };
+                    console.log(`✅ Created fallback item ${itemNumber} with ${piecesPerBox} pieces`);
+                }
             }
         }
         
-        console.log('AQL configuration updated for trims inspection');
+        // Calculate lot size (total quantity from all items)
+        let totalLotSize = 0;
+        
+        console.log('🔍 DEBUG: Final itemsData for calculation:', trimsInspectionState.itemsData);
+        
+        for (const itemData of Object.values(trimsInspectionState.itemsData || {})) {
+            // Try different quantity field names
+            const quantity = parseInt(itemData.quantity || itemData.pieces || itemData.total_pieces || 0);
+            totalLotSize += quantity;
+            console.log(`Item ${itemData.item_number}: quantity=${quantity}`);
+        }
+        
+        // Final fallback: if still no items data or totalLotSize is 0, use inspection data
+        if (totalLotSize === 0 && inspectionData.total_pieces) {
+            totalLotSize = parseInt(inspectionData.total_pieces);
+            console.log('Using final fallback total_pieces from inspectionData:', totalLotSize);
+        }
+        
+        console.log('Total lot size calculated:', totalLotSize);
+        
+        // Get inspection regime from dropdown
+        const inspectionRegime = document.getElementById('inspection-regime')?.value || 'Normal';
+        
+        // Get inspection type from dropdown
+        const inspectionType = document.getElementById('inspection-type')?.value || 'trims';
+        
+        // Use the same API as fabric inspection with correct parameters
+        const response = await frappe.call({
+            method: 'erpnext_trackerx_customization.api.aql_data.calculate_aql_sampling',
+            args: {
+                total_quantity: totalLotSize,
+                aql_level: aqlLevel,
+                aql_value: aqlValue,
+                inspection_regime: inspectionRegime
+            }
+        });
+        
+        if (response && response.message) {
+            console.log('🔍 DEBUG: Full API response:', response);
+            
+            // Handle nested response structure: response.message.data
+            let samplingData;
+            if (response.message.data) {
+                samplingData = response.message.data;
+                console.log('✅ Using response.message.data structure');
+            } else if (response.message.sample_size) {
+                samplingData = response.message;
+                console.log('✅ Using response.message structure');
+            } else {
+                console.error('❌ Unknown API response structure:', response.message);
+                frappe.show_alert({message: 'Invalid API response structure', indicator: 'red'});
+                return;
+            }
+            
+            console.log('🔍 DEBUG: Parsed sampling data:', samplingData);
+            
+            // Update the configuration display
+            const sampleSize = samplingData.sample_size || 0;
+            document.getElementById('sample-size-display').value = sampleSize;
+            console.log(`✅ Updated sample-size-display to: ${sampleSize}`);
+            
+            // Store AQL configuration in state for later use
+            trimsInspectionState.aqlConfiguration = {
+                aql_level: aqlLevel,
+                aql_value: aqlValue,
+                lot_size: totalLotSize,
+                sample_size: sampleSize,
+                acceptance_number: samplingData.acceptance_number || 0,
+                rejection_number: samplingData.rejection_number || 0,
+                sample_code_letter: samplingData.sample_code_letter || '',
+                lot_size_range: samplingData.lot_size_range || '',
+                calculation_method: samplingData.calculation_method || 'aql_table',
+                inspection_type: inspectionType
+            };
+            
+            console.log('✅ Updated AQL configuration:', trimsInspectionState.aqlConfiguration);
+            
+            // Update all AQL-related UI fields
+            const aqlLevelSelect = document.getElementById('aql-level');
+            if (aqlLevelSelect && aqlLevelSelect.value !== aqlLevel) {
+                aqlLevelSelect.value = aqlLevel;
+                console.log(`✅ Updated AQL Level dropdown to: ${aqlLevel}`);
+            }
+            
+            const aqlValueSelect = document.getElementById('aql-value');
+            if (aqlValueSelect && aqlValueSelect.value !== aqlValue) {
+                aqlValueSelect.value = aqlValue;
+                console.log(`✅ Updated AQL Value dropdown to: ${aqlValue}`);
+            }
+            
+            const inspectionRegimeSelect = document.getElementById('inspection-regime');
+            if (inspectionRegimeSelect) {
+                console.log(`✅ Inspection Regime: ${inspectionRegimeSelect.value}`);
+            }
+            
+            const inspectionTypeSelect = document.getElementById('inspection-type');
+            if (inspectionTypeSelect) {
+                console.log(`✅ Inspection Type: ${inspectionTypeSelect.value}`);
+            }
+            
+            // Save to inspection document with retry mechanism
+            if (inspectionData && inspectionData.name) {
+                try {
+                    await saveAQLConfigurationWithRetryManual(samplingData, inspectionRegime, aqlLevel, aqlValue, inspectionType);
+                    console.log('✅ Successfully saved manual AQL configuration');
+                } catch (error) {
+                    console.warn('⚠️ Could not save manual AQL configuration:', error.message);
+                    frappe.show_alert({message: 'Configuration updated in memory but save failed: ' + error.message, indicator: 'orange'});
+                    // Continue with UI updates even if save fails
+                }
+            }
+            
+            console.log('AQL Configuration updated successfully:', trimsInspectionState.aqlConfiguration);
+            
+            // CRITICAL: Update all displays with the new AQL configuration
+            console.log('🔄 Updating all displays with new AQL configuration...');
+            
+            // Step 1: Select items based on NEW AQL config (this uses trimsInspectionState.aqlConfiguration)
+            selectItemsForInspection();
+            console.log('✅ Items selected based on AQL config');
+            
+            // Step 2: Update item pieces display
+            updateItemInspectionPieces();
+            console.log('✅ Item inspection pieces updated');
+            
+            // Step 3: Update AQL summary display
+            updateAQLSummaryDisplay();
+            console.log('✅ AQL summary display updated');
+            
+            // Step 4: Update the main sampling summary (this should now show API values)
+            updateSelectedItemsSummary();
+            console.log('✅ Selected items summary updated');
+            
+            // Verify the final display
+            const finalSamplingText = document.getElementById('sampling-text')?.textContent;
+            const finalSelectedCount = document.getElementById('selected-item-count')?.textContent;
+            console.log(`🎯 FINAL RESULT: Sampling text: "${finalSamplingText}"`);
+            console.log(`🎯 FINAL RESULT: Selected count: "${finalSelectedCount}"`);
+            
+            frappe.show_alert({message: 'AQL Configuration updated successfully', indicator: 'green'});
+        }
         
     } catch (error) {
         console.error('Error updating AQL configuration:', error);
-        showMessage('Error updating AQL configuration: ' + error.message, 'error');
+        frappe.show_alert({message: 'Error updating AQL configuration: ' + error.message, indicator: 'red'});
+    } finally {
+        // Restore button state
+        const button = document.querySelector('[onclick="updateAQLConfiguration()"]');
+        if (button) {
+            button.textContent = originalText || 'Update AQL Config';
+            button.disabled = false;
+        }
     }
 }
 
-// Calculate AQL sample size for count-based inspection
-function calculateAQLSampleSize(totalPieces, aqlLevel, aqlValue, inspectionRegime, inspectionType) {
-    // For 100% inspection, inspect all pieces
+// Update item inspection pieces based on AQL configuration
+function updateItemInspectionPieces() {
+    if (!trimsInspectionState.selectedItems) {
+        console.log('No selected items available');
+        return;
+    }
+    
+    const selectedItems = trimsInspectionState.selectedItems;
+    
+    // Update each item's inspection pieces display based on selection results
+    for (const itemNumber in trimsInspectionState.itemsData) {
+        const itemData = trimsInspectionState.itemsData[itemNumber];
+        const totalPieces = parseInt(itemData.pieces || itemData.quantity || 0);
+        
+        // Find this item in the selected items list
+        const selectedItem = selectedItems.find(selected => selected.item_number === itemNumber);
+        const inspectionPieces = selectedItem ? (selectedItem.inspection_pieces || 0) : 0;
+        
+        // Update the display using robust element finding
+        let inspectionPiecesElement = document.getElementById(`inspection-pieces-${itemNumber}`);
+        
+        // If getElementById fails, try other methods
+        if (!inspectionPiecesElement) {
+            try {
+                const escapedId = CSS.escape(`inspection-pieces-${itemNumber}`);
+                inspectionPiecesElement = document.querySelector(`#${escapedId}`);
+            } catch (error) {
+                // Try attribute selector as fallback
+                inspectionPiecesElement = document.querySelector(`[id="inspection-pieces-${itemNumber}"]`);
+            }
+        }
+        
+        if (inspectionPiecesElement) {
+            if (inspectionPieces > 0) {
+                inspectionPiecesElement.textContent = `Pieces to Inspect: ${inspectionPieces} of ${totalPieces}`;
+            } else {
+                inspectionPiecesElement.textContent = `Pieces to Inspect: 0 of ${totalPieces} (Not selected)`;
+            }
+            
+            // Store inspection pieces in item data
+            trimsInspectionState.itemsData[itemNumber].inspection_pieces = inspectionPieces;
+        } else {
+            console.warn(`Could not find inspection pieces element for item: ${itemNumber}`);
+        }
+        
+        // Hide/show the entire item section based on inspection pieces
+        // Only hide items if there's a valid AQL configuration, otherwise show all items
+        const itemSection = document.querySelector(`[data-item="${itemNumber}"]`);
+        if (itemSection) {
+            const hasValidAQLConfig = trimsInspectionState.aqlConfiguration && 
+                                    trimsInspectionState.aqlConfiguration.sample_size > 0;
+            
+            if (hasValidAQLConfig) {
+                // Only hide items when we have a proper AQL configuration
+                if (inspectionPieces > 0) {
+                    itemSection.style.display = '';  // Show the item
+                } else {
+                    itemSection.style.display = 'none';  // Hide the item
+                }
+            } else {
+                // No AQL config yet - show all items
+                itemSection.style.display = '';  // Always show when no AQL config
+            }
+        }
+    }
+    
+    const totalSelectedPieces = selectedItems.reduce((sum, item) => sum + (item.inspection_pieces || 0), 0);
+    const selectedItemsCount = selectedItems.filter(item => item.selected_for_inspection).length;
+    console.log(`Updated item inspection pieces: ${selectedItemsCount} items selected, ${totalSelectedPieces} total pieces to inspect`);
+}
+
+// Update AQL Summary Display
+function updateAQLSummaryDisplay() {
+    const aqlLevel = document.getElementById('aql-level')?.value || inspectionData.aql_level || '2';
+    const aqlValue = document.getElementById('aql-value')?.value || inspectionData.aql_value || '2.5';
+    const inspectionType = document.getElementById('inspection-type')?.value || inspectionData.inspection_type || 'AQL Based';
+    
+    // AQL Level display mapping
+    const aqlLevelDisplayMap = {
+        '1': 'I', '2': 'II', '3': 'III',
+        'S1': 'S-1', 'S2': 'S-2', 'S3': 'S-3', 'S4': 'S-4'
+    };
+    
+    // Update AQL configuration text
+    const aqlLevelDisplay = aqlLevelDisplayMap[aqlLevel] || aqlLevel;
+    const aqlConfigText = document.getElementById('aql-config-text');
+    if (aqlConfigText) {
+        aqlConfigText.textContent = `Level ${aqlLevelDisplay} with ${aqlValue}% defect tolerance`;
+    }
+    
+    console.log(`Updated AQL summary: Level ${aqlLevelDisplay} with ${aqlValue}% defect tolerance`);
+}
+
+// Select items for inspection based on AQL configuration
+function selectItemsForInspection() {
+    console.log('🔍 selectItemsForInspection() called');
+    
+    const inspectionType = document.getElementById('inspection-type')?.value || 'AQL Based';
+    const allItems = Object.values(trimsInspectionState.itemsData || {});
+    const totalItems = allItems.length;
+    
+    console.log(`📊 Processing ${totalItems} items for ${inspectionType} inspection`);
+    
+    if (totalItems === 0) {
+        console.error('❌ No items found - cannot perform sampling');
+        trimsInspectionState.selectedItems = [];
+        return [];
+    }
+    
+    let selectedItems = [];
+    
     if (inspectionType === '100% Inspection') {
-        return {
-            samplePieces: totalPieces,
-            samplePercentage: 100
-        };
+        // Select ALL items for 100% inspection - all pieces in all items
+        selectedItems = allItems.map(item => ({
+            ...item,
+            selected_for_inspection: true,
+            inspection_pieces: parseInt(item.pieces || item.quantity || 0),
+            inspection_reason: '100% Inspection - All pieces in all items'
+        }));
+        
+    } else if (inspectionType === 'AQL Based') {
+        // For AQL Based inspection, use API sample_size as total pieces to inspect
+        const aqlConfig = trimsInspectionState.aqlConfiguration;
+        const totalPiecesToInspect = (aqlConfig && aqlConfig.sample_size) ? aqlConfig.sample_size : 0; // This is the API response sample_size (e.g., 13)
+        
+        console.log(`AQL Based: Need to inspect ${totalPiecesToInspect} pieces total`);
+        
+        // If no AQL configuration yet, show placeholder message
+        if (totalPiecesToInspect === 0) {
+            selectedItems = allItems.map(item => ({
+                ...item,
+                selected_for_inspection: false,
+                inspection_pieces: 0,
+                inspection_reason: 'AQL configuration not set - Click "Update AQL Config" button'
+            }));
+        } else {
+            // Calculate total available pieces across all items
+            let totalAvailablePieces = 0;
+            allItems.forEach(item => {
+                const pieces = parseInt(item.pieces || item.quantity || 0);
+                totalAvailablePieces += pieces;
+            });
+            
+            console.log(`Total available pieces: ${totalAvailablePieces}`);
+            
+            if (totalPiecesToInspect >= totalAvailablePieces) {
+                // If sample size >= total pieces, select all items with all pieces
+                selectedItems = allItems.map(item => ({
+                    ...item,
+                    selected_for_inspection: true,
+                    inspection_pieces: parseInt(item.pieces || item.quantity || 0),
+                    inspection_reason: `AQL Based - All ${totalAvailablePieces} pieces (sample size ${totalPiecesToInspect})`
+                }));
+            } else {
+                // Distribute the pieces to inspect across items proportionally
+                let remainingPiecesToInspect = totalPiecesToInspect;
+                
+                // Sort items by piece count (descending) to prioritize larger lots
+                const sortedItems = [...allItems].sort((a, b) => {
+                    const aPieces = parseInt(a.pieces || a.quantity || 0);
+                    const bPieces = parseInt(b.pieces || b.quantity || 0);
+                    return bPieces - aPieces;
+                });
+                
+                selectedItems = sortedItems.map((item, index) => {
+                    const itemPieces = parseInt(item.pieces || item.quantity || 0);
+                    let piecesToInspectFromItem = 0;
+                    
+                    if (remainingPiecesToInspect > 0 && itemPieces > 0) {
+                        // Calculate proportional pieces, but ensure we don't exceed item's total pieces
+                        const proportion = itemPieces / totalAvailablePieces;
+                        let calculatedPieces = Math.ceil(totalPiecesToInspect * proportion);
+                        
+                        // For the last few items, take remaining pieces
+                        if (index === sortedItems.length - 1) {
+                            piecesToInspectFromItem = Math.min(remainingPiecesToInspect, itemPieces);
+                        } else {
+                            piecesToInspectFromItem = Math.min(calculatedPieces, itemPieces, remainingPiecesToInspect);
+                        }
+                        
+                        remainingPiecesToInspect -= piecesToInspectFromItem;
+                    }
+                    
+                    return {
+                        ...item,
+                        selected_for_inspection: piecesToInspectFromItem > 0,
+                        inspection_pieces: piecesToInspectFromItem,
+                        inspection_reason: piecesToInspectFromItem > 0 ? 
+                            `AQL Based - ${piecesToInspectFromItem} of ${itemPieces} pieces (total sample: ${totalPiecesToInspect})` :
+                            `Not selected - no pieces needed from this item`
+                    };
+                });
+            }
+        }
+        
+    } else {
+        // Default: select all items with all pieces
+        selectedItems = allItems.map(item => ({
+            ...item,
+            selected_for_inspection: true,
+            inspection_pieces: parseInt(item.pieces || item.quantity || 0),
+            inspection_reason: 'Default - All pieces in all items'
+        }));
     }
     
-    // AQL Level to sample size mapping for count-based inspection
-    const aqlSampleMap = {
-        'I': { base: 5, multiplier: 1.0 },
-        'II': { base: 8, multiplier: 1.2 },
-        'III': { base: 13, multiplier: 1.5 },
-        'S-1': { base: 3, multiplier: 0.8 },
-        'S-2': { base: 5, multiplier: 0.9 },
-        'S-3': { base: 8, multiplier: 1.1 },
-        'S-4': { base: 13, multiplier: 1.3 }
-    };
+    // Store selected items
+    trimsInspectionState.selectedItems = selectedItems;
     
-    // AQL Value impact on sample size
-    const aqlValueMultiplier = {
-        '0.4': 1.5,
-        '0.65': 1.3,
-        '1.0': 1.2,
-        '1.5': 1.1,
-        '2.5': 1.0,
-        '4.0': 0.9,
-        '6.5': 0.8,
-        '10.0': 0.7
-    };
+    // Log the results for debugging
+    const totalSelectedPieces = selectedItems.reduce((sum, item) => sum + (item.inspection_pieces || 0), 0);
+    const selectedItemsCount = selectedItems.filter(item => item.selected_for_inspection).length;
+    console.log(`Selected ${selectedItemsCount} items for inspection with ${totalSelectedPieces} total pieces:`, 
+                selectedItems.filter(item => item.selected_for_inspection));
     
-    // Inspection regime impact
-    const regimeMultiplier = {
-        'Normal': 1.0,
-        'Tightened': 1.3,
-        'Reduced': 0.7
-    };
-    
-    const levelConfig = aqlSampleMap[aqlLevel] || aqlSampleMap['II'];
-    const valueMultiplier = aqlValueMultiplier[aqlValue] || 1.0;
-    const regimeMultiplier_ = regimeMultiplier[inspectionRegime] || 1.0;
-    
-    // Calculate sample size
-    let sampleSize = Math.ceil(levelConfig.base * levelConfig.multiplier * valueMultiplier * regimeMultiplier_);
-    
-    // Ensure we don't exceed total pieces
-    sampleSize = Math.min(sampleSize, totalPieces);
-    
-    // Minimum 1 piece if any pieces exist
-    if (totalPieces > 0 && sampleSize < 1) {
-        sampleSize = 1;
+    return selectedItems;
+}
+
+// Update selected items summary display
+function updateSelectedItemsSummary() {
+    if (!trimsInspectionState.selectedItems) {
+        trimsInspectionState.selectedItems = selectItemsForInspection();
     }
     
-    const samplePercentage = totalPieces > 0 ? Math.round((sampleSize / totalPieces) * 100) : 0;
+    const selectedItems = trimsInspectionState.selectedItems;
+    const totalItems = Object.keys(trimsInspectionState.itemsData || {}).length;
     
-    return {
-        samplePieces: sampleSize,
-        samplePercentage: samplePercentage
-    };
+    // Calculate total pieces to inspect and total available pieces
+    const totalPiecesToInspect = selectedItems.reduce((sum, item) => sum + (item.inspection_pieces || 0), 0);
+    const selectedItemsCount = selectedItems.filter(item => item.selected_for_inspection).length;
+    
+    // Get total available pieces from all items (not just selected ones)
+    const allItems = Object.values(trimsInspectionState.itemsData || {});
+    const totalAvailablePieces = allItems.reduce((sum, item) => sum + parseInt(item.pieces || item.quantity || 0), 0);
+    
+    // Update sampling text - show pieces instead of items for AQL based
+    const samplingText = document.getElementById('sampling-text');
+    if (samplingText) {
+        const inspectionType = document.getElementById('inspection-type')?.value || 'AQL Based';
+        if (inspectionType === 'AQL Based' && trimsInspectionState.aqlConfiguration && trimsInspectionState.aqlConfiguration.sample_size > 0) {
+            // For AQL Based, show the API response sample_size as pieces to inspect
+            const apiSampleSize = trimsInspectionState.aqlConfiguration.sample_size;
+            samplingText.textContent = `${apiSampleSize} pieces out of ${totalAvailablePieces} total pieces`;
+        } else if (inspectionType === '100% Inspection') {
+            samplingText.textContent = `${totalAvailablePieces} pieces out of ${totalAvailablePieces} total pieces (100% Inspection)`;
+        } else if (inspectionType === 'AQL Based') {
+            // AQL Based but no configuration yet
+            samplingText.textContent = `${totalAvailablePieces} pieces available - AQL configuration needed`;
+        } else {
+            samplingText.textContent = `${selectedItemsCount} items out of ${totalItems} total items (${totalPiecesToInspect} pieces)`;
+        }
+    }
+    
+    // Update selected item count - show pieces for AQL
+    const selectedItemCount = document.getElementById('selected-item-count');
+    if (selectedItemCount) {
+        const inspectionType = document.getElementById('inspection-type')?.value || 'AQL Based';
+        if (inspectionType === 'AQL Based' && trimsInspectionState.aqlConfiguration && trimsInspectionState.aqlConfiguration.sample_size > 0) {
+            // Show API sample_size for AQL Based
+            const apiSampleSize = trimsInspectionState.aqlConfiguration.sample_size;
+            selectedItemCount.textContent = apiSampleSize.toString();
+        } else if (inspectionType === '100% Inspection') {
+            selectedItemCount.textContent = totalAvailablePieces.toString();
+        } else if (inspectionType === 'AQL Based') {
+            // AQL Based but no configuration yet
+            selectedItemCount.textContent = totalItems.toString() + ' items';
+        } else {
+            selectedItemCount.textContent = selectedItemsCount.toString();
+        }
+    }
+    
+    // Update selected item details - show which items and how many pieces from each
+    const selectedItemDetails = document.getElementById('selected-item-details');
+    if (selectedItemDetails) {
+        const activeItems = selectedItems.filter(item => item.selected_for_inspection && (item.inspection_pieces || 0) > 0);
+        if (activeItems.length > 0) {
+            const itemsText = activeItems.map(item => 
+                `${item.item_number} (${item.inspection_pieces || 0} pieces)`
+            ).join(', ');
+            selectedItemDetails.textContent = itemsText;
+        } else {
+            selectedItemDetails.textContent = 'No items selected';
+        }
+    }
+    
+    console.log(`Updated selected items summary: ${selectedItemsCount} items, ${totalPiecesToInspect} pieces out of ${totalAvailablePieces} total pieces`);
 }
 
 // Update defect count when input changes
@@ -625,11 +1453,11 @@ function updateDefectCount(input) {
         trimsInspectionState.defectsData[itemNumber] = {};
     }
     
-    // Clear the specific defect key first to avoid contamination
-    if (count === 0 || isNaN(count)) {
+    // Store all valid counts including zero (important for trims count-based system)
+    if (isNaN(count) || count < 0) {
         delete trimsInspectionState.defectsData[itemNumber][defectKey];
     } else {
-        // Store only positive, valid counts
+        // Store all non-negative counts (including zero)
         trimsInspectionState.defectsData[itemNumber][defectKey] = count;
     }
     
@@ -646,15 +1474,16 @@ function updateDefectCount(input) {
     // Recalculate all totals
     debounce(calculateTotals, 100)();
     
+    // Check if submit button should be enabled after defect update
+    debounce(checkTrimsSubmitButtonStatus, 200)();
+    
     console.log(`Updated defect ${defectKey} for item ${itemNumber}: ${count}`);
 }
 
 // Update individual defect total display
 function updateIndividualDefectTotal(itemNumber, defectCode, count) {
-    const totalElement = document.getElementById(`total-${itemNumber}-${defectCode}`);
-    if (totalElement) {
-        totalElement.textContent = count || 0;
-    }
+    const elementId = `total-${itemNumber}-${defectCode}`;
+    updateElement(elementId, count || 0);
 }
 
 // Update item meta data
@@ -730,7 +1559,7 @@ function calculateTotals() {
                 }
             }
             
-            // Update item summary displays
+            // Update item summary displays - use original itemNumber as HTML uses it directly
             updateElement(`item-critical-${itemNumber}`, itemCritical);
             updateElement(`item-major-${itemNumber}`, itemMajor);
             updateElement(`item-minor-${itemNumber}`, itemMinor);
@@ -787,8 +1616,24 @@ function getDefectSeverity(defectCode) {
 
 // Update item status
 function updateItemStatus(itemNumber, critical, major, minor) {
-    const statusElement = document.getElementById(`item-status-${itemNumber}`);
-    if (!statusElement) return;
+    // Use more robust element finding
+    let statusElement = document.getElementById(`item-status-${itemNumber}`);
+    
+    // If getElementById fails, try other methods
+    if (!statusElement) {
+        try {
+            const escapedId = CSS.escape(`item-status-${itemNumber}`);
+            statusElement = document.querySelector(`#${escapedId}`);
+        } catch (error) {
+            // Try attribute selector as fallback
+            statusElement = document.querySelector(`[id="item-status-${itemNumber}"]`);
+        }
+    }
+    
+    if (!statusElement) {
+        console.warn(`Could not find status element for item: ${itemNumber}`);
+        return;
+    }
     
     let statusClass, statusText;
     
@@ -946,6 +1791,12 @@ async function holdTrimsInspection() {
         if (result.message) {
             showMessage('Trims inspection placed on hold', 'warning');
             
+            // Update the global inspection data to reflect new hold status and reason
+            inspectionData.inspection_status = 'Hold';
+            inspectionData.hold_reason = reason.trim();
+            inspectionData.hold_by = frappe.session.user;
+            inspectionData.hold_timestamp = new Date().toISOString();
+            
             // Update UI immediately to reflect hold status
             updateUIForHoldStatus();
             
@@ -954,9 +1805,6 @@ async function holdTrimsInspection() {
             if (statusElement) {
                 statusElement.innerHTML = statusElement.innerHTML.replace(/Status: [^|]*/, 'Status: Hold');
             }
-            
-            // Update the global inspection data to reflect new status
-            inspectionData.status = 'Hold';
             
             console.log('Trims inspection successfully placed on hold - no page refresh needed');
         } else {
@@ -1000,6 +1848,12 @@ async function resumeTrimsInspection() {
         
         if (result.message && result.message.success) {
             showMessage('Inspection resumed successfully', 'success');
+            
+            // Update the global inspection data to reflect resumed status
+            inspectionData.inspection_status = 'In Progress';
+            inspectionData.hold_reason = '';
+            inspectionData.hold_by = '';
+            inspectionData.hold_timestamp = '';
             
             // Update UI immediately without page refresh
             updateUIForResumeStatus();
@@ -1102,16 +1956,23 @@ async function updateTrimsInspectionStatus(status) {
 
 // Check if trims inspection is complete and ready for submission
 function checkTrimsInspectionCompleteness() {
+    console.log('=== CHECKING TRIMS INSPECTION COMPLETENESS ===');
+    
     // Check if mandatory physical testing results are completed
     let mandatoryChecklistCompleted = true;
     let mandatoryFailures = 0;
+    let mandatoryItems = [];
     
     if (Array.isArray(trimsInspectionState.checklistData)) {
+        console.log('Checklist data:', trimsInspectionState.checklistData);
         for (const item of trimsInspectionState.checklistData) {
             if (item.is_mandatory) {
+                mandatoryItems.push(item.test_parameter);
                 const status = item.results?.status;
+                console.log(`Mandatory item "${item.test_parameter}": status = "${status}"`);
                 if (!status || status === '') {
                     mandatoryChecklistCompleted = false;
+                    console.log(`❌ Mandatory item "${item.test_parameter}" is incomplete`);
                     break;
                 }
                 if (status === 'Fail') {
@@ -1121,19 +1982,57 @@ function checkTrimsInspectionCompleteness() {
         }
     }
     
-    if (!mandatoryChecklistCompleted) {
-        return { ready: false, reason: 'Mandatory physical testing results are not completed' };
+    console.log(`Mandatory items found: ${mandatoryItems.length}`, mandatoryItems);
+    console.log(`Mandatory checklist completed: ${mandatoryChecklistCompleted}`);
+    
+    // If there are mandatory items but they're not completed, block submission
+    if (mandatoryItems.length > 0 && !mandatoryChecklistCompleted) {
+        const reason = 'Mandatory physical testing results are not completed';
+        console.log(`❌ RESULT: Not ready - ${reason}`);
+        return { ready: false, reason };
     }
     
     // Check if there are any defects or checklist data entered
-    const hasDefects = Object.keys(trimsInspectionState.defectsData).length > 0;
+    const hasDefects = Object.keys(trimsInspectionState.defectsData || {}).length > 0;
     const hasChecklistData = Array.isArray(trimsInspectionState.checklistData) && 
                             trimsInspectionState.checklistData.some(item => item.results?.status);
     
-    if (!hasDefects && !hasChecklistData) {
-        return { ready: false, reason: 'No inspection data has been recorded' };
+    console.log('Defects data:', trimsInspectionState.defectsData);
+    console.log(`Has defects: ${hasDefects}`);
+    console.log(`Has checklist data: ${hasChecklistData}`);
+    
+    // Enhanced defects check - look for actual meaningful defect data
+    let hasValidDefectData = false;
+    if (trimsInspectionState.defectsData && typeof trimsInspectionState.defectsData === 'object') {
+        for (const itemNumber in trimsInspectionState.defectsData) {
+            const itemDefects = trimsInspectionState.defectsData[itemNumber];
+            if (itemDefects && typeof itemDefects === 'object') {
+                for (const defectKey in itemDefects) {
+                    const count = itemDefects[defectKey];
+                    if (count !== null && count !== undefined && count !== '' && !isNaN(count)) {
+                        hasValidDefectData = true;
+                        console.log(`Found valid defect data: ${itemNumber}.${defectKey} = ${count}`);
+                        break;
+                    }
+                }
+                if (hasValidDefectData) break;
+            }
+        }
     }
     
+    console.log(`Has valid defect data: ${hasValidDefectData}`);
+    
+    // Accept if we have either valid defects OR valid checklist data OR both
+    const hasAnyData = hasValidDefectData || hasChecklistData;
+    console.log(`Has any inspection data: ${hasAnyData}`);
+    
+    if (!hasAnyData) {
+        const reason = 'No inspection data has been recorded';
+        console.log(`❌ RESULT: Not ready - ${reason}`);
+        return { ready: false, reason };
+    }
+    
+    console.log('✅ RESULT: Ready for submission');
     return { ready: true };
 }
 
@@ -1171,21 +2070,46 @@ function disableTrimsEditingUI() {
 }
 
 // Utility functions
+function sanitizeElementId(itemNumber) {
+    // Replace spaces and special characters with underscores for valid CSS IDs
+    return itemNumber.replace(/[^a-zA-Z0-9-_]/g, '_');
+}
+
 function updateElement(id, value) {
+    // First try getElementById (most common case)
     const element = document.getElementById(id);
     if (element) {
         element.textContent = value;
         console.log(`Updated element ${id} with value: ${value}`);
-    } else {
-        console.warn(`Element with ID '${id}' not found. Value: ${value}`);
-        
-        // Try to find element by class or other attributes if ID doesn't work
-        const altElement = document.querySelector(`[data-id="${id}"], .${id}, [name="${id}"]`);
+        return;
+    }
+    
+    // If getElementById fails, try with CSS.escape for special characters
+    try {
+        const escapedId = CSS.escape(id);
+        const altElement = document.querySelector(`#${escapedId}`);
         if (altElement) {
             altElement.textContent = value;
             console.log(`Updated alternative element for ${id} with value: ${value}`);
+            return;
         }
+    } catch (error) {
+        console.warn(`CSS.escape failed for ID '${id}':`, error);
     }
+    
+    // Final fallback: try attribute selector (this is safer for problematic IDs)
+    try {
+        const attrElement = document.querySelector(`[id="${id}"]`);
+        if (attrElement) {
+            attrElement.textContent = value;
+            console.log(`Updated element via attribute selector for ${id} with value: ${value}`);
+            return;
+        }
+    } catch (error) {
+        console.warn(`Attribute selector failed for ID '${id}':`, error);
+    }
+    
+    console.warn(`Element with ID '${id}' not found after all attempts. Value: ${value}`);
 }
 
 function showMessage(message, type = 'info') {
@@ -1267,6 +2191,12 @@ async function checkInspectionStatusOnLoad() {
         } else if (currentStatus === 'Completed') {
             updateUIForCompletedStatus();
             showMessage('This inspection has been completed', 'info');
+        } else if (currentStatus === 'Accepted' || currentStatus === 'Rejected' || currentStatus === 'Conditional Accept') {
+            // Check if current user is Quality Inspector and if inspection should be read-only
+            if (inspectionData.is_readonly) {
+                updateUIForReadOnlyStatus();
+                showMessage(`This inspection is read-only. Only Quality Managers can modify inspections with status '${currentStatus}'`, 'info');
+            }
         }
         
     } catch (error) {
@@ -1299,7 +2229,15 @@ function updateUIForHoldStatus() {
                 text-align: center;
                 font-weight: 500;
             `;
-            holdNotice.innerHTML = '⏸️ This inspection is on hold - Click Resume to continue working';
+            // Create hold message with reason
+            let holdMessage = '⏸️ This inspection is on hold - Click Resume to continue working';
+            if (inspectionData.hold_reason) {
+                holdMessage += `<br><strong>Reason:</strong> ${inspectionData.hold_reason}`;
+            }
+            if (inspectionData.hold_by) {
+                holdMessage += `<br><strong>Hold by:</strong> ${inspectionData.hold_by}`;
+            }
+            holdNotice.innerHTML = holdMessage;
             pageHeader.appendChild(holdNotice);
         }
     }
@@ -1315,9 +2253,10 @@ function updateUIForHoldStatus() {
     if (saveBtn) saveBtn.style.display = 'none';
     
     // Create and show Resume button if it doesn't exist
-    let resumeBtn = document.querySelector('button[onclick*="resumeTrimsInspection"]');
+    let resumeBtn = document.getElementById('resume-trims-inspection-btn');
     if (!resumeBtn) {
         resumeBtn = document.createElement('button');
+        resumeBtn.id = 'resume-trims-inspection-btn';
         resumeBtn.className = 'btn btn-info';
         resumeBtn.onclick = resumeTrimsInspection;
         resumeBtn.innerHTML = '▶️ Resume';
@@ -1347,7 +2286,7 @@ function updateUIForResumeStatus() {
     }
     
     // Hide Resume button and show normal action buttons
-    const resumeBtn = document.querySelector('button[onclick*="resumeTrimsInspection"]');
+    const resumeBtn = document.getElementById('resume-trims-inspection-btn');
     const holdBtn = document.querySelector('button[onclick*="holdTrimsInspection"]');
     const submitBtn = document.querySelector('button[onclick*="submitTrimsInspection"]');
     const saveBtn = document.querySelector('button[onclick*="saveTrimsInspection"]');
@@ -1391,6 +2330,44 @@ function updateUIForCompletedStatus() {
             `;
             completionNotice.innerHTML = '✅ This inspection has been completed';
             pageHeader.appendChild(completionNotice);
+        }
+    }
+}
+
+// Update UI for read-only status (Quality Inspectors cannot edit Accepted/Rejected/Conditional Accept)
+function updateUIForReadOnlyStatus() {
+    // Disable all editing inputs but keep values visible
+    const inputs = document.querySelectorAll('input:not([readonly]), select, textarea');
+    inputs.forEach(input => {
+        input.disabled = true;
+        input.style.opacity = '0.8'; // Make it visually apparent it's disabled
+    });
+    
+    // Hide action buttons that modify the inspection
+    const editingButtons = document.querySelectorAll('button[onclick*="save"], button[onclick*="submit"], button[onclick*="hold"]');
+    editingButtons.forEach(btn => {
+        btn.style.display = 'none';
+    });
+    
+    // Add read-only notice
+    const pageHeader = document.querySelector('.page-header');
+    if (pageHeader) {
+        let readOnlyNotice = pageHeader.querySelector('.readonly-notice');
+        if (!readOnlyNotice) {
+            readOnlyNotice = document.createElement('div');
+            readOnlyNotice.className = 'readonly-notice';
+            readOnlyNotice.style.cssText = `
+                background: #e3f2fd; 
+                color: #0d47a1; 
+                padding: 10px; 
+                margin-top: 10px; 
+                border-radius: 6px; 
+                border: 1px solid #90caf9;
+                text-align: center;
+                font-weight: 500;
+            `;
+            readOnlyNotice.innerHTML = '🔒 This inspection is read-only. Only Quality Managers can make modifications.';
+            pageHeader.appendChild(readOnlyNotice);
         }
     }
 }

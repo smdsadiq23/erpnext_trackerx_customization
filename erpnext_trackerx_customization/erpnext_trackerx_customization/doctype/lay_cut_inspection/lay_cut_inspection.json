@@ -1,0 +1,666 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-08-22 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "section_header",
+  "lay_cut_number",
+  "inspection_date",
+  "inspection_time",
+  "column_break_4",
+  "inspector_name",
+  "inspector_id",
+  "order_number",
+  "style_number",
+  "column_break_9",
+  "fabric_code",
+  "color",
+  "total_layers",
+  "marker_length",
+  "section_checklist",
+  "fabric_quality_checks",
+  "marker_verification_checks",
+  "lay_setup_checks",
+  "pattern_placement_checks",
+  "section_layer_assessment",
+  "layer_assessment_html",
+  "layer_quality_assessments",
+  "column_break_layer_static",
+  "layer_10_status",
+  "layer_20_status",
+  "layer_30_status",
+  "layer_40_status",
+  "layer_50_status",
+  "column_break_layer",
+  "layer_60_status",
+  "layer_70_status",
+  "layer_80_status",
+  "layer_90_status",
+  "layer_100_status",
+  "surface_quality_rating",
+  "section_measurements",
+  "length_start",
+  "length_center",
+  "length_end",
+  "column_break_measurements",
+  "width_left",
+  "width_center",
+  "width_right",
+  "column_break_measurements2",
+  "height_inches",
+  "actual_layers",
+  "section_efficiency",
+  "marker_area",
+  "fabric_used",
+  "column_break_efficiency",
+  "efficiency_percentage",
+  "target_efficiency",
+  "column_break_efficiency2",
+  "end_waste_inches",
+  "side_waste_inches",
+  "section_defects",
+  "critical_defects",
+  "major_defects",
+  "minor_defects",
+  "section_scoring",
+  "scoring_html",
+  "spreading_quality_score",
+  "technical_accuracy_score",
+  "defect_deduction_score",
+  "column_break_scoring",
+  "total_score",
+  "quality_grade",
+  "acceptable",
+  "section_assessment",
+  "lay_status",
+  "cutting_authorization",
+  "column_break_assessment",
+  "authorized_by",
+  "authorization_date",
+  "section_notes",
+  "inspector_comments",
+  "quality_manager_review",
+  "corrective_actions",
+  "special_cutting_instructions",
+  "section_signatures",
+  "inspector_signature_date",
+  "quality_supervisor",
+  "quality_supervisor_date",
+  "column_break_signatures",
+  "cutting_supervisor",
+  "cutting_supervisor_date",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "LCI-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_header",
+   "fieldtype": "Section Break",
+   "label": "Header Information"
+  },
+  {
+   "fieldname": "lay_cut_number",
+   "fieldtype": "Data",
+   "label": "Lay Cut Number",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "inspection_date",
+   "fieldtype": "Date",
+   "label": "Inspection Date",
+   "reqd": 1
+  },
+  {
+   "default": "Now",
+   "fieldname": "inspection_time",
+   "fieldtype": "Time",
+   "label": "Inspection Time",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "inspector_name",
+   "fieldtype": "Link",
+   "label": "Inspector Name",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "inspector_id",
+   "fieldtype": "Data",
+   "label": "Inspector ID"
+  },
+  {
+   "fieldname": "order_number",
+   "fieldtype": "Data",
+   "label": "Order Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "style_number",
+   "fieldtype": "Data",
+   "label": "Style Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "fabric_code",
+   "fieldtype": "Data",
+   "label": "Fabric Code",
+   "reqd": 1
+  },
+  {
+   "fieldname": "color",
+   "fieldtype": "Data",
+   "label": "Color",
+   "reqd": 1
+  },
+  {
+   "description": "Enter total number of fabric layers to be cut",
+   "fieldname": "total_layers",
+   "fieldtype": "Int",
+   "label": "Total Layers",
+   "reqd": 1
+  },
+  {
+   "fieldname": "marker_length",
+   "fieldtype": "Float",
+   "label": "Marker Length",
+   "precision": "2"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_checklist",
+   "fieldtype": "Section Break",
+   "label": "Quality Checklists"
+  },
+  {
+   "fieldname": "fabric_quality_checks",
+   "fieldtype": "Table",
+   "label": "Fabric Quality Checks",
+   "options": "Lay Cut Checklist Item"
+  },
+  {
+   "fieldname": "marker_verification_checks",
+   "fieldtype": "Table",
+   "label": "Marker Verification Checks",
+   "options": "Lay Cut Checklist Item"
+  },
+  {
+   "fieldname": "lay_setup_checks",
+   "fieldtype": "Table",
+   "label": "Lay Setup Inspection",
+   "options": "Lay Cut Checklist Item"
+  },
+  {
+   "fieldname": "pattern_placement_checks",
+   "fieldtype": "Table",
+   "label": "Pattern Placement Checks",
+   "options": "Lay Cut Checklist Item"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_layer_assessment",
+   "fieldtype": "Section Break",
+   "label": "Layer Quality Assessment"
+  },
+  {
+   "fieldname": "layer_assessment_html",
+   "fieldtype": "HTML",
+   "label": "Layer Assessment Instructions",
+   "options": "<div class=\"alert alert-info\"><strong>Dynamic Layer Quality Assessment:</strong> Add any layer numbers and assign quality ratings as needed during inspection.<br><small>Use the table below to record specific layer quality: <span class=\"text-success\">Good</span> = No issues, <span class=\"text-warning\">Fair</span> = Minor issues, <span class=\"text-danger\">Poor</span> = Major issues requiring action</small></div>"
+  },
+  {
+   "fieldname": "layer_quality_assessments",
+   "fieldtype": "Table",
+   "label": "Layer Quality Assessments",
+   "options": "Layer Quality Assessment Item",
+   "description": "Add layer numbers and their quality ratings as needed during inspection"
+  },
+  {
+   "fieldname": "column_break_layer_static",
+   "fieldtype": "Column Break",
+   "label": "Standard Layer Checks (Every 10th Layer)"
+  },
+  {
+   "fieldname": "layer_10_status",
+   "fieldtype": "Select",
+   "label": "Layer 10",
+   "options": "\nGood\nFair\nPoor"
+  },
+  {
+   "fieldname": "layer_20_status",
+   "fieldtype": "Select",
+   "label": "Layer 20",
+   "options": "\nGood\nFair\nPoor"
+  },
+  {
+   "fieldname": "layer_30_status",
+   "fieldtype": "Select",
+   "label": "Layer 30",
+   "options": "\nGood\nFair\nPoor"
+  },
+  {
+   "fieldname": "layer_40_status",
+   "fieldtype": "Select",
+   "label": "Layer 40",
+   "options": "\nGood\nFair\nPoor"
+  },
+  {
+   "fieldname": "layer_50_status",
+   "fieldtype": "Select",
+   "label": "Layer 50",
+   "options": "\nGood\nFair\nPoor"
+  },
+  {
+   "fieldname": "column_break_layer",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "layer_60_status",
+   "fieldtype": "Select",
+   "label": "Layer 60",
+   "options": "\nGood\nFair\nPoor"
+  },
+  {
+   "fieldname": "layer_70_status",
+   "fieldtype": "Select",
+   "label": "Layer 70",
+   "options": "\nGood\nFair\nPoor"
+  },
+  {
+   "fieldname": "layer_80_status",
+   "fieldtype": "Select",
+   "label": "Layer 80",
+   "options": "\nGood\nFair\nPoor"
+  },
+  {
+   "fieldname": "layer_90_status",
+   "fieldtype": "Select",
+   "label": "Layer 90",
+   "options": "\nGood\nFair\nPoor"
+  },
+  {
+   "fieldname": "layer_100_status",
+   "fieldtype": "Select",
+   "label": "Layer 100",
+   "options": "\nGood\nFair\nPoor"
+  },
+  {
+   "fieldname": "surface_quality_rating",
+   "fieldtype": "Rating",
+   "label": "Overall Surface Quality (1-5)"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_measurements",
+   "fieldtype": "Section Break",
+   "label": "Lay Setup Measurements"
+  },
+  {
+   "fieldname": "length_start",
+   "fieldtype": "Float",
+   "label": "Length - Start",
+   "precision": "2"
+  },
+  {
+   "fieldname": "length_center",
+   "fieldtype": "Float",
+   "label": "Length - Center",
+   "precision": "2"
+  },
+  {
+   "fieldname": "length_end",
+   "fieldtype": "Float",
+   "label": "Length - End",
+   "precision": "2"
+  },
+  {
+   "fieldname": "column_break_measurements",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "width_left",
+   "fieldtype": "Float",
+   "label": "Width - Left",
+   "precision": "2"
+  },
+  {
+   "fieldname": "width_center",
+   "fieldtype": "Float",
+   "label": "Width - Center",
+   "precision": "2"
+  },
+  {
+   "fieldname": "width_right",
+   "fieldtype": "Float",
+   "label": "Width - Right",
+   "precision": "2"
+  },
+  {
+   "fieldname": "column_break_measurements2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "height_inches",
+   "fieldtype": "Float",
+   "label": "Height (inches)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "actual_layers",
+   "fieldtype": "Int",
+   "label": "Actual Layers"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_efficiency",
+   "fieldtype": "Section Break",
+   "label": "Efficiency Calculation"
+  },
+  {
+   "fieldname": "marker_area",
+   "fieldtype": "Float",
+   "label": "Marker Area (sq ft)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "fabric_used",
+   "fieldtype": "Float",
+   "label": "Fabric Used (sq ft)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "column_break_efficiency",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "efficiency_percentage",
+   "fieldtype": "Percent",
+   "label": "Efficiency %",
+   "read_only": 1
+  },
+  {
+   "fieldname": "target_efficiency",
+   "fieldtype": "Percent",
+   "label": "Target Efficiency %"
+  },
+  {
+   "fieldname": "column_break_efficiency2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "end_waste_inches",
+   "fieldtype": "Float",
+   "label": "End Waste (inches per layer)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "side_waste_inches",
+   "fieldtype": "Float",
+   "label": "Side Waste (inches per side)",
+   "precision": "2"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_defects",
+   "fieldtype": "Section Break",
+   "label": "Defect Documentation"
+  },
+  {
+   "fieldname": "critical_defects",
+   "fieldtype": "Table",
+   "label": "Critical Defects",
+   "options": "Lay Cut Defect Item"
+  },
+  {
+   "fieldname": "major_defects",
+   "fieldtype": "Table",
+   "label": "Major Defects",
+   "options": "Lay Cut Defect Item"
+  },
+  {
+   "fieldname": "minor_defects",
+   "fieldtype": "Table",
+   "label": "Minor Defects",
+   "options": "Lay Cut Defect Item"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_scoring",
+   "fieldtype": "Section Break",
+   "label": "Quality Scoring"
+  },
+  {
+   "fieldname": "scoring_html",
+   "fieldtype": "HTML",
+   "label": "Scoring Breakdown",
+   "options": "<div class=\"card\"><div class=\"card-body\"><h6 class=\"card-title\">Quality Scoring Breakdown</h6><div class=\"row\"><div class=\"col-md-4 text-center\"><div class=\"scoring-item\"><div class=\"score-percentage text-primary\">40%</div><div class=\"score-label\">Spreading Quality</div><small class=\"text-muted\">Layer alignment, tension, smoothness</small></div></div><div class=\"col-md-4 text-center\"><div class=\"scoring-item\"><div class=\"score-percentage text-info\">35%</div><div class=\"score-label\">Technical Accuracy</div><small class=\"text-muted\">Measurements, efficiency, setup</small></div></div><div class=\"col-md-4 text-center\"><div class=\"scoring-item\"><div class=\"score-percentage text-warning\">25%</div><div class=\"score-label\">Defect Deductions</div><small class=\"text-muted\">Critical, major, minor defects</small></div></div></div></div></div><style>.scoring-item { padding: 10px; } .score-percentage { font-size: 24px; font-weight: bold; } .score-label { font-size: 14px; font-weight: 600; }</style>"
+  },
+  {
+   "fieldname": "spreading_quality_score",
+   "fieldtype": "Float",
+   "label": "Spreading Quality Score (40%)",
+   "precision": "1"
+  },
+  {
+   "fieldname": "technical_accuracy_score",
+   "fieldtype": "Float",
+   "label": "Technical Accuracy Score (35%)",
+   "precision": "1"
+  },
+  {
+   "fieldname": "defect_deduction_score",
+   "fieldtype": "Float",
+   "label": "Defect Deduction Score (25%)",
+   "precision": "1"
+  },
+  {
+   "fieldname": "column_break_scoring",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_score",
+   "fieldtype": "Float",
+   "label": "Total Score",
+   "precision": "1",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quality_grade",
+   "fieldtype": "Select",
+   "label": "Quality Grade",
+   "options": "\nA+ (Excellent 95-100%)\nA (Good 85-94%)\nB (Fair 75-84%)\nC (Poor <75% - REJECT)",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "acceptable",
+   "fieldtype": "Check",
+   "label": "Acceptable Quality"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_assessment",
+   "fieldtype": "Section Break",
+   "label": "Final Assessment"
+  },
+  {
+   "fieldname": "lay_status",
+   "fieldtype": "Select",
+   "label": "Lay Status",
+   "options": "\nApproved for Cutting\nApproved with Conditions\nHold for Review\nRejected - Redo Required",
+   "reqd": 1
+  },
+  {
+   "fieldname": "cutting_authorization",
+   "fieldtype": "Select",
+   "label": "Cutting Authorization",
+   "options": "\nAuthorized Immediately\nAuthorized After Corrections\nNot Authorized"
+  },
+  {
+   "fieldname": "column_break_assessment",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "authorized_by",
+   "fieldtype": "Link",
+   "label": "Authorized By",
+   "options": "User"
+  },
+  {
+   "fieldname": "authorization_date",
+   "fieldtype": "Datetime",
+   "label": "Authorization Date"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_notes",
+   "fieldtype": "Section Break",
+   "label": "Inspection Notes"
+  },
+  {
+   "fieldname": "inspector_comments",
+   "fieldtype": "Text Editor",
+   "label": "Inspector Comments"
+  },
+  {
+   "fieldname": "quality_manager_review",
+   "fieldtype": "Text Editor",
+   "label": "Quality Manager Review"
+  },
+  {
+   "fieldname": "corrective_actions",
+   "fieldtype": "Text Editor",
+   "label": "Corrective Actions Required"
+  },
+  {
+   "fieldname": "special_cutting_instructions",
+   "fieldtype": "Text Editor",
+   "label": "Special Cutting Instructions"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_signatures",
+   "fieldtype": "Section Break",
+   "label": "Signatures"
+  },
+  {
+   "fieldname": "inspector_signature_date",
+   "fieldtype": "Datetime",
+   "label": "Inspector Signature Date"
+  },
+  {
+   "fieldname": "quality_supervisor",
+   "fieldtype": "Link",
+   "label": "Quality Supervisor",
+   "options": "User"
+  },
+  {
+   "fieldname": "quality_supervisor_date",
+   "fieldtype": "Datetime",
+   "label": "Quality Supervisor Date"
+  },
+  {
+   "fieldname": "column_break_signatures",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cutting_supervisor",
+   "fieldtype": "Link",
+   "label": "Cutting Supervisor",
+   "options": "User"
+  },
+  {
+   "fieldname": "cutting_supervisor_date",
+   "fieldtype": "Datetime",
+   "label": "Cutting Supervisor Date"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Lay Cut Inspection",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-08-22 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Lay Cut Inspection",
+ "naming_rule": "By Naming Series",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Quality Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Quality Inspector",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Material Manager",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

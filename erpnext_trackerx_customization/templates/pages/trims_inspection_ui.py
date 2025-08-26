@@ -17,6 +17,17 @@ def get_context(context):
         
         inspection_doc = frappe.get_doc("Trims Inspection", inspection_name)
         
+        # Populate Purchase Order if missing
+        if not inspection_doc.get('purchase_order_reference') and inspection_doc.get('grn_reference'):
+            try:
+                purchase_order = get_purchase_order_from_grn(inspection_doc.grn_reference)
+                if purchase_order:
+                    inspection_doc.purchase_order_reference = purchase_order
+                    inspection_doc.save()
+                    frappe.db.commit()
+            except Exception as e:
+                frappe.log_error(f"Error updating purchase order reference: {str(e)}")
+        
         # Check permissions
         if not inspection_doc.has_permission("read"):
             frappe.throw(_("You do not have permission to view this inspection"))
@@ -41,8 +52,13 @@ def get_context(context):
         is_quality_manager = "Quality Manager" in user_roles
         is_system_user = "Administrator" in user_roles or "System Manager" in user_roles
         
-        # Check write permissions (not submitted and has write permission)
-        can_write = inspection_doc.has_permission("write") and inspection_doc.get('inspection_status') != 'Submitted'
+        # Import read-only check function
+        from erpnext_trackerx_customization.api.trims_inspection import is_inspection_readonly_for_user
+        
+        # Check write permissions (has permission, not submitted, and not read-only for user)
+        can_write = (inspection_doc.has_permission("write") and 
+                    inspection_doc.get('inspection_status') != 'Submitted' and
+                    not is_inspection_readonly_for_user(inspection_doc))
         
         # Set context
         context.update({
@@ -53,6 +69,7 @@ def get_context(context):
             'defect_categories': defect_categories,
             'defects_data': defects_data,
             'can_write': can_write,
+            'is_readonly': is_inspection_readonly_for_user(inspection_doc),
             'is_quality_inspector': is_quality_inspector,
             'is_quality_manager': is_quality_manager,
             'is_system_user': is_system_user,
@@ -64,22 +81,62 @@ def get_context(context):
         frappe.throw(_("Error loading inspection: {0}").format(str(e)))
 
 
+def get_purchase_order_from_grn(grn_name):
+    """Get Purchase Order reference from GRN"""
+    try:
+        grn_doc = frappe.get_doc("Goods Receipt Note", grn_name)
+        
+        # Check if GRN has direct purchase_order field
+        if hasattr(grn_doc, 'purchase_order') and grn_doc.purchase_order:
+            return grn_doc.purchase_order
+        elif hasattr(grn_doc, 'reference_docname') and grn_doc.reference_doctype == 'Purchase Order':
+            return grn_doc.reference_docname
+        else:
+            # Try to get from GRN items
+            for item in grn_doc.get('items', []):
+                if hasattr(item, 'purchase_order') and item.purchase_order:
+                    return item.purchase_order
+        
+        return None
+        
+    except Exception as e:
+        frappe.log_error(f"Error getting purchase order from GRN {grn_name}: {str(e)}")
+        return None
+
+
 def get_inspection_items(inspection_doc):
-    """Get items for inspection (simulated data for now)"""
+    """Get items for inspection from items_data JSON field or create default items"""
     items = []
     
-    # For now, create sample items based on total pieces
-    total_pieces = inspection_doc.get('total_pieces', 100)
-    pieces_per_item = max(1, total_pieces // 10)  # Divide into max 10 items
+    # First try to get items from items_data JSON field
+    if inspection_doc.get('items_data'):
+        try:
+            items_data = json.loads(inspection_doc.items_data)
+            if items_data and isinstance(items_data, list):
+                frappe.logger().info(f"Loaded {len(items_data)} items from items_data JSON field")
+                return items_data
+        except Exception as e:
+            frappe.logger().error(f"Error parsing items_data JSON: {str(e)}")
     
-    for i in range(1, min(11, total_pieces + 1)):
+    # Fallback: create sample items based on total pieces and boxes
+    total_pieces = inspection_doc.get('total_pieces', 100)
+    total_boxes = inspection_doc.get('total_boxes', 1)
+    pieces_per_box = inspection_doc.get('pieces_per_box', total_pieces)
+    
+    frappe.logger().info(f"Creating fallback items: total_pieces={total_pieces}, total_boxes={total_boxes}, pieces_per_box={pieces_per_box}")
+    
+    # Create items based on boxes
+    for i in range(1, total_boxes + 1):
         items.append({
             'item_number': f"ITEM-{i:03d}",
-            'description': f"Sample item {i}",
-            'pieces': pieces_per_item if i < 10 else (total_pieces - (pieces_per_item * 9)),
+            'description': f"Box {i} of {total_boxes}",
+            'pieces': pieces_per_box,
+            'quantity': pieces_per_box,
+            'boxes': 1,
             'status': 'Pending'
         })
     
+    frappe.logger().info(f"Created {len(items)} fallback items for inspection")
     return items
 
 
