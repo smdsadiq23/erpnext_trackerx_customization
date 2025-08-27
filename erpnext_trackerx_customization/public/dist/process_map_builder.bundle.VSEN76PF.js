@@ -1237,20 +1237,20 @@
         function validateChildKeys(node) {
           "object" === typeof node && null !== node && node.$$typeof === REACT_ELEMENT_TYPE && node._store && (node._store.validated = 1);
         }
-        var React41 = require_react(), REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = Symbol.for("react.profiler");
+        var React45 = require_react(), REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = Symbol.for("react.profiler");
         Symbol.for("react.provider");
-        var REACT_CONSUMER_TYPE = Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = Symbol.for("react.memo"), REACT_LAZY_TYPE = Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"), ReactSharedInternals = React41.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
+        var REACT_CONSUMER_TYPE = Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = Symbol.for("react.memo"), REACT_LAZY_TYPE = Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"), ReactSharedInternals = React45.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
           return null;
         };
-        React41 = {
+        React45 = {
           react_stack_bottom_frame: function(callStackForError) {
             return callStackForError();
           }
         };
         var specialPropKeyWarningShown;
         var didWarnAboutElementRef = {};
-        var unknownOwnerDebugStack = React41.react_stack_bottom_frame.bind(
-          React41,
+        var unknownOwnerDebugStack = React45.react_stack_bottom_frame.bind(
+          React45,
           UnknownOwner
         )();
         var unknownOwnerDebugTask = createTask(getTaskName(UnknownOwner));
@@ -1307,7 +1307,7 @@
           return x === y && (0 !== x || 1 / x === 1 / y) || x !== x && y !== y;
         }
         function useSyncExternalStore$2(subscribe, getSnapshot) {
-          didWarnOld18Alpha || void 0 === React41.startTransition || (didWarnOld18Alpha = true, console.error(
+          didWarnOld18Alpha || void 0 === React45.startTransition || (didWarnOld18Alpha = true, console.error(
             "You are using an outdated, pre-release alpha of React 18 that does not support useSyncExternalStore. The use-sync-external-store shim will not work correctly. Upgrade to a newer pre-release."
           ));
           var value = getSnapshot();
@@ -1317,7 +1317,7 @@
               "The result of getSnapshot should be cached to avoid an infinite loop"
             ), didWarnUncachedGetSnapshot = true);
           }
-          cachedValue = useState8({
+          cachedValue = useState9({
             inst: { value, getSnapshot }
           });
           var inst = cachedValue[0].inst, forceUpdate = cachedValue[1];
@@ -1329,7 +1329,7 @@
             },
             [subscribe, value, getSnapshot]
           );
-          useEffect13(
+          useEffect14(
             function() {
               checkIfSnapshotChanged(inst) && forceUpdate({ inst });
               return subscribe(function() {
@@ -1355,8 +1355,8 @@
           return getSnapshot();
         }
         "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-        var React41 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is, useState8 = React41.useState, useEffect13 = React41.useEffect, useLayoutEffect3 = React41.useLayoutEffect, useDebugValue2 = React41.useDebugValue, didWarnOld18Alpha = false, didWarnUncachedGetSnapshot = false, shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
-        exports.useSyncExternalStore = void 0 !== React41.useSyncExternalStore ? React41.useSyncExternalStore : shim;
+        var React45 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is, useState9 = React45.useState, useEffect14 = React45.useEffect, useLayoutEffect3 = React45.useLayoutEffect, useDebugValue2 = React45.useDebugValue, didWarnOld18Alpha = false, didWarnUncachedGetSnapshot = false, shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
+        exports.useSyncExternalStore = void 0 !== React45.useSyncExternalStore ? React45.useSyncExternalStore : shim;
         "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop(Error());
       })();
     }
@@ -1383,7 +1383,7 @@
           return x === y && (0 !== x || 1 / x === 1 / y) || x !== x && y !== y;
         }
         "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-        var React41 = require_react(), shim = require_shim(), objectIs = "function" === typeof Object.is ? Object.is : is, useSyncExternalStore = shim.useSyncExternalStore, useRef14 = React41.useRef, useEffect13 = React41.useEffect, useMemo8 = React41.useMemo, useDebugValue2 = React41.useDebugValue;
+        var React45 = require_react(), shim = require_shim(), objectIs = "function" === typeof Object.is ? Object.is : is, useSyncExternalStore = shim.useSyncExternalStore, useRef14 = React45.useRef, useEffect14 = React45.useEffect, useMemo8 = React45.useMemo, useDebugValue2 = React45.useDebugValue;
         exports.useSyncExternalStoreWithSelector = function(subscribe, getSnapshot, getServerSnapshot, selector, isEqual) {
           var instRef = useRef14(null);
           if (null === instRef.current) {
@@ -1427,7 +1427,7 @@
             [getSnapshot, getServerSnapshot, selector, isEqual]
           );
           var value = useSyncExternalStore(subscribe, instRef[0], instRef[1]);
-          useEffect13(
+          useEffect14(
             function() {
               inst.hasValue = true;
               inst.value = value;
@@ -1504,7 +1504,7 @@
           return dispatcher;
         }
         "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-        var React41 = require_react(), Internals = {
+        var React45 = require_react(), Internals = {
           d: {
             f: noop3,
             r: function() {
@@ -1522,7 +1522,7 @@
           },
           p: 0,
           findDOMNode: null
-        }, REACT_PORTAL_TYPE = Symbol.for("react.portal"), ReactSharedInternals = React41.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+        }, REACT_PORTAL_TYPE = Symbol.for("react.portal"), ReactSharedInternals = React45.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
         "function" === typeof Map && null != Map.prototype && "function" === typeof Map.prototype.forEach && "function" === typeof Set && null != Set.prototype && "function" === typeof Set.prototype.clear && "function" === typeof Set.prototype.forEach || console.error(
           "React depends on Map and Set built-in types. Make sure that you load a polyfill in older browsers. https://reactjs.org/link/react-polyfills"
         );
@@ -4276,7 +4276,7 @@
           "number" === type && getActiveElement(node.ownerDocument) === node || node.defaultValue === "" + value || (node.defaultValue = "" + value);
         }
         function validateOptionProps(element, props) {
-          null == props.value && ("object" === typeof props.children && null !== props.children ? React41.Children.forEach(props.children, function(child) {
+          null == props.value && ("object" === typeof props.children && null !== props.children ? React45.Children.forEach(props.children, function(child) {
             null == child || "string" === typeof child || "number" === typeof child || "bigint" === typeof child || didWarnInvalidChild || (didWarnInvalidChild = true, console.error(
               "Cannot infer the option value of complex children. Pass a `value` prop or use a plain string as children to <option>."
             ));
@@ -4887,28 +4887,28 @@
           ))));
           null == value || "boolean" === typeof value || "" === value ? isCustomProperty ? style4.setProperty(styleName, "") : "float" === styleName ? style4.cssFloat = "" : style4[styleName] = "" : isCustomProperty ? style4.setProperty(styleName, value) : "number" !== typeof value || 0 === value || unitlessNumbers.has(styleName) ? "float" === styleName ? style4.cssFloat = value : (checkCSSPropertyStringCoercion(value, styleName), style4[styleName] = ("" + value).trim()) : style4[styleName] = value + "px";
         }
-        function setValueForStyles(node, styles, prevStyles) {
-          if (null != styles && "object" !== typeof styles)
+        function setValueForStyles(node, styles2, prevStyles) {
+          if (null != styles2 && "object" !== typeof styles2)
             throw Error(
               "The `style` prop expects a mapping from style properties to values, not a string. For example, style={{marginRight: spacing + 'em'}} when using JSX."
             );
-          styles && Object.freeze(styles);
+          styles2 && Object.freeze(styles2);
           node = node.style;
           if (null != prevStyles) {
-            if (styles) {
+            if (styles2) {
               var expandedUpdates = {};
               if (prevStyles) {
                 for (var key in prevStyles)
-                  if (prevStyles.hasOwnProperty(key) && !styles.hasOwnProperty(key))
+                  if (prevStyles.hasOwnProperty(key) && !styles2.hasOwnProperty(key))
                     for (var longhands = shorthandToLonghand[key] || [key], i = 0; i < longhands.length; i++)
                       expandedUpdates[longhands[i]] = key;
               }
-              for (var _key in styles)
-                if (styles.hasOwnProperty(_key) && (!prevStyles || prevStyles[_key] !== styles[_key]))
+              for (var _key in styles2)
+                if (styles2.hasOwnProperty(_key) && (!prevStyles || prevStyles[_key] !== styles2[_key]))
                   for (key = shorthandToLonghand[_key] || [_key], longhands = 0; longhands < key.length; longhands++)
                     expandedUpdates[key[longhands]] = _key;
               _key = {};
-              for (var key$jscomp$0 in styles)
+              for (var key$jscomp$0 in styles2)
                 for (key = shorthandToLonghand[key$jscomp$0] || [key$jscomp$0], longhands = 0; longhands < key.length; longhands++)
                   _key[key[longhands]] = key$jscomp$0;
               key$jscomp$0 = {};
@@ -4916,7 +4916,7 @@
                 if (key = expandedUpdates[_key2], (longhands = _key[_key2]) && key !== longhands && (i = key + "," + longhands, !key$jscomp$0[i])) {
                   key$jscomp$0[i] = true;
                   i = console;
-                  var value = styles[key];
+                  var value = styles2[key];
                   i.error.call(
                     i,
                     "%s a style property during rerender (%s) when a conflicting property is set (%s) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values.",
@@ -4927,12 +4927,12 @@
                 }
             }
             for (var styleName in prevStyles)
-              !prevStyles.hasOwnProperty(styleName) || null != styles && styles.hasOwnProperty(styleName) || (0 === styleName.indexOf("--") ? node.setProperty(styleName, "") : "float" === styleName ? node.cssFloat = "" : node[styleName] = "");
-            for (var _styleName in styles)
-              _key2 = styles[_styleName], styles.hasOwnProperty(_styleName) && prevStyles[_styleName] !== _key2 && setValueForStyle(node, _styleName, _key2);
+              !prevStyles.hasOwnProperty(styleName) || null != styles2 && styles2.hasOwnProperty(styleName) || (0 === styleName.indexOf("--") ? node.setProperty(styleName, "") : "float" === styleName ? node.cssFloat = "" : node[styleName] = "");
+            for (var _styleName in styles2)
+              _key2 = styles2[_styleName], styles2.hasOwnProperty(_styleName) && prevStyles[_styleName] !== _key2 && setValueForStyle(node, _styleName, _key2);
           } else
-            for (expandedUpdates in styles)
-              styles.hasOwnProperty(expandedUpdates) && setValueForStyle(node, expandedUpdates, styles[expandedUpdates]);
+            for (expandedUpdates in styles2)
+              styles2.hasOwnProperty(expandedUpdates) && setValueForStyle(node, expandedUpdates, styles2[expandedUpdates]);
         }
         function isCustomElement(tagName) {
           if (-1 === tagName.indexOf("-"))
@@ -18052,14 +18052,14 @@
           ));
         }
         "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-        var Scheduler = require_scheduler(), React41 = require_react(), ReactDOM4 = require_react_dom(), assign = Object.assign, REACT_LEGACY_ELEMENT_TYPE = Symbol.for("react.element"), REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = Symbol.for("react.profiler"), REACT_PROVIDER_TYPE = Symbol.for("react.provider"), REACT_CONSUMER_TYPE = Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = Symbol.for("react.memo"), REACT_LAZY_TYPE = Symbol.for("react.lazy");
+        var Scheduler = require_scheduler(), React45 = require_react(), ReactDOM4 = require_react_dom(), assign = Object.assign, REACT_LEGACY_ELEMENT_TYPE = Symbol.for("react.element"), REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = Symbol.for("react.profiler"), REACT_PROVIDER_TYPE = Symbol.for("react.provider"), REACT_CONSUMER_TYPE = Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = Symbol.for("react.memo"), REACT_LAZY_TYPE = Symbol.for("react.lazy");
         Symbol.for("react.scope");
         var REACT_ACTIVITY_TYPE = Symbol.for("react.activity");
         Symbol.for("react.legacy_hidden");
         Symbol.for("react.tracing_marker");
         var REACT_MEMO_CACHE_SENTINEL = Symbol.for("react.memo_cache_sentinel");
         Symbol.for("react.view_transition");
-        var MAYBE_ITERATOR_SYMBOL = Symbol.iterator, REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"), isArrayImpl = Array.isArray, ReactSharedInternals = React41.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, ReactDOMSharedInternals = ReactDOM4.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, NotPending = Object.freeze({
+        var MAYBE_ITERATOR_SYMBOL = Symbol.iterator, REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"), isArrayImpl = Array.isArray, ReactSharedInternals = React45.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, ReactDOMSharedInternals = ReactDOM4.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, NotPending = Object.freeze({
           pending: false,
           data: null,
           method: null,
@@ -20624,9 +20624,9 @@
             previousDispatcher.S(href, precedence, options);
             var ownerDocument2 = globalDocument;
             if (ownerDocument2 && href) {
-              var styles = getResourcesFromRoot(ownerDocument2).hoistableStyles, key = getStyleKey(href);
+              var styles2 = getResourcesFromRoot(ownerDocument2).hoistableStyles, key = getStyleKey(href);
               precedence = precedence || "default";
-              var resource = styles.get(key);
+              var resource = styles2.get(key);
               if (!resource) {
                 var state = { loading: NotLoaded, preload: null };
                 if (resource = ownerDocument2.querySelector(
@@ -20665,7 +20665,7 @@
                   count: 1,
                   state
                 };
-                styles.set(key, resource);
+                styles2.set(key, resource);
               }
             }
           },
@@ -20786,7 +20786,7 @@
           }
         };
         (function() {
-          var isomorphicReactPackageVersion = React41.version;
+          var isomorphicReactPackageVersion = React45.version;
           if ("19.1.1" !== isomorphicReactPackageVersion)
             throw Error(
               'Incompatible React versions: The "react" and "react-dom" packages must have the exact same version. Instead got:\n  - react:      ' + (isomorphicReactPackageVersion + "\n  - react-dom:  19.1.1\nLearn more: https://react.dev/warnings/version-mismatch")
@@ -20927,10 +20927,10 @@
   });
 
   // ../erpnext_trackerx_customization/erpnext_trackerx_customization/public/js/process_map_builder/process_map_builder.bundle.jsx
-  var React40 = __toESM(require_react());
+  var React44 = __toESM(require_react());
 
   // ../erpnext_trackerx_customization/erpnext_trackerx_customization/public/js/process_map_builder/App.jsx
-  var import_react38 = __toESM(require_react());
+  var import_react45 = __toESM(require_react());
 
   // ../erpnext_trackerx_customization/node_modules/@xyflow/react/dist/esm/index.js
   var import_jsx_runtime = __toESM(require_jsx_runtime());
@@ -29801,6 +29801,9 @@
   }
   var NodeResizeControl = (0, import_react2.memo)(ResizeControl);
 
+  // ../erpnext_trackerx_customization/erpnext_trackerx_customization/public/js/process_map_builder/Components/FlowCanvas/index.jsx
+  var import_react43 = __toESM(require_react());
+
   // ../erpnext_trackerx_customization/node_modules/@babel/runtime/helpers/esm/objectWithoutPropertiesLoose.js
   function _objectWithoutPropertiesLoose(r, e) {
     if (null == r)
@@ -32600,9 +32603,8 @@
     BACKDROP_TRANSITION_DURATION: 150
   });
 
-  // ../erpnext_trackerx_customization/erpnext_trackerx_customization/public/js/process_map_builder/App.jsx
-  var id2 = 0;
-  var getId = () => `node_${id2++}`;
+  // ../erpnext_trackerx_customization/erpnext_trackerx_customization/public/js/process_map_builder/Components/ProcessGroupNode/index.jsx
+  var import_react38 = __toESM(require_react());
   var ProcessGroupNode = ({ data }) => {
     return /* @__PURE__ */ import_react38.default.createElement("div", {
       style: { padding: "10px" }
@@ -32619,30 +32621,43 @@
       position: Position.Bottom
     }));
   };
+  var ProcessGroupNode_default = ProcessGroupNode;
+
+  // ../erpnext_trackerx_customization/erpnext_trackerx_customization/public/js/process_map_builder/Components/OperationProcessNode/index.jsx
+  var import_react40 = __toESM(require_react());
   var OperationProcessNode = ({ data }) => {
     const handleChange = (e) => {
       const value = e.target.value;
       data.onValueChange && data.onValueChange(value);
     };
-    return /* @__PURE__ */ import_react38.default.createElement("div", {
-      style: { padding: "10px", border: "1px solid #999", borderRadius: "5px", background: "#fff" }
-    }, /* @__PURE__ */ import_react38.default.createElement("strong", null, data.label), /* @__PURE__ */ import_react38.default.createElement("input", {
+    return /* @__PURE__ */ import_react40.default.createElement("div", {
+      style: {
+        padding: "10px",
+        border: "1px solid #999",
+        borderRadius: "5px",
+        background: "#fff"
+      }
+    }, /* @__PURE__ */ import_react40.default.createElement("strong", null, data.label), /* @__PURE__ */ import_react40.default.createElement("input", {
       type: "number",
       value: data.quantity || "",
       onChange: handleChange,
-      style: { width: "50px", marginLeft: "8px", fontSize: "12px", padding: "2px" }
-    }), /* @__PURE__ */ import_react38.default.createElement(Handle, {
+      style: {
+        width: "50px",
+        marginLeft: "8px",
+        fontSize: "12px",
+        padding: "2px"
+      }
+    }), /* @__PURE__ */ import_react40.default.createElement(Handle, {
       type: "target",
       position: Position.Top
-    }), /* @__PURE__ */ import_react38.default.createElement(Handle, {
+    }), /* @__PURE__ */ import_react40.default.createElement(Handle, {
       type: "source",
       position: Position.Bottom
     }));
   };
-  var nodeTypes = {
-    process_group: ProcessGroupNode,
-    operationProcess: OperationProcessNode
-  };
+  var OperationProcessNode_default = OperationProcessNode;
+
+  // ../erpnext_trackerx_customization/erpnext_trackerx_customization/public/js/process_map_builder/util.js
   var COMPONENT_COLORS = {
     Front: "#ff4d4f",
     Back: "#40a9ff",
@@ -32659,26 +32674,101 @@
         bigint & 255
       ];
     });
-    const avg = rgbColors.reduce(
-      (acc, val) => [acc[0] + val[0], acc[1] + val[1], acc[2] + val[2]],
-      [0, 0, 0]
-    ).map((c) => Math.round(c / colors.length));
+    const avg = rgbColors.reduce((acc, val) => [
+      acc[0] + val[0],
+      acc[1] + val[1],
+      acc[2] + val[2]
+    ], [0, 0, 0]).map((c) => Math.round(c / colors.length));
     return `#${((1 << 24) + (avg[0] << 16) + (avg[1] << 8) + avg[2]).toString(16).slice(1)}`;
   }
-  function FlowCanvas({ operationProcesses, processGroups, streams, processMaps }) {
-    const [nodes, setNodes, onNodesChange] = useNodesState([]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  // ../erpnext_trackerx_customization/erpnext_trackerx_customization/public/js/process_map_builder/Components/Sidebar/index.jsx
+  var import_react42 = __toESM(require_react());
+  var Sidebar = ({
+    operationProcesses,
+    processGroups,
+    streams,
+    processMaps,
+    handleSaveMap,
+    handleLoadMap
+  }) => {
+    return /* @__PURE__ */ import_react42.default.createElement("div", {
+      className: "col-3 border-end bg-light p-3 overflow-auto"
+    }, /* @__PURE__ */ import_react42.default.createElement("h5", null, "Processes"), operationProcesses.map((op) => /* @__PURE__ */ import_react42.default.createElement("div", {
+      key: op.name,
+      className: "border rounded p-2 mb-2 bg-white text-center shadow-sm",
+      draggable: true,
+      onDragStart: (e) => e.dataTransfer.setData(
+        "application/reactflow",
+        JSON.stringify({
+          type: "process",
+          label: op.process_name
+        })
+      ),
+      style: { cursor: "grab" }
+    }, op.process_name)), /* @__PURE__ */ import_react42.default.createElement("hr", null), /* @__PURE__ */ import_react42.default.createElement("h5", null, "Process Groups"), processGroups.map((pg) => {
+      const relatedProcesses = operationProcesses.filter((op) => op.process_group === pg.name).map((op) => op.process_name);
+      return /* @__PURE__ */ import_react42.default.createElement("div", {
+        key: pg.name,
+        className: "border rounded p-2 mb-2 bg-warning text-dark text-center shadow-sm",
+        draggable: true,
+        onDragStart: (e) => e.dataTransfer.setData(
+          "application/reactflow",
+          JSON.stringify({
+            type: "process_group",
+            label: pg.group_name,
+            addData: relatedProcesses
+          })
+        ),
+        style: { cursor: "grab" }
+      }, pg.group_name);
+    }), /* @__PURE__ */ import_react42.default.createElement("hr", null), /* @__PURE__ */ import_react42.default.createElement("h5", null, "Streams"), streams.map((stream) => /* @__PURE__ */ import_react42.default.createElement("div", {
+      key: stream.name,
+      className: "border rounded p-2 mb-2 bg-info text-white text-center shadow-sm",
+      draggable: true,
+      onDragStart: (e) => e.dataTransfer.setData(
+        "application/reactflow",
+        JSON.stringify({
+          type: "stream",
+          label: stream.stream_name
+        })
+      ),
+      style: { cursor: "grab" }
+    }, stream.stream_name)), /* @__PURE__ */ import_react42.default.createElement("hr", null), /* @__PURE__ */ import_react42.default.createElement("button", {
+      onClick: handleSaveMap,
+      className: "btn btn-success w-100 mt-4"
+    }, "Save Process Map"), /* @__PURE__ */ import_react42.default.createElement("hr", null), /* @__PURE__ */ import_react42.default.createElement("h5", null, "Saved Maps"), processMaps.length > 0 ? processMaps.map((map) => /* @__PURE__ */ import_react42.default.createElement("div", {
+      key: map.name,
+      className: "border rounded p-2 mb-2 bg-secondary text-white text-center shadow-sm",
+      style: { cursor: "pointer" },
+      onClick: () => handleLoadMap(map.name)
+    }, map.map_name)) : /* @__PURE__ */ import_react42.default.createElement("p", {
+      className: "text-muted"
+    }, "No maps saved yet"));
+  };
+  var Sidebar_default = Sidebar;
+
+  // ../erpnext_trackerx_customization/erpnext_trackerx_customization/public/js/process_map_builder/Components/FlowCanvas/index.jsx
+  var id2 = 0;
+  var getId = () => `node_${id2++}`;
+  var nodeTypes = {
+    process_group: ProcessGroupNode_default,
+    operationProcess: OperationProcessNode_default
+  };
+  var FlowCanvas = ({ operationProcesses, processGroups, streams, processMaps }) => {
     const { screenToFlowPosition } = useReactFlow();
     const defaultComponents = ["Front", "Back", "Sleeve"];
-    const [edgeComponents, setEdgeComponents] = (0, import_react38.useState)({});
-    const [newEdgeParams, setNewEdgeParams] = (0, import_react38.useState)(null);
-    const [selectedComponents, setSelectedComponents] = (0, import_react38.useState)([]);
-    const [showNodeModal, setShowNodeModal] = (0, import_react38.useState)(false);
-    const [showEdgeModal, setShowEdgeModal] = (0, import_react38.useState)(false);
-    const [targetNode, setTargetNode] = (0, import_react38.useState)(null);
-    const [selectedEdgeId, setSelectedEdgeId] = (0, import_react38.useState)(null);
-    const [csrfToken, setCsrfToken] = (0, import_react38.useState)("");
-    (0, import_react38.useEffect)(() => {
+    const [nodes, setNodes, onNodesChange] = useNodesState([]);
+    const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+    const [edgeComponents, setEdgeComponents] = (0, import_react43.useState)({});
+    const [newEdgeParams, setNewEdgeParams] = (0, import_react43.useState)(null);
+    const [selectedComponents, setSelectedComponents] = (0, import_react43.useState)([]);
+    const [showNodeModal, setShowNodeModal] = (0, import_react43.useState)(false);
+    const [showEdgeModal, setShowEdgeModal] = (0, import_react43.useState)(false);
+    const [targetNode, setTargetNode] = (0, import_react43.useState)(null);
+    const [selectedEdgeId, setSelectedEdgeId] = (0, import_react43.useState)(null);
+    const [csrfToken, setCsrfToken] = (0, import_react43.useState)("");
+    (0, import_react43.useEffect)(() => {
       if (window.frappe && window.frappe.csrf_token) {
         setCsrfToken(window.frappe.csrf_token);
       } else {
@@ -32697,7 +32787,7 @@
       const inherited = incomingEdges.length === 0 ? defaultComponents : incomingEdges.flatMap((e) => edgeComponents[e.id] || []);
       return inherited.filter((c) => !alreadyUsed.includes(c));
     };
-    const onConnect = (0, import_react38.useCallback)((params) => {
+    const onConnect = (0, import_react43.useCallback)((params) => {
       const availableComponents = getAvailableComponentsFromSource(params.source);
       if (availableComponents.length === 1) {
         const component = availableComponents[0];
@@ -32717,7 +32807,7 @@
         setShowEdgeModal(true);
       }
     }, [edges, edgeComponents, setEdges, setEdgeComponents]);
-    const onDrop = (0, import_react38.useCallback)(
+    const onDrop = (0, import_react43.useCallback)(
       (event) => {
         event.preventDefault();
         const payload = JSON.parse(event.dataTransfer.getData("application/reactflow"));
@@ -32782,7 +32872,7 @@
       setTargetNode(node);
       setShowNodeModal(true);
     };
-    const onEdgeContextMenu = (0, import_react38.useCallback)((event, edge) => {
+    const onEdgeContextMenu = (0, import_react43.useCallback)((event, edge) => {
       event.preventDefault();
       setSelectedEdgeId(edge.id);
       setShowEdgeModal(true);
@@ -32937,66 +33027,21 @@
         alert("\u274C Failed to load map.");
       }
     };
-    return /* @__PURE__ */ import_react38.default.createElement("div", {
+    return /* @__PURE__ */ import_react43.default.createElement("div", {
       className: "container-fluid",
       style: { height: "100vh" }
-    }, /* @__PURE__ */ import_react38.default.createElement("div", {
+    }, /* @__PURE__ */ import_react43.default.createElement("div", {
       className: "row h-100"
-    }, /* @__PURE__ */ import_react38.default.createElement("div", {
-      className: "col-3 border-end bg-light p-3 overflow-auto"
-    }, /* @__PURE__ */ import_react38.default.createElement("h5", null, "Processes"), operationProcesses.map((op) => /* @__PURE__ */ import_react38.default.createElement("div", {
-      key: op.name,
-      className: "border rounded p-2 mb-2 bg-white text-center shadow-sm",
-      draggable: true,
-      onDragStart: (e) => e.dataTransfer.setData(
-        "application/reactflow",
-        JSON.stringify({
-          type: "process",
-          label: op.process_name
-        })
-      ),
-      style: { cursor: "grab" }
-    }, op.process_name)), /* @__PURE__ */ import_react38.default.createElement("hr", null), /* @__PURE__ */ import_react38.default.createElement("h5", null, "Process Groups"), processGroups.map((pg) => {
-      const relatedProcesses = operationProcesses.filter((op) => op.process_group === pg.name).map((op) => op.process_name);
-      return /* @__PURE__ */ import_react38.default.createElement("div", {
-        key: pg.name,
-        className: "border rounded p-2 mb-2 bg-warning text-dark text-center shadow-sm",
-        draggable: true,
-        onDragStart: (e) => e.dataTransfer.setData(
-          "application/reactflow",
-          JSON.stringify({
-            type: "process_group",
-            label: pg.group_name,
-            addData: relatedProcesses
-          })
-        ),
-        style: { cursor: "grab" }
-      }, pg.group_name);
-    }), /* @__PURE__ */ import_react38.default.createElement("hr", null), /* @__PURE__ */ import_react38.default.createElement("h5", null, "Streams"), streams.map((stream) => /* @__PURE__ */ import_react38.default.createElement("div", {
-      key: stream.name,
-      className: "border rounded p-2 mb-2 bg-info text-white text-center shadow-sm",
-      draggable: true,
-      onDragStart: (e) => e.dataTransfer.setData(
-        "application/reactflow",
-        JSON.stringify({
-          type: "stream",
-          label: stream.stream_name
-        })
-      ),
-      style: { cursor: "grab" }
-    }, stream.stream_name)), /* @__PURE__ */ import_react38.default.createElement("hr", null), /* @__PURE__ */ import_react38.default.createElement("button", {
-      onClick: handleSaveMap,
-      className: "btn btn-success w-100 mt-4"
-    }, "Save Process Map"), /* @__PURE__ */ import_react38.default.createElement("hr", null), /* @__PURE__ */ import_react38.default.createElement("h5", null, "Saved Maps"), processMaps.length > 0 ? processMaps.map((map) => /* @__PURE__ */ import_react38.default.createElement("div", {
-      key: map.name,
-      className: "border rounded p-2 mb-2 bg-secondary text-white text-center shadow-sm",
-      style: { cursor: "pointer" },
-      onClick: () => handleLoadMap(map.name)
-    }, map.map_name)) : /* @__PURE__ */ import_react38.default.createElement("p", {
-      className: "text-muted"
-    }, "No maps saved yet")), /* @__PURE__ */ import_react38.default.createElement("div", {
+    }, /* @__PURE__ */ import_react43.default.createElement(Sidebar_default, {
+      operationProcesses,
+      processGroups,
+      streams,
+      processMaps,
+      handleSaveMap,
+      handleLoadMap
+    }), /* @__PURE__ */ import_react43.default.createElement("div", {
       className: "col-9 p-0"
-    }, /* @__PURE__ */ import_react38.default.createElement(index, {
+    }, /* @__PURE__ */ import_react43.default.createElement(index, {
       nodeTypes,
       nodes: nodes.map(
         (n) => ["group"].includes(n.type) ? __spreadProps(__spreadValues({}, n), {
@@ -33016,47 +33061,38 @@
       onNodeContextMenu,
       onEdgeContextMenu,
       fitView: true
-    }, /* @__PURE__ */ import_react38.default.createElement(Background, null)))), /* @__PURE__ */ import_react38.default.createElement(Modal_default2, {
-      show: showNodeModal,
-      onHide: () => setShowNodeModal(false),
-      centered: true
-    }, /* @__PURE__ */ import_react38.default.createElement(Modal_default2.Header, {
-      closeButton: true
-    }, /* @__PURE__ */ import_react38.default.createElement(Modal_default2.Title, null, "Delete Node")), /* @__PURE__ */ import_react38.default.createElement(Modal_default2.Body, null, "Delete ", /* @__PURE__ */ import_react38.default.createElement("strong", null, targetNode == null ? void 0 : targetNode.data.label), " and its children?"), /* @__PURE__ */ import_react38.default.createElement(Modal_default2.Footer, null, /* @__PURE__ */ import_react38.default.createElement(Button_default, {
-      variant: "secondary",
-      onClick: () => setShowNodeModal(false)
-    }, "Cancel"), /* @__PURE__ */ import_react38.default.createElement(Button_default, {
-      variant: "danger",
-      onClick: handleDeleteNode
-    }, "Delete"))), /* @__PURE__ */ import_react38.default.createElement(Modal_default2, {
+    }, /* @__PURE__ */ import_react43.default.createElement(Background, null)))), /* @__PURE__ */ import_react43.default.createElement(Modal_default2, {
       show: showEdgeModal,
       onHide: () => setShowEdgeModal(false),
       centered: true
-    }, /* @__PURE__ */ import_react38.default.createElement(Modal_default2.Header, {
+    }, /* @__PURE__ */ import_react43.default.createElement(Modal_default2.Header, {
       closeButton: true
-    }, /* @__PURE__ */ import_react38.default.createElement(Modal_default2.Title, null, "Select Components")), /* @__PURE__ */ import_react38.default.createElement(Modal_default2.Body, null, /* @__PURE__ */ import_react38.default.createElement(Form_default.Group, {
+    }, /* @__PURE__ */ import_react43.default.createElement(Modal_default2.Title, null, "Select Components")), /* @__PURE__ */ import_react43.default.createElement(Modal_default2.Body, null, /* @__PURE__ */ import_react43.default.createElement(Form_default.Group, {
       controlId: "formComponents"
-    }, /* @__PURE__ */ import_react38.default.createElement(Form_default.Label, null, "Select components flowing in this connection:"), /* @__PURE__ */ import_react38.default.createElement(Form_default.Control, {
+    }, /* @__PURE__ */ import_react43.default.createElement(Form_default.Label, null, "Select components flowing in this connection:"), /* @__PURE__ */ import_react43.default.createElement(Form_default.Control, {
       as: "select",
       multiple: true,
       value: selectedComponents,
       onChange: (e) => setSelectedComponents(Array.from(e.target.selectedOptions, (opt) => opt.value))
-    }, (newEdgeParams ? getAvailableComponentsFromSource(newEdgeParams.source) : defaultComponents).map((component) => /* @__PURE__ */ import_react38.default.createElement("option", {
+    }, (newEdgeParams ? getAvailableComponentsFromSource(newEdgeParams.source) : defaultComponents).map((component) => /* @__PURE__ */ import_react43.default.createElement("option", {
       key: component,
       value: component
-    }, component))))), /* @__PURE__ */ import_react38.default.createElement(Modal_default2.Footer, null, /* @__PURE__ */ import_react38.default.createElement(Button_default, {
+    }, component))))), /* @__PURE__ */ import_react43.default.createElement(Modal_default2.Footer, null, /* @__PURE__ */ import_react43.default.createElement(Button_default, {
       variant: "secondary",
       onClick: () => setShowEdgeModal(false)
-    }, "Cancel"), /* @__PURE__ */ import_react38.default.createElement(Button_default, {
+    }, "Cancel"), /* @__PURE__ */ import_react43.default.createElement(Button_default, {
       variant: "primary",
       onClick: handleConfirmEdge
     }, "Confirm"))));
-  }
+  };
+  var FlowCanvas_default = FlowCanvas;
+
+  // ../erpnext_trackerx_customization/erpnext_trackerx_customization/public/js/process_map_builder/App.jsx
   function App() {
-    const [operationProcesses, setOperationProcesses] = (0, import_react38.useState)([]);
-    const [processGroups, setProcessGroups] = (0, import_react38.useState)([]);
-    const [streams, setStreams] = (0, import_react38.useState)([]);
-    const [processMaps, setProcessMaps] = (0, import_react38.useState)([]);
+    const [operationProcesses, setOperationProcesses] = (0, import_react45.useState)([]);
+    const [processGroups, setProcessGroups] = (0, import_react45.useState)([]);
+    const [streams, setStreams] = (0, import_react45.useState)([]);
+    const [processMaps, setProcessMaps] = (0, import_react45.useState)([]);
     const BASE_URL = `${window.location.protocol}//${window.location.hostname}${window.location.port ? `:${window.location.port}` : ""}`;
     ;
     const fetchDocType = async (doctypeName) => {
@@ -33094,7 +33130,7 @@
         return [];
       }
     };
-    (0, import_react38.useEffect)(() => {
+    (0, import_react45.useEffect)(() => {
       const fetchAll = async () => {
         const [opData, pgData, streamData, pmData] = await Promise.all([
           fetchDocType("Operation Process"),
@@ -33109,12 +33145,12 @@
       };
       fetchAll();
     }, []);
-    return /* @__PURE__ */ import_react38.default.createElement(ReactFlowProvider, null, /* @__PURE__ */ import_react38.default.createElement(FlowCanvas, {
+    return /* @__PURE__ */ import_react45.default.createElement(import_react45.default.Fragment, null, /* @__PURE__ */ import_react45.default.createElement(ReactFlowProvider, null, /* @__PURE__ */ import_react45.default.createElement(FlowCanvas_default, {
       operationProcesses,
       processGroups,
       streams,
       processMaps
-    }));
+    })));
   }
 
   // ../erpnext_trackerx_customization/erpnext_trackerx_customization/public/js/process_map_builder/process_map_builder.bundle.jsx
@@ -33137,7 +33173,7 @@
     }
     setup_app() {
       const root2 = (0, import_client.createRoot)(this.$wrapper.get(0));
-      root2.render(/* @__PURE__ */ React40.createElement(App, null));
+      root2.render(/* @__PURE__ */ React44.createElement(App, null));
       this.$process_map_builder = root2;
     }
   };
@@ -33226,4 +33262,4 @@ object-assign
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-//# sourceMappingURL=process_map_builder.bundle.KPCMYXMI.js.map
+//# sourceMappingURL=process_map_builder.bundle.VSEN76PF.js.map
