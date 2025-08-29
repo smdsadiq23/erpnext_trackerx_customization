@@ -476,7 +476,7 @@ function set_parent_component_options(frm) {
     frm.doc.custom_fg_components.forEach(function(row, index) {
             let field = frm.fields_dict.custom_fg_components.grid.grid_rows[index].docfields.find(f => f.fieldname === 'parent_component');
             if (field) {
-                field.options = component_names;
+                field.options = [''].concat(component_names);
             }
         });
     
