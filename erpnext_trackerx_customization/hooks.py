@@ -46,18 +46,18 @@ fixtures = [
             [
                 "module", "=", "Erpnext Trackerx Customization"
             ]
-            
+
         ]
     },
     {
         "dt": "Property Setter",
         "filters": [
-            [ 
+            [
                 "doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
                           "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item"
                             ]
             ],
-            [ 
+            [
                 "module", "=", "Erpnext Trackerx Customization"
             ]
         ]
@@ -67,13 +67,13 @@ fixtures = [
 # AQL data fixtures for import during migration
 aql_fixtures = [
     "erpnext_trackerx_customization/fixtures/aql_level.json",
-    "erpnext_trackerx_customization/fixtures/aql_standard.json", 
+    "erpnext_trackerx_customization/fixtures/aql_standard.json",
     "erpnext_trackerx_customization/fixtures/aql_table.json"
 ]
 
 
 after_migrate = [
-    #"erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute", 
+    #"erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute",
     #"erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure"
     "erpnext_trackerx_customization.setup.purchase_receipt_custom_fields.execute",
     "erpnext_trackerx_customization.setup.migrate_quality_roles.execute",
@@ -383,4 +383,3 @@ override_whitelisted_methods = {
 
 
 boot_session = "erpnext_trackerx_customization.utils.constants.boot_session"
-
