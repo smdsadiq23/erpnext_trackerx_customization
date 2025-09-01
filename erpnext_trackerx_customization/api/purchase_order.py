@@ -54,7 +54,10 @@ def prepare_po_item(mrp_item, mrp_doc):
         'warehouse': mrp_item.warehouse,
         'material_requirement_plan': mrp_doc.name,
         'material_requirement_plan_item': mrp_item.name,
-        'project': mrp_doc.project if hasattr(mrp_doc, 'project') else None
+        'project': mrp_doc.project if hasattr(mrp_doc, 'project') else None,
+        'reference_id': mrp_item.name,
+        'reference_type': 'MRP',
+        'custom_reference_parent_id': mrp_doc.name
     }
     
     return po_item
@@ -85,6 +88,9 @@ def prepare_po_item_from_summary(summary_item, mrp_doc):
         'material_requirement_plan_summary_item': summary_item.name,
         'project': mrp_doc.project if hasattr(mrp_doc, 'project') else None,
         'required_by': summary_item.required_by if hasattr(summary_item, 'required_by') else None,
+        'custom_reference_id': summary_item.name,
+        'custom_reference_type': 'MRP',
+        'custom_reference_parent_id': mrp_doc.name
     }
     
     return po_item
@@ -116,6 +122,8 @@ def get_item_rate(item_code, company):
     valuation_rate = frappe.db.get_value('Item', item_code, 'valuation_rate')
     
     return valuation_rate or 0
+
+
 
 
 # File: erpnext_trackerx_customization/api/purchase_order.py
