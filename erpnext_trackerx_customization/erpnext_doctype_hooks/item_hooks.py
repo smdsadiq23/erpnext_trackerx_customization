@@ -75,6 +75,11 @@ def generate_item_code(doc):
     item_group = doc.item_group or ""
     item_group_code = ""
 
+    is_machine = doc.custom_select_master and doc.custom_select_master == 'Machines'
+    is_spare_parts = doc.custom_select_master and doc.custom_select_master == 'Spare Parts'
+
+    is_machine_or_spare_parts = is_machine or is_spare_parts
+
     if item_group:
         if master == "Accessories":
             # Use full item_group name for Accessories
@@ -90,6 +95,11 @@ def generate_item_code(doc):
     item_name = doc.item_name or ""
     color_name = doc.custom_colour_name or ""
     color_code = doc.custom_colour_code or ""
+    
+    machine_type = doc.custom_machineequipment_type or ''
+    machine_model_no = doc.custom_model_no or ''
+    sp_category = doc.custom_spare_part_category or ''
+    sp_type = doc.custom_spare_part_type or ''
 
     if item_group_code == prefix:
         # set prefix to empty if Group shorthand is same as prefix, eg: PM
@@ -99,15 +109,26 @@ def generate_item_code(doc):
         parts = [prefix]
 
     
+    if is_machine_or_spare_parts:
+        if machine_type:
+            parts.append(machine_type)
+        if machine_model_no:
+            parts.append(machine_model_no)
+        if sp_category:
+            parts.append(sp_category)
+        if sp_type:
+            parts.append(sp_type)
 
-    if item_group_code:
-        parts.append(item_group_code)
-    if item_name:
-        parts.append(item_name)
-    if color_name:
-        parts.append(color_name)
-    if color_code:
-        parts.append(color_code)
+    else:
+
+        if item_group_code:
+            parts.append(item_group_code)
+        if item_name:
+            parts.append(item_name)
+        if color_name:
+            parts.append(color_name)
+        if color_code:
+            parts.append(color_code)
 
     base_code = "-".join(parts)
 
