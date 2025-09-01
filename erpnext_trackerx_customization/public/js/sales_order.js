@@ -370,12 +370,12 @@ async function get_item_attributes(item_code) {
             return;
         }
         
-        frappe.db.get_value('Item', item_code, ['custom_uom', 'stock_uom', 'uoms'])
+        frappe.db.get_value('Item', item_code, [ 'stock_uom', 'uoms'])
             .then((r) => {
                 let uom = "Nos";
                 let conversion_factor = 1;
                 
-                default_uom = custom_uom || stock_uom || '';
+                default_uom =  stock_uom || '';
                 if (r.message && default_uom) {
                     uom = default_uom;
                     
