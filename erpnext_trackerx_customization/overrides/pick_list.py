@@ -11,7 +11,7 @@ class CustomPickList(PickList):
     
     def validate(self):
         # Override parent validation to skip work order validations
-        self.validate_trims_order()
+        self.is_new() and self.validate_trims_order()
         # self.validate_item_locations()
         # self.validate_warehouse_permission()
         
@@ -135,7 +135,7 @@ class CustomPickList(PickList):
                 available_qty = get_stock_balance(
                     item_code, 
                     warehouse_info['warehouse'], 
-                    self.posting_date
+                    None #self.posting_date
                 )
                 total_available += available_qty
                 
