@@ -32,7 +32,7 @@ def get_item_permission_query_conditions(user):
         return condition
     else:
         frappe.log_error("Item Permission Check", "No matching roles found — access restricted (1=0)")
-        return "1=0"
+        return "1=1" # do not restrict if the role doesnt have any item types (empty)
 
 
 def set_item_code_before_insert(doc, method):
