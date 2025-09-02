@@ -10,6 +10,7 @@
   "cell_name",
   "start_time",
   "end_time",
+  "cell_breaks",
   "supported_operation_group",
   "operation_workstations"
  ],
@@ -62,12 +63,18 @@
    "fieldtype": "Table",
    "label": "Operation Workstations",
    "options": "Physical Cell Operation"
+  },
+  {
+   "fieldname": "cell_breaks",
+   "fieldtype": "Table",
+   "label": "Cell Breaks",
+   "options": "Physical Cell Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-01 20:35:48.461791",
+ "modified": "2025-09-02 18:32:10.002252",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Physical Cell",
