@@ -75,7 +75,7 @@ aql_fixtures = [
 after_migrate = [
     #"erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute",
     #"erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure"
-   # "erpnext_trackerx_customization.setup.purchase_receipt_custom_fields.execute"
+    "erpnext_trackerx_customization.setup.purchase_receipt_custom_fields.execute",
     "erpnext_trackerx_customization.setup.migrate_quality_roles.execute",
     "erpnext_trackerx_customization.setup.aql_data_setup.import_aql_fixtures",
     "erpnext_trackerx_customization.whitelabel.apply"
@@ -85,12 +85,18 @@ after_migrate = [
 # ------------------
 
 # include js, css files in header of desk.html
-app_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
+# app_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
+app_include_css = [
+    "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css",
+    "/assets/erpnext_trackerx_customization/css/xystyle.css"
+]
 app_include_js = [
     "/assets/erpnext_trackerx_customization/js/fabric_inspection_routes.js",
 ]
 
 # Removed Vue.js applications - using traditional interface
+app_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
+# app_include_js = "/assets/erpnext_trackerx_customization/js/erpnext_trackerx_customization.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"

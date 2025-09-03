@@ -660,6 +660,13 @@ def update_status(inspection_name, status):
         if not inspection.has_permission("write"):
             frappe.throw(_("You do not have permission to modify this inspection"))
         
+        # If status is already the same, return success without any changes
+        if inspection.inspection_status == status:
+            return {
+                'success': True,
+                'message': f'Status is already {status}'
+            }
+        
         # Validate status transition
         if not is_valid_status_transition(inspection.inspection_status, status):
             frappe.throw(_("Invalid status transition from {0} to {1}").format(inspection.inspection_status, status))
