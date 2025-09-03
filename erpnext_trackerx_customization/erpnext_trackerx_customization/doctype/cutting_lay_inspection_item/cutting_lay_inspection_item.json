@@ -1,0 +1,89 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-03 17:35:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 0,
+ "engine": "InnoDB",
+ "field_order": [
+  "ref_work_order",
+  "sales_order",
+  "line_item_no",
+  "size",
+  "quantity",
+  "planned_cut_quantity",
+  "balance"
+ ],
+ "fields": [
+  {
+   "columns": 2,
+   "fieldname": "ref_work_order",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Ref Work Order",
+   "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "sales_order",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Sales Order",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "line_item_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Line Item No",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "size",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Size",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "quantity",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Quantity",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "planned_cut_quantity",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Cut Kanban Quantity",
+   "read_only": 1
+  },
+  {
+   "columns": 1,
+   "fieldname": "balance",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Balance",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-03 17:35:00.000000",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Cutting Lay Inspection Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

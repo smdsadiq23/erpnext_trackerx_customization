@@ -1,0 +1,525 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-09-03 17:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "inspection_date",
+  "inspector",
+  "inspection_status",
+  "column_break_basic",
+  "cut_docket_reference",
+  "section_break_order",
+  "style",
+  "style_no", 
+  "color",
+  "brand",
+  "bom_no",
+  "column_break_order",
+  "panel_type",
+  "panel_code",
+  "season",
+  "garment_way",
+  "plant_code",
+  "section_break_work_order_details",
+  "work_order_details",
+  "section_break_size_ratio_details",
+  "table_size_ratio_qty",
+  "section_break_fabric",
+  "fabricmaterial_details",
+  "raw_material_composition",
+  "column_break_fabric",
+  "fabric_requirement_against_bom",
+  "fabric_requirement_against_marker",
+  "section_break_lay",
+  "marker_length_meters",
+  "marker_width_meters", 
+  "no_of_plies",
+  "marker_efficiency",
+  "marker_image",
+  "column_break_lay",
+  "lay_plan_no",
+  "marker_no",
+  "lay_method",
+  "section_break_audit",
+  "work_center",
+  "section",
+  "cut_start_date",
+  "section_break_progress",
+  "total_checkpoints",
+  "completed_checkpoints",
+  "progress_percentage",
+  "section_break_pre_laying",
+  "pre_laying_checklist",
+  "section_break_during_laying", 
+  "during_laying_checklist",
+  "section_break_after_laying",
+  "after_laying_checklist",
+  "section_break_summary",
+  "overall_audit_rating",
+  "final_status",
+  "column_break_summary",
+  "critical_issues_identified",
+  "corrective_actions_required",
+  "overall_comments_recommendations",
+  "section_break_approval",
+  "next_review_date",
+  "auditor_signature",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select", 
+   "label": "Series",
+   "options": "CLI-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "inspection_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Inspection Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "inspector",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Inspector",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "inspection_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Inspection Status",
+   "options": "Draft\nIn Progress\nCompleted\nApproved\nRejected",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_basic",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cut_docket_reference",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Cut Docket Reference",
+   "options": "Cut Docket",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_order",
+   "fieldtype": "Section Break",
+   "label": "Order Information"
+  },
+  {
+   "fetch_from": "cut_docket_reference.style",
+   "fieldname": "style",
+   "fieldtype": "Link",
+   "label": "FG Code",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cut_docket_reference.style_no",
+   "fieldname": "style_no",
+   "fieldtype": "Data",
+   "label": "Style",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cut_docket_reference.color",
+   "fieldname": "color",
+   "fieldtype": "Data",
+   "label": "Colour",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cut_docket_reference.brand",
+   "fieldname": "brand",
+   "fieldtype": "Data",
+   "label": "Brand",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cut_docket_reference.bom_no",
+   "fieldname": "bom_no",
+   "fieldtype": "Data",
+   "label": "BOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_order",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "cut_docket_reference.panel_type",
+   "fieldname": "panel_type",
+   "fieldtype": "Select",
+   "label": "Panel Type",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cut_docket_reference.panel_code",
+   "fieldname": "panel_code",
+   "fieldtype": "Data",
+   "label": "Panel Code",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cut_docket_reference.season",
+   "fieldname": "season",
+   "fieldtype": "Data",
+   "label": "Season",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cut_docket_reference.garment_way",
+   "fieldname": "garment_way",
+   "fieldtype": "Data",
+   "label": "Garment Way",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cut_docket_reference.plant_code",
+   "fieldname": "plant_code",
+   "fieldtype": "Link",
+   "label": "Plant Code",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_work_order_details",
+   "fieldtype": "Section Break",
+   "label": "Work Order Details"
+  },
+  {
+   "fieldname": "work_order_details",
+   "fieldtype": "Table",
+   "label": "Work Order Details",
+   "options": "Cutting Lay Inspection WO Details",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_size_ratio_details",
+   "fieldtype": "Section Break",
+   "label": "Size Ratio Quantity Details"
+  },
+  {
+   "fieldname": "table_size_ratio_qty",
+   "fieldtype": "Table",
+   "label": "Size Ratio Quantity",
+   "options": "Cutting Lay Inspection Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_fabric",
+   "fieldtype": "Section Break",
+   "label": "Fabric Details"
+  },
+  {
+   "fetch_from": "cut_docket_reference.fabricmaterial_details",
+   "fieldname": "fabricmaterial_details",
+   "fieldtype": "Data",
+   "label": "Fabric/Material Details",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cut_docket_reference.raw_material_composition",
+   "fieldname": "raw_material_composition",
+   "fieldtype": "Data",
+   "label": "Raw Material Composition",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_fabric",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "cut_docket_reference.fabric_requirement_against_bom",
+   "fieldname": "fabric_requirement_against_bom",
+   "fieldtype": "Data",
+   "label": "Fabric Requirement against BOM",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cut_docket_reference.fabric_requirement_against_marker",
+   "fieldname": "fabric_requirement_against_marker",
+   "fieldtype": "Data",
+   "label": "Fabric Requirement against Marker",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_lay",
+   "fieldtype": "Section Break",
+   "label": "Lay Information"
+  },
+  {
+   "fetch_from": "cut_docket_reference.marker_length_meters",
+   "fieldname": "marker_length_meters",
+   "fieldtype": "Float",
+   "label": "Marker Length (meters)",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cut_docket_reference.marker_width_meters",
+   "fieldname": "marker_width_meters",
+   "fieldtype": "Float",
+   "label": "Marker Width (meters)",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cut_docket_reference.no_of_plies",
+   "fieldname": "no_of_plies",
+   "fieldtype": "Int",
+   "label": "No of Plies",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cut_docket_reference.marker_efficiency",
+   "fieldname": "marker_efficiency",
+   "fieldtype": "Percent",
+   "label": "Marker Efficiency",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cut_docket_reference.marker_image",
+   "fieldname": "marker_image",
+   "fieldtype": "Attach Image",
+   "label": "Marker image",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_lay",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "lay_plan_no",
+   "fieldtype": "Data",
+   "label": "Lay Plan No"
+  },
+  {
+   "fieldname": "marker_no",
+   "fieldtype": "Data",
+   "label": "Marker No"
+  },
+  {
+   "fieldname": "lay_method",
+   "fieldtype": "Select",
+   "label": "Lay Method",
+   "options": "\nFace to Face\nAll Face up\nNap one way"
+  },
+  {
+   "fieldname": "section_break_audit",
+   "fieldtype": "Section Break",
+   "label": "Audit Details"
+  },
+  {
+   "fetch_from": "cut_docket_reference.work_center",
+   "fieldname": "work_center",
+   "fieldtype": "Data",
+   "label": "Work Center",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cut_docket_reference.section",
+   "fieldname": "section",
+   "fieldtype": "Data",
+   "label": "Section",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "cut_docket_reference.cut_start_date",
+   "fieldname": "cut_start_date",
+   "fieldtype": "Date",
+   "label": "Cut Start Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_progress",
+   "fieldtype": "Section Break",
+   "label": "Inspection Progress"
+  },
+  {
+   "fieldname": "total_checkpoints",
+   "fieldtype": "Int",
+   "label": "Total Checkpoints",
+   "read_only": 1
+  },
+  {
+   "fieldname": "completed_checkpoints",
+   "fieldtype": "Int",
+   "label": "Completed Checkpoints",
+   "read_only": 1
+  },
+  {
+   "fieldname": "progress_percentage",
+   "fieldtype": "Percent",
+   "label": "Progress %",
+   "precision": "1",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_pre_laying",
+   "fieldtype": "Section Break",
+   "label": "Pre-Laying Preparation Checklist"
+  },
+  {
+   "fieldname": "pre_laying_checklist",
+   "fieldtype": "Table",
+   "label": "Pre-Laying Checklist",
+   "options": "Cutting Lay Inspection Checklist Item"
+  },
+  {
+   "fieldname": "section_break_during_laying",
+   "fieldtype": "Section Break",
+   "label": "During Laying Process Checklist"
+  },
+  {
+   "fieldname": "during_laying_checklist",
+   "fieldtype": "Table",
+   "label": "During Laying Checklist",
+   "options": "Cutting Lay Inspection Checklist Item"
+  },
+  {
+   "fieldname": "section_break_after_laying",
+   "fieldtype": "Section Break",
+   "label": "After Laying Completion Checklist"
+  },
+  {
+   "fieldname": "after_laying_checklist",
+   "fieldtype": "Table",
+   "label": "After Laying Checklist", 
+   "options": "Cutting Lay Inspection Checklist Item"
+  },
+  {
+   "fieldname": "section_break_summary",
+   "fieldtype": "Section Break",
+   "label": "Final Audit Summary"
+  },
+  {
+   "fieldname": "overall_audit_rating",
+   "fieldtype": "Select",
+   "label": "Overall Audit Rating",
+   "options": "\nExcellent (95-100%)\nGood (85-94%)\nSatisfactory (75-84%)\nPoor (Below 75%)"
+  },
+  {
+   "fieldname": "final_status",
+   "fieldtype": "Select",
+   "label": "Final Status",
+   "options": "\nApproved - Proceed to Cutting\nConditional Approval\nRejected - Rework Required\nOn Hold - Further Review"
+  },
+  {
+   "fieldname": "column_break_summary",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "critical_issues_identified",
+   "fieldtype": "Long Text",
+   "label": "Critical Issues Identified"
+  },
+  {
+   "fieldname": "corrective_actions_required",
+   "fieldtype": "Long Text",
+   "label": "Corrective Actions Required"
+  },
+  {
+   "fieldname": "overall_comments_recommendations",
+   "fieldtype": "Long Text",
+   "label": "Overall Comments & Recommendations"
+  },
+  {
+   "fieldname": "section_break_approval",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "next_review_date",
+   "fieldtype": "Date",
+   "label": "Next Review Date"
+  },
+  {
+   "fieldname": "auditor_signature",
+   "fieldtype": "Data",
+   "label": "Auditor Signature"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Cutting Lay Inspection",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-09-03 17:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Cutting Lay Inspection",
+ "naming_rule": "By Naming Series",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Quality Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Quality Inspector",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Manufacturing Manager",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
