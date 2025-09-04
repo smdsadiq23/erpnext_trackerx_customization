@@ -2,19 +2,19 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "naming_series:",
- "creation": "2025-09-03 17:00:00.000000",
+ "creation": "2025-09-03 17:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
-  "inspection_date",
   "inspector",
   "inspection_status",
   "column_break_basic",
   "cut_docket_reference",
+  "inspection_date",
   "section_break_order",
   "style",
-  "style_no", 
+  "style_no",
   "color",
   "brand",
   "bom_no",
@@ -36,7 +36,7 @@
   "fabric_requirement_against_marker",
   "section_break_lay",
   "marker_length_meters",
-  "marker_width_meters", 
+  "marker_width_meters",
   "no_of_plies",
   "marker_efficiency",
   "marker_image",
@@ -47,33 +47,36 @@
   "section_break_audit",
   "work_center",
   "section",
+  "column_break_zrua",
   "cut_start_date",
   "section_break_progress",
   "total_checkpoints",
   "completed_checkpoints",
+  "column_break_kgcp",
   "progress_percentage",
   "section_break_pre_laying",
   "pre_laying_checklist",
-  "section_break_during_laying", 
+  "section_break_during_laying",
   "during_laying_checklist",
   "section_break_after_laying",
   "after_laying_checklist",
   "section_break_summary",
   "overall_audit_rating",
   "final_status",
-  "column_break_summary",
   "critical_issues_identified",
+  "column_break_summary",
   "corrective_actions_required",
   "overall_comments_recommendations",
   "section_break_approval",
   "next_review_date",
+  "column_break_fgos",
   "auditor_signature",
   "amended_from"
  ],
  "fields": [
   {
    "fieldname": "naming_series",
-   "fieldtype": "Select", 
+   "fieldtype": "Select",
    "label": "Series",
    "options": "CLI-.YYYY.-",
    "reqd": 1
@@ -117,6 +120,7 @@
    "reqd": 1
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_order",
    "fieldtype": "Section Break",
    "label": "Order Information"
@@ -198,6 +202,7 @@
    "read_only": 1
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_work_order_details",
    "fieldtype": "Section Break",
    "label": "Work Order Details"
@@ -210,6 +215,7 @@
    "read_only": 1
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_size_ratio_details",
    "fieldtype": "Section Break",
    "label": "Size Ratio Quantity Details"
@@ -222,6 +228,7 @@
    "read_only": 1
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_fabric",
    "fieldtype": "Section Break",
    "label": "Fabric Details"
@@ -259,6 +266,7 @@
    "read_only": 1
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_lay",
    "fieldtype": "Section Break",
    "label": "Lay Information"
@@ -319,6 +327,7 @@
    "options": "\nFace to Face\nAll Face up\nNap one way"
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_audit",
    "fieldtype": "Section Break",
    "label": "Audit Details"
@@ -345,6 +354,7 @@
    "read_only": 1
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_progress",
    "fieldtype": "Section Break",
    "label": "Inspection Progress"
@@ -374,6 +384,7 @@
    "label": "Pre-Laying Preparation Checklist"
   },
   {
+   "allow_bulk_edit": 1,
    "fieldname": "pre_laying_checklist",
    "fieldtype": "Table",
    "label": "Pre-Laying Checklist",
@@ -398,10 +409,11 @@
   {
    "fieldname": "after_laying_checklist",
    "fieldtype": "Table",
-   "label": "After Laying Checklist", 
+   "label": "After Laying Checklist",
    "options": "Cutting Lay Inspection Checklist Item"
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_summary",
    "fieldtype": "Section Break",
    "label": "Final Audit Summary"
@@ -424,17 +436,17 @@
   },
   {
    "fieldname": "critical_issues_identified",
-   "fieldtype": "Long Text",
+   "fieldtype": "Text",
    "label": "Critical Issues Identified"
   },
   {
    "fieldname": "corrective_actions_required",
-   "fieldtype": "Long Text",
+   "fieldtype": "Text",
    "label": "Corrective Actions Required"
   },
   {
    "fieldname": "overall_comments_recommendations",
-   "fieldtype": "Long Text",
+   "fieldtype": "Text",
    "label": "Overall Comments & Recommendations"
   },
   {
@@ -459,16 +471,28 @@
    "options": "Cutting Lay Inspection",
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_zrua",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_kgcp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_fgos",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-03 17:00:00.000000",
+ "modified": "2025-09-04 18:36:34.030755",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Cutting Lay Inspection",
- "naming_rule": "By Naming Series",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [
   {
@@ -518,6 +542,7 @@
    "share": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

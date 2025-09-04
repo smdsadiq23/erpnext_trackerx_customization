@@ -41,47 +41,48 @@ class CuttingLayInspection(Document):
         
         cut_docket = frappe.get_doc("Cut Docket", self.cut_docket_reference)
         
-        # Skip if already populated (to avoid overwriting user changes)
-        if self.style:
-            return
+        # Skip field population if already populated (to avoid overwriting user changes)
+        skip_field_population = bool(self.style)
         
-        # Order Information
-        self.style = cut_docket.style
-        self.style_no = cut_docket.style_no
-        self.color = cut_docket.color
-        self.brand = cut_docket.brand
-        self.bom_no = cut_docket.bom_no
-        self.panel_type = cut_docket.panel_type
-        self.panel_code = cut_docket.panel_code
-        self.season = cut_docket.season
-        self.garment_way = cut_docket.garment_way
-        self.plant_code = cut_docket.plant_code
-        
-        # Fabric Details
-        self.fabricmaterial_details = cut_docket.fabricmaterial_details
-        self.raw_material_composition = cut_docket.raw_material_composition
-        self.fabric_requirement_against_bom = cut_docket.fabric_requirement_against_bom
-        self.fabric_requirement_against_marker = cut_docket.fabric_requirement_against_marker
-        
-        # Lay Information
-        self.marker_length_meters = cut_docket.marker_length_meters
-        self.marker_width_meters = cut_docket.marker_width_meters
-        self.no_of_plies = cut_docket.no_of_plies
-        self.marker_efficiency = cut_docket.marker_efficiency
-        self.marker_image = cut_docket.marker_image
-        
-        # Audit Details
-        self.work_center = cut_docket.work_center
-        self.section = cut_docket.section
-        self.cut_start_date = cut_docket.cut_start_date
+        # Only populate fields if not already populated
+        if not skip_field_population:
+            # Order Information
+            self.style = cut_docket.style
+            self.style_no = cut_docket.style_no
+            self.color = cut_docket.color
+            self.brand = cut_docket.brand
+            self.bom_no = cut_docket.bom_no
+            self.panel_type = cut_docket.panel_type
+            self.panel_code = cut_docket.panel_code
+            self.season = cut_docket.season
+            self.garment_way = cut_docket.garment_way
+            self.plant_code = cut_docket.plant_code
+            
+            # Fabric Details
+            self.fabricmaterial_details = cut_docket.fabricmaterial_details
+            self.raw_material_composition = cut_docket.raw_material_composition
+            self.fabric_requirement_against_bom = cut_docket.fabric_requirement_against_bom
+            self.fabric_requirement_against_marker = cut_docket.fabric_requirement_against_marker
+            
+            # Lay Information
+            self.marker_length_meters = cut_docket.marker_length_meters
+            self.marker_width_meters = cut_docket.marker_width_meters
+            self.no_of_plies = cut_docket.no_of_plies
+            self.marker_efficiency = cut_docket.marker_efficiency
+            self.marker_image = cut_docket.marker_image
+            
+            # Audit Details
+            self.work_center = cut_docket.work_center
+            self.section = cut_docket.section
+            self.cut_start_date = cut_docket.cut_start_date
         
         # Copy Child Table Data (Work Order Details and Size Ratio Quantity)
         self.copy_child_tables_from_cut_docket(cut_docket)
     
     def copy_child_tables_from_cut_docket(self, cut_docket):
         """Copy child table data from Cut Docket to read-only tables"""
-        # Skip if tables already populated
-        if self.work_order_details or self.table_size_ratio_qty:
+        # Skip if tables already populated with data
+        if len(self.work_order_details) > 0 or len(self.table_size_ratio_qty) > 0:
             return
         
         try:
