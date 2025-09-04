@@ -2,10 +2,15 @@
 *.pyc
 *.egg-info
 *.swp
+*.md
 tags
 node_modules
+dist
 __pycache__
 /.idea/.gitignore
 /.idea/misc.xml
 /.idea/inspectionProfiles/profiles_settings.xml
 /.idea/vcs.xml
+package-lock.json
+.gitignore
+erpnext_trackerx_customization/public/dist
