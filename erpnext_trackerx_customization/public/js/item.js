@@ -239,6 +239,9 @@ function updateItemLabels(frm) {
     let masterLabel = ( $('#custom-master-type-select').val() || frm.doc.custom_select_master || "Item").trim();
     let wordBoundaryRegex = /\bItem\b/gi;
 
+    isMachineOrSpareParts = ['Machines', 'Spare Parts'].includes(masterLabel);
+
+
     // 1. For normal fields (control-label)
     $('.frappe-control').each(function() {
         let fieldname = $(this).attr('data-fieldname');
@@ -254,7 +257,13 @@ function updateItemLabels(frm) {
             if (masterLabel !== "Item") {
                 updated = orig.replace(wordBoundaryRegex, masterLabel);
             }
-            $label.text(updated);
+            if (isMachineOrSpareParts && fieldname === 'item_group'){
+                $label.text('Item Group');
+            }
+            else{
+                $label.text(updated);
+            }
+            
         }
     });
 
@@ -304,12 +313,35 @@ function updateItemLabels(frm) {
             $title.text(updated);
         });
     }
+
+    machinesAndSparePartsChanges(frm);
+    
 }
 
 // --- SPA safety: Remove injected dropdown on route change ---
 frappe.router.on('change', () => {
     $('#custom-master-type-select').remove();
 });
+
+function machinesAndSparePartsChanges(frm)
+{
+    isMachineOrSpareParts = ['Machines', 'Spare Parts'].includes(frm.doc.custom_select_master);
+
+    if(isMachineOrSpareParts){
+        frm.set_df_property('item_group', 'label', 'Item Group');
+        frm.toggle_reqd("item_name", false);
+        frm.set_df_property('item_name', 'hidden', true);
+        
+        frm.refresh_field('item_group');
+        frm.refresh_field('item_name');
+    }
+    else{
+        frm.toggle_reqd("item_name", true);
+        frm.set_df_property('item_name', 'hidden', false);
+        
+        frm.refresh_field('item_name');
+    }
+}
 
 function setItemGroupFilter(frm) {
     const master = frm.doc.custom_select_master;
@@ -476,7 +508,7 @@ function set_parent_component_options(frm) {
     frm.doc.custom_fg_components.forEach(function(row, index) {
             let field = frm.fields_dict.custom_fg_components.grid.grid_rows[index].docfields.find(f => f.fieldname === 'parent_component');
             if (field) {
-                field.options = component_names;
+                field.options = [''].concat(component_names);
             }
         });
     
