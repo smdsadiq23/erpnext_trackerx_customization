@@ -8,6 +8,7 @@
  "field_order": [
   "item_code",
   "color",
+  "selected_warehouse",
   "composition",
   "uom",
   "roll_no",
@@ -209,13 +210,21 @@
    "in_list_view": 1,
    "in_preview": 1,
    "label": "Shade"
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "columns": 1,
+   "fieldname": "selected_warehouse",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Selected Warehouse"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-08-18 13:56:46.682018",
+ "modified": "2025-09-02 17:28:40.957171",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Item",

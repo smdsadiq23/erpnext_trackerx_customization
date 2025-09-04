@@ -1,0 +1,69 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-08-22 16:00:22.188637",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "from_process",
+  "to_process",
+  "connection_label",
+  "stream"
+ ],
+ "fields": [
+  {
+   "fieldname": "from_process",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "From Process",
+   "options": "Operation Process",
+   "reqd": 1
+  },
+  {
+   "fieldname": "to_process",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "To Process",
+   "options": "Operation Process",
+   "reqd": 1
+  },
+  {
+   "fieldname": "connection_label",
+   "fieldtype": "Data",
+   "label": "Connection Label"
+  },
+  {
+   "fieldname": "stream",
+   "fieldtype": "Link",
+   "label": "Stream",
+   "options": "Stream"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-03 13:20:43.540347",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Process Node Connection",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
