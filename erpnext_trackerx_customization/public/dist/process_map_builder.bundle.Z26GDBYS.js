@@ -24578,7 +24578,7 @@
     return typeof navigator !== "undefined" && ((_a = navigator == null ? void 0 : navigator.userAgent) == null ? void 0 : _a.indexOf("Mac")) >= 0;
   };
   function isCoordinateExtent(extent) {
-    return extent !== void 0 && extent !== "parent";
+    return extent !== void 0 && extent !== null && extent !== "parent";
   }
   function getNodeDimensions(node) {
     var _a, _b, _c, _d, _e, _f, _g, _h;
@@ -25442,6 +25442,21 @@
       nodesFromDragItems
     ];
   }
+  function calculateSnapOffset({ dragItems, snapGrid, x, y }) {
+    const refDragItem = dragItems.values().next().value;
+    if (!refDragItem) {
+      return null;
+    }
+    const refPos = {
+      x: x - refDragItem.distance.x,
+      y: y - refDragItem.distance.y
+    };
+    const refPosSnapped = snapPosition(refPos, snapGrid);
+    return {
+      x: refPosSnapped.x - refPos.x,
+      y: refPosSnapped.y - refPos.y
+    };
+  }
   function XYDrag({ onNodeMouseDown, getStoreItems, onDragStart, onDrag, onDragStop }) {
     let lastPos = { x: null, y: null };
     let autoPanId = 0;
@@ -25453,30 +25468,34 @@
     let d3Selection = null;
     let abortDrag = false;
     let nodePositionsChanged = false;
+    let dragEvent = null;
     function update({ noDragClassName, handleSelector, domNode, isSelectable, nodeId, nodeClickDistance = 0 }) {
       d3Selection = select_default2(domNode);
-      function updateNodes({ x, y }, dragEvent) {
+      function updateNodes({ x, y }) {
         const { nodeLookup, nodeExtent, snapGrid, snapToGrid, nodeOrigin, onNodeDrag, onSelectionDrag, onError, updateNodePositions } = getStoreItems();
         lastPos = { x, y };
         let hasChange = false;
-        let nodesBox = { x: 0, y: 0, x2: 0, y2: 0 };
-        if (dragItems.size > 1 && nodeExtent) {
-          const rect = getInternalNodesBounds(dragItems);
-          nodesBox = rectToBox(rect);
-        }
+        const isMultiDrag = dragItems.size > 1;
+        const nodesBox = isMultiDrag && nodeExtent ? rectToBox(getInternalNodesBounds(dragItems)) : null;
+        const multiDragSnapOffset = isMultiDrag && snapToGrid ? calculateSnapOffset({
+          dragItems,
+          snapGrid,
+          x,
+          y
+        }) : null;
         for (const [id3, dragItem] of dragItems) {
           if (!nodeLookup.has(id3)) {
             continue;
           }
           let nextPosition = { x: x - dragItem.distance.x, y: y - dragItem.distance.y };
           if (snapToGrid) {
-            nextPosition = snapPosition(nextPosition, snapGrid);
+            nextPosition = multiDragSnapOffset ? {
+              x: Math.round(nextPosition.x + multiDragSnapOffset.x),
+              y: Math.round(nextPosition.y + multiDragSnapOffset.y)
+            } : snapPosition(nextPosition, snapGrid);
           }
-          let adjustedNodeExtent = [
-            [nodeExtent[0][0], nodeExtent[0][1]],
-            [nodeExtent[1][0], nodeExtent[1][1]]
-          ];
-          if (dragItems.size > 1 && nodeExtent && !dragItem.extent) {
+          let adjustedNodeExtent = null;
+          if (isMultiDrag && nodeExtent && !dragItem.extent && nodesBox) {
             const { positionAbsolute: positionAbsolute2 } = dragItem.internals;
             const x1 = positionAbsolute2.x - nodesBox.x + nodeExtent[0][0];
             const x2 = positionAbsolute2.x + dragItem.measured.width - nodesBox.x2 + nodeExtent[1][0];
@@ -25491,7 +25510,7 @@
             nodeId: id3,
             nextPosition,
             nodeLookup,
-            nodeExtent: adjustedNodeExtent,
+            nodeExtent: adjustedNodeExtent ? adjustedNodeExtent : nodeExtent,
             nodeOrigin,
             onError
           });
@@ -25533,7 +25552,7 @@
           lastPos.x = ((_a = lastPos.x) != null ? _a : 0) - xMovement / transform2[2];
           lastPos.y = ((_b = lastPos.y) != null ? _b : 0) - yMovement / transform2[2];
           if (await panBy2({ x: xMovement, y: yMovement })) {
-            updateNodes(lastPos, null);
+            updateNodes(lastPos);
           }
         }
         autoPanId = requestAnimationFrame(autoPan);
@@ -25571,6 +25590,7 @@
         containerBounds = (domNode2 == null ? void 0 : domNode2.getBoundingClientRect()) || null;
         abortDrag = false;
         nodePositionsChanged = false;
+        dragEvent = event.sourceEvent;
         if (nodeDragThreshold === 0) {
           startDrag(event);
         }
@@ -25581,6 +25601,7 @@
         var _a, _b;
         const { autoPanOnNodeDrag, transform: transform2, snapGrid, snapToGrid, nodeDragThreshold, nodeLookup } = getStoreItems();
         const pointerPos = getPointerPosition(event.sourceEvent, { transform: transform2, snapGrid, snapToGrid, containerBounds });
+        dragEvent = event.sourceEvent;
         if (event.sourceEvent.type === "touchmove" && event.sourceEvent.touches.length > 1 || nodeId && !nodeLookup.has(nodeId)) {
           abortDrag = true;
         }
@@ -25601,7 +25622,7 @@
         }
         if ((lastPos.x !== pointerPos.xSnapped || lastPos.y !== pointerPos.ySnapped) && dragItems && dragStarted) {
           mousePosition = getEventPosition(event.sourceEvent, containerBounds);
-          updateNodes(pointerPos, event.sourceEvent);
+          updateNodes(pointerPos);
         }
       }).on("end", (event) => {
         if (!dragStarted || abortDrag) {
@@ -25724,13 +25745,12 @@
     return isValid;
   }
   var alwaysValid = () => true;
-  function onPointerDown(event, { connectionMode, connectionRadius, handleId, nodeId, edgeUpdaterType, isTarget, domNode, nodeLookup, lib, autoPanOnConnect, flowId, panBy: panBy2, cancelConnection, onConnectStart, onConnect, onConnectEnd, isValidConnection = alwaysValid, onReconnectEnd, updateConnection, getTransform, getFromHandle, autoPanSpeed, dragThreshold = 1 }) {
+  function onPointerDown(event, { connectionMode, connectionRadius, handleId, nodeId, edgeUpdaterType, isTarget, domNode, nodeLookup, lib, autoPanOnConnect, flowId, panBy: panBy2, cancelConnection, onConnectStart, onConnect, onConnectEnd, isValidConnection = alwaysValid, onReconnectEnd, updateConnection, getTransform, getFromHandle, autoPanSpeed, dragThreshold = 1, handleDomNode }) {
     const doc = getHostForElement(event.target);
     let autoPanId = 0;
     let closestHandle;
     const { x, y } = getEventPosition(event);
-    const clickedHandle = doc == null ? void 0 : doc.elementFromPoint(x, y);
-    const handleType = getHandleType(edgeUpdaterType, clickedHandle);
+    const handleType = getHandleType(edgeUpdaterType, handleDomNode);
     const containerBounds = domNode == null ? void 0 : domNode.getBoundingClientRect();
     let connectionStarted = false;
     if (!containerBounds || !handleType) {
@@ -25744,7 +25764,7 @@
     let autoPanStarted = false;
     let connection = null;
     let isValid = false;
-    let handleDomNode = null;
+    let resultHandleDomNode = null;
     function autoPan() {
       if (!autoPanOnConnect || !containerBounds) {
         return;
@@ -25814,7 +25834,7 @@
         flowId,
         nodeLookup
       });
-      handleDomNode = result.handleDomNode;
+      resultHandleDomNode = result.handleDomNode;
       connection = result.connection;
       isValid = isConnectionValid(!!closestHandle, result.isValid);
       const newConnection = __spreadProps(__spreadValues({}, previousConnection), {
@@ -25832,7 +25852,7 @@
     }
     function onPointerUp(event2) {
       if (connectionStarted) {
-        if ((closestHandle || handleDomNode) && connection && isValid) {
+        if ((closestHandle || resultHandleDomNode) && connection && isValid) {
           onConnect == null ? void 0 : onConnect(connection);
         }
         const _a = previousConnection, { inProgress } = _a, connectionState = __objRest(_a, ["inProgress"]);
@@ -25849,7 +25869,7 @@
       autoPanStarted = false;
       isValid = false;
       connection = null;
-      handleDomNode = null;
+      resultHandleDomNode = null;
       doc.removeEventListener("mousemove", onPointerMove);
       doc.removeEventListener("mouseup", onPointerUp);
       doc.removeEventListener("touchmove", onPointerMove);
@@ -25901,14 +25921,15 @@
   };
   function XYMinimap({ domNode, panZoom, getTransform, getViewScale }) {
     const selection2 = select_default2(domNode);
-    function update({ translateExtent, width, height, zoomStep = 10, pannable = true, zoomable = true, inversePan = false }) {
+    function update({ translateExtent, width, height, zoomStep = 1, pannable = true, zoomable = true, inversePan = false }) {
       const zoomHandler = (event) => {
-        const transform2 = getTransform();
         if (event.sourceEvent.type !== "wheel" || !panZoom) {
           return;
         }
+        const transform2 = getTransform();
+        const factor = event.sourceEvent.ctrlKey && isMacOs() ? 10 : 1;
         const pinchDelta = -event.sourceEvent.deltaY * (event.sourceEvent.deltaMode === 1 ? 0.05 : event.sourceEvent.deltaMode ? 1 : 2e-3) * zoomStep;
-        const nextZoom = transform2[2] * Math.pow(2, pinchDelta);
+        const nextZoom = transform2[2] * Math.pow(2, pinchDelta * factor);
         panZoom.scaleTo(nextZoom);
       };
       let panStart = [0, 0];
@@ -28005,6 +28026,7 @@
       if (isConnectableStart && (isMouseTriggered && event.button === 0 || !isMouseTriggered)) {
         const currentStore = store.getState();
         XYHandle.onPointerDown(event.nativeEvent, {
+          handleDomNode: event.currentTarget,
           autoPanOnConnect: currentStore.autoPanOnConnect,
           connectionMode: currentStore.connectionMode,
           connectionRadius: currentStore.connectionRadius,
@@ -28437,17 +28459,16 @@
     return edgeIds;
   }
   var ArrowSymbol = ({ color: color2 = "none", strokeWidth = 1 }) => {
-    return (0, import_jsx_runtime.jsx)("polyline", { style: {
-      stroke: color2,
+    const style3 = __spreadValues({
       strokeWidth
-    }, strokeLinecap: "round", strokeLinejoin: "round", fill: "none", points: "-5,-4 0,0 -5,4" });
+    }, color2 && { stroke: color2 });
+    return (0, import_jsx_runtime.jsx)("polyline", { className: "arrow", style: style3, strokeLinecap: "round", fill: "none", strokeLinejoin: "round", points: "-5,-4 0,0 -5,4" });
   };
   var ArrowClosedSymbol = ({ color: color2 = "none", strokeWidth = 1 }) => {
-    return (0, import_jsx_runtime.jsx)("polyline", { style: {
-      stroke: color2,
-      fill: color2,
+    const style3 = __spreadValues({
       strokeWidth
-    }, strokeLinecap: "round", strokeLinejoin: "round", points: "-5,-4 0,0 -5,4 -5,-4" });
+    }, color2 && { stroke: color2, fill: color2 });
+    return (0, import_jsx_runtime.jsx)("polyline", { className: "arrowclosed", style: style3, strokeLinecap: "round", strokeLinejoin: "round", points: "-5,-4 0,0 -5,4 -5,-4" });
   };
   var MarkerSymbols = {
     [MarkerType.Arrow]: ArrowSymbol,
@@ -28517,7 +28538,7 @@
   var EdgeText = (0, import_react2.memo)(EdgeTextComponent);
   function BaseEdge(_a) {
     var _b = _a, { path, labelX, labelY, label, labelStyle, labelShowBg, labelBgStyle, labelBgPadding, labelBgBorderRadius, interactionWidth = 20 } = _b, props = __objRest(_b, ["path", "labelX", "labelY", "label", "labelStyle", "labelShowBg", "labelBgStyle", "labelBgPadding", "labelBgBorderRadius", "interactionWidth"]);
-    return (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [(0, import_jsx_runtime.jsx)("path", __spreadProps(__spreadValues({}, props), { d: path, fill: "none", className: cc(["react-flow__edge-path", props.className]) })), interactionWidth && (0, import_jsx_runtime.jsx)("path", { d: path, fill: "none", strokeOpacity: 0, strokeWidth: interactionWidth, className: "react-flow__edge-interaction" }), label && isNumeric(labelX) && isNumeric(labelY) ? (0, import_jsx_runtime.jsx)(EdgeText, { x: labelX, y: labelY, label, labelStyle, labelShowBg, labelBgStyle, labelBgPadding, labelBgBorderRadius }) : null] });
+    return (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [(0, import_jsx_runtime.jsx)("path", __spreadProps(__spreadValues({}, props), { d: path, fill: "none", className: cc(["react-flow__edge-path", props.className]) })), interactionWidth ? (0, import_jsx_runtime.jsx)("path", { d: path, fill: "none", strokeOpacity: 0, strokeWidth: interactionWidth, className: "react-flow__edge-interaction" }) : null, label && isNumeric(labelX) && isNumeric(labelY) ? (0, import_jsx_runtime.jsx)(EdgeText, { x: labelX, y: labelY, label, labelStyle, labelShowBg, labelBgStyle, labelBgPadding, labelBgBorderRadius }) : null] });
   }
   function getControl({ pos, x1, y1, x2, y2 }) {
     if (pos === Position.Left || pos === Position.Right) {
@@ -28715,7 +28736,8 @@
         updateConnection,
         getTransform: () => store.getState().transform,
         getFromHandle: () => store.getState().connection.fromHandle,
-        dragThreshold: store.getState().connectionDragThreshold
+        dragThreshold: store.getState().connectionDragThreshold,
+        handleDomNode: event.currentTarget
       });
     };
     const onReconnectSourceMouseDown = (event) => {
@@ -29588,7 +29610,7 @@
     zoomable = false,
     ariaLabel,
     inversePan,
-    zoomStep = 10,
+    zoomStep = 1,
     offsetScale = 5
   }) {
     var _a, _b;
@@ -33262,4 +33284,4 @@ object-assign
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-//# sourceMappingURL=process_map_builder.bundle.VSEN76PF.js.map
+//# sourceMappingURL=process_map_builder.bundle.Z26GDBYS.js.map
