@@ -1,8 +1,4 @@
 frappe.ui.form.on('Purchase Receipt', {
-    onload(frm) {
-        alert("onload");
-        console.log("Trigger")
-    },
     refresh(frm) {
         const grid = frm.fields_dict["items"]?.grid;
         if (grid && grid.wrapper) {
@@ -103,7 +99,7 @@ function renderBoxes(dialog, wrapper, items, label, clickHandler, selected) {
 
     wrapper.find(".wh-box").on("click", function () {
         wrapper.find(".wh-box").removeClass("active").css({ background: "#fff", color: "#000" });
-        $(this).addClass("active").css({ background: "#4B7BEC", color: "#fff" });
+        $(this).addClass("active").css({ background: "#96be37", color: "#fff" });
         clickHandler(dialog, $(this).data("value"));
     });
 }
