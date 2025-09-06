@@ -119,7 +119,8 @@ doctype_js = {
     "Work Order": "public/js/work_order.js",
     "Pick List": "public/js/pick_list.js",
     "Trims Order": "public/js/trims_order.js",
-    "Purchase Order": "public/js/purchase_order.js"
+    "Purchase Order": "public/js/purchase_order.js",
+    "Purchase Receipt": "public/js/purchase_receipt.js",
 }
 # include js in doctype list views
 doctype_list_js = {

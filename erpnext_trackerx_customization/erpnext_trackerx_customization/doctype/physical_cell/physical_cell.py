@@ -10,8 +10,25 @@ class PhysicalCell(Document):
 		self.validate_for_operations_from_supported_operation_group()
 		self.validate_for_physical_cell_timings()
 		self.validate_for_cell_break_timings()
+		self.validate_for_workstation_added_to_diff_cell()
 
 
+	def validate_for_workstation_added_to_diff_cell(self):
+		for row in self.operation_workstations:
+			existing_cell_with_same_ws = frappe.db.sql("""
+				SELECT DISTINCT parent
+				FROM `tabPhysical Cell Operation` 
+				WHERE workstation = %s
+				AND parent != %s
+				AND parenttype = 'Physical Cell'
+			""", (row.workstation, self.name), as_dict=True)
+
+			if existing_cell_with_same_ws:
+				# Get the first parent name from the result
+				conflicting_cell = existing_cell_with_same_ws[0]['parent']
+				frappe.throw(
+					f"Workstation {row.workstation} cannot be added to this cell, It's already configured in Cell {conflicting_cell}, Please remove it from there first."
+				)
 
 	def validate_for_operations_from_supported_operation_group(self):
 		"""Validate that selected operations belong to the correct operation group"""
