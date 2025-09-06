@@ -95,13 +95,18 @@ app_include_js = [
 ]
 
 # Removed Vue.js applications - using traditional interface
-app_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
 # app_include_js = "/assets/erpnext_trackerx_customization/js/erpnext_trackerx_customization.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
 # web_include_js = "/assets/erpnext_trackerx_customization/js/erpnext_trackerx_customization.js"
-web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
+
+# web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
+# web_include_css = [
+#     "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css",
+#     "/assets/erpnext_trackerx_customization/css/xystyle.css",
+#     "/assets/erpnext_trackerx_customization/css/xystyle1.css"
+# ]
 
 # include custom scss in every website theme (without file extension ".scss")
 # website_theme_scss = "erpnext_trackerx_customization/public/scss/website"
@@ -122,7 +127,8 @@ doctype_js = {
     "Work Order": "public/js/work_order.js",
     "Pick List": "public/js/pick_list.js",
     "Trims Order": "public/js/trims_order.js",
-    "Purchase Order": "public/js/purchase_order.js"
+    "Purchase Order": "public/js/purchase_order.js",
+    "Purchase Receipt": "public/js/purchase_receipt.js",
 }
 # include js in doctype list views
 doctype_list_js = {

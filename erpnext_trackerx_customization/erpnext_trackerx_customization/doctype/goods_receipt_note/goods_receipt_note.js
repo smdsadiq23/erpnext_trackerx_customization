@@ -365,7 +365,7 @@ function renderBoxes(dialog, wrapper, items, label, clickHandler, selected) {
         wrapper.html(`<div><b>${label}:</b> ${__("No options available")}</div>`);
         return;
     }
-    let html = `<div><b>${label}:</b></div><div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px;">`;
+    let html = `<div><b>${label}:</b></div><div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; margin-bottom:10px">`;
     html += items.map(i => `
         <div class="wh-box ${selected === i ? "active" : ""}" 
              data-value="${i}"
@@ -383,7 +383,7 @@ function renderBoxes(dialog, wrapper, items, label, clickHandler, selected) {
         wrapper.find(".wh-box").removeClass("active")
             .css({ background: "#fff", color: "#000" });
         $(this).addClass("active")
-            .css({ background: "#4B7BEC", color: "#fff" });
+            .css({ background: "#96be37", color: "#fff" });
         clickHandler(dialog, $(this).data("value"));
     });
 }
