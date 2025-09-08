@@ -1,98 +1,196 @@
-import  React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
-/**
- * Warehouse Builder (read-only tree)
- * Drop this into erpnext_trackerx_customization/public/js/warehouse_builder/App.jsx
- */
 export function App() {
-  const [items, setItems] = React.useState([]); // raw flat list
-  const [tree, setTree] = React.useState([]); // nested tree
-  const [expanded, setExpanded] = React.useState({}); // expanded state map by name
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
+  const [items, setItems] = useState([]);
+  const [tree, setTree] = useState([]);
+  const [expanded, setExpanded] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [warehouseTypes, setWarehouseTypes] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, node: null });
 
+  // 🔹 Modal state
+  const [showModal, setShowModal] = useState(false);
+  const [selectedParent, setSelectedParent] = useState(null);
+  const [form, setForm] = useState({ warehouse_name: "", warehouse_type: "" });
+
+  // 🔹 Fetch Warehouses (reusable)
+  async function fetchWarehouses() {
+    setLoading(true);
+    try {
+      const res = await frappe.call({
+        method: "frappe.client.get_list",
+        args: {
+          doctype: "Warehouse",
+          // fields: [
+          //   "name",
+          //   "warehouse_name",
+          //   "parent_warehouse",
+          //   "is_group",
+          //   "disabled",
+          //   "warehouse_type",
+          // ],
+          fields: ["*"],
+          filters: [["disabled", "!=", 1]],
+          limit_page_length: 1000,
+        },
+      });
+
+      const list = res.message || [];
+      setItems(list);
+
+      // build tree
+      const map = {};
+      list.forEach((it) => (map[it.name] = { ...it, children: [] }));
+      const roots = [];
+      list.forEach((it) => {
+        if (it.parent_warehouse && map[it.parent_warehouse]) {
+          map[it.parent_warehouse].children.push(map[it.name]);
+        } else {
+          roots.push(map[it.name]);
+        }
+      });
+
+      const sortFn = (a, b) =>
+        (a.warehouse_name || a.name).localeCompare(b.warehouse_name || b.name);
+      const sortRecursive = (node) => {
+        node.children.sort(sortFn);
+        node.children.forEach(sortRecursive);
+      };
+      roots.sort(sortFn);
+      roots.forEach(sortRecursive);
+      setTree(roots);
+    } catch (err) {
+      console.error("❌ fetchWarehouses error:", err);
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // 🔹 On mount → fetch data
   useEffect(() => {
-    let mounted = true;
+    fetchWarehouses();
+  }, []);
 
-    async function fetchWarehouses() {
-      setLoading(true);
+  // 🔹 Fetch Warehouse Types
+  useEffect(() => {
+    async function fetchWarehouseTypes() {
       try {
-        // Using frappe.client.get_list returns an array of objects which is easy to map
         const res = await frappe.call({
           method: "frappe.client.get_list",
           args: {
-            doctype: "Warehouse",
-            fields: [
-              "name",
-              "warehouse_name",
-              "parent_warehouse",
-              "is_group",
-              "disabled",
-              "warehouse_type"
-            ],
-            filters: [
-              // only active warehouses by default — change/remove as needed
-              ["disabled", "!=", 1]
-            ],
-            limit_page_length: 1000, // adjust if you have >1000 warehouses
+            doctype: "Warehouse Type",
+            fields: ["name"],
+            limit_page_length: 1000,
           },
         });
-
-        console.log("🔍 raw get_list response:", res);
-        const list = res.message || [];
-
-        if (!mounted) return;
-        setItems(list);
-
-        // Build map and tree
-        const map = {};
-        list.forEach((it) => {
-          map[it.name] = { ...it, children: [] };
-        });
-
-        const roots = [];
-        list.forEach((it) => {
-          const parent = it.parent_warehouse;
-          if (parent && map[parent]) {
-            map[parent].children.push(map[it.name]);
-          } else {
-            // if parent is missing or falsy -> top-level
-            roots.push(map[it.name]);
-          }
-        });
-
-        // Sort helper (by warehouse_name or fallback to name)
-        const sortFn = (a, b) =>
-          (a.warehouse_name || a.name).localeCompare(b.warehouse_name || b.name);
-
-        const sortRecursive = (node) => {
-          node.children.sort(sortFn);
-          node.children.forEach(sortRecursive);
-        };
-
-        roots.sort(sortFn);
-        roots.forEach(sortRecursive);
-
-        setTree(roots);
+        setWarehouseTypes(res.message || []);
       } catch (err) {
-        console.error("❌ fetchWarehouses error:", err);
-        setError(err);
-      } finally {
-        setLoading(false);
+        console.error("❌ Error fetching Warehouse Types:", err);
       }
     }
-
-    fetchWarehouses();
-
-    return () => {
-      mounted = false;
-    };
+    fetchWarehouseTypes();
   }, []);
 
   function toggleExpand(name) {
     setExpanded((prev) => ({ ...prev, [name]: !prev[name] }));
   }
 
+  // 🔹 Open Add Child modal
+  function handleAddChild(node) {
+    setSelectedParent(node);
+    setForm({ warehouse_name: "", warehouse_type: "" });
+    setIsEditing(false);
+    setShowModal(true);
+  }
+
+  // 🔹 Open Edit modal
+  function handleEdit(node) {
+    setSelectedParent(node);
+    setForm({
+      warehouse_name: node.warehouse_name || "",
+      warehouse_type: node.warehouse_type || "",
+    });
+    setIsEditing(true);
+    setShowModal(true);
+  }
+
+  // 🔹 Submit (Add + Edit)
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.warehouse_name) {
+      frappe.msgprint("Warehouse Name is required");
+      return;
+    }
+
+    try {
+      if (isEditing) {
+        await frappe.call({
+          method: "frappe.client.set_value",
+          args: {
+            doctype: "Warehouse",
+            name: selectedParent.name, // ✅ always use name
+            fieldname: {
+              warehouse_name: form.warehouse_name,
+              warehouse_type: form.warehouse_type || "Stores",
+            },
+          },
+        });
+        frappe.msgprint(`✅ Updated Warehouse: ${form.warehouse_name}`);
+      } else {
+        const res = await frappe.call({
+          method: "frappe.client.insert",
+          args: {
+            doc: {
+              doctype: "Warehouse",
+              warehouse_name: form.warehouse_name,
+              warehouse_type: form.warehouse_type || "Stores",
+              parent_warehouse: selectedParent?.name,
+              is_group: 0,
+            },
+          },
+        });
+        frappe.msgprint(`✅ Created Warehouse: ${res.message.warehouse_name}`);
+      }
+
+      setShowModal(false);
+      setIsEditing(false);
+      await fetchWarehouses(); // refresh tree
+    } catch (err) {
+      console.error("❌ Save error:", err);
+      frappe.msgprint("Error saving warehouse. Check console.");
+    }
+  }
+
+  // 🔹 Handle delete
+  async function handleDelete(node) {
+    if (!node?.name) {
+      frappe.msgprint("❌ Invalid warehouse selected for deletion");
+      return;
+    }
+
+    try {
+      await frappe.call({
+        method: "frappe.client.delete",
+        args: {
+          doctype: "Warehouse",
+          name: node.name, // ✅ always use name
+        },
+      });
+
+      frappe.msgprint(`🗑 Deleted Warehouse: ${node.warehouse_name}`);
+      setDeleteConfirm({ show: false, node: null });
+
+      await fetchWarehouses();
+    } catch (err) {
+      console.error("❌ Delete error:", err);
+      frappe.msgprint(err.message || "Error deleting warehouse. Check console.");
+    }
+  }
+
+  // 🔹 Render node recursively
   function renderNode(node, level = 0) {
     const hasChildren = node.children && node.children.length > 0;
     const isExpanded = !!expanded[node.name];
@@ -104,14 +202,14 @@ export function App() {
       background: level % 2 === 0 ? "#ffffff" : "#fbfbfb",
       borderBottom: "1px solid #eee",
       fontFamily: "Arial, sans-serif",
+      position: "relative",
     };
 
     const nameContainerStyle = {
       display: "flex",
       alignItems: "center",
       flex: 1,
-      paddingLeft: level * 16, // indent per level
-      minWidth: 0,
+      paddingLeft: level * 16,
     };
 
     const caretStyle = {
@@ -122,21 +220,20 @@ export function App() {
       justifyContent: "center",
       marginRight: 8,
       cursor: hasChildren ? "pointer" : "default",
-      userSelect: "none",
-      borderRadius: 4,
-      border: "none",
-      background: "transparent",
-      fontSize: 24, // 🔹 bigger caret
-      lineHeight: 1,
+      fontSize: 24,
       color: "#444",
+      border: "none",
+      background: "transparent"
     };
 
-    const metaStyle = {
-      width: 140,
-      textAlign: "right",
-      color: "#666",
-      fontSize: 13,
-      paddingLeft: 12,
+    const actionBtnStyle = {
+      marginLeft: 8,
+      fontSize: 12,
+      padding: "2px 6px",
+      cursor: "pointer",
+      border: "1px solid #ccc",
+      borderRadius: 4,
+      background: "#f8f8f8",
     };
 
     return (
@@ -144,32 +241,34 @@ export function App() {
         <div style={rowStyle}>
           <div style={nameContainerStyle}>
             {hasChildren ? (
-              <button
-                aria-label={isExpanded ? "Collapse" : "Expand"}
-                onClick={() => toggleExpand(node.name)}
-                style={caretStyle}
-                title={isExpanded ? "Collapse" : "Expand"}
-              >
+              <button onClick={() => toggleExpand(node.name)} style={caretStyle}>
                 {isExpanded ? "▾" : "▸"}
               </button>
             ) : (
-              // placeholder for alignment
               <span style={{ display: "inline-block", width: 18, marginRight: 8 }} />
             )}
-
-            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              <strong style={{ fontSize: 14 }}>{node.warehouse_name || node.name}</strong>
+            <div>
+              <strong>{node.warehouse_name || node.name}</strong>
               <div style={{ fontSize: 12, color: "#888" }}>{node.name}</div>
             </div>
           </div>
-
-          <div style={metaStyle}>{node.warehouse_type || ""}</div>
+          <button style={actionBtnStyle} onClick={() => handleAddChild(node)}>
+            ➕ Add Child
+          </button>
+          <button style={actionBtnStyle} onClick={() => handleEdit(node)}>
+            ✏️ Edit
+          </button>
+          <button
+            style={{ ...actionBtnStyle, color: node?.children?.length > 0 ? "grey" : "red", borderColor: node?.children?.length > 0 ? "grey" : "red" }}
+            disabled={node.children && node.children.length > 0}
+            onClick={() => setDeleteConfirm({ show: true, node })}
+          >
+            🗑 Delete
+          </button>
         </div>
 
         {hasChildren && isExpanded && (
-          <div>
-            {node.children.map((child) => renderNode(child, level + 1))}
-          </div>
+          <div>{node.children.map((c) => renderNode(c, level + 1))}</div>
         )}
       </div>
     );
@@ -177,30 +276,140 @@ export function App() {
 
   return (
     <div style={{ padding: 12 }}>
-      {/* <h3 style={{ margin: 0, marginBottom: 6 }}>Warehouse Builder — Tree (read-only)</h3> */}
-
-
       <div
         style={{
           border: "1px solid #e6e6e6",
           borderRadius: 6,
           overflow: "auto",
           maxHeight: "60vh",
-          boxShadow: "0 1px 0 rgba(0,0,0,0.02)",
         }}
       >
         {loading ? (
-          <div style={{ padding: 20, color: "#555" }}>Loading warehouses…</div>
+          <div style={{ padding: 20 }}>Loading…</div>
         ) : error ? (
-          <div style={{ padding: 20, color: "crimson" }}>
-            Error loading warehouses. Check console for details.
-          </div>
+          <div style={{ padding: 20, color: "red" }}>Error loading warehouses</div>
         ) : tree.length === 0 ? (
-          <div style={{ padding: 20, color: "#666" }}>No warehouses found.</div>
+          <div style={{ padding: 20 }}>No warehouses found.</div>
         ) : (
-          tree.map((root) => renderNode(root, 0))
+          tree.map((root) => renderNode(root))
         )}
       </div>
+
+      {/* 🔹 Add/Edit Modal */}
+      {showModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              padding: 20,
+              borderRadius: 8,
+              width: 400,
+              boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
+            }}
+          >
+            <h3>
+              {isEditing
+                ? `Edit Warehouse ${selectedParent?.warehouse_name}`
+                : `Add Child to ${selectedParent?.warehouse_name}`}
+            </h3>
+            <form onSubmit={handleSubmit}>
+              <div style={{ marginBottom: 10 }}>
+                <label>Warehouse Name *</label>
+                <input
+                  type="text"
+                  value={form.warehouse_name}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, warehouse_name: e.target.value }))
+                  }
+                  style={{ width: "100%", padding: 6, marginTop: 4 }}
+                />
+              </div>
+              <div style={{ marginBottom: 10 }}>
+                <label>Warehouse Type</label>
+                <select
+                  value={form.warehouse_type}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, warehouse_type: e.target.value }))
+                  }
+                  style={{ width: "100%", padding: 6, marginTop: 4 }}
+                >
+                  <option value="">-- Select Type --</option>
+                  {warehouseTypes.map((wt) => (
+                    <option key={wt.name} value={wt.name}>
+                      {wt.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  style={{ marginRight: 8 }}
+                >
+                  Cancel
+                </button>
+                <button type="submit" style={{ background: "#1677ff", color: "#fff" }}>
+                  {isEditing ? "Update" : "Create"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 🔹 Delete Confirmation Modal */}
+      {deleteConfirm.show && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              padding: 20,
+              borderRadius: 8,
+              width: 300,
+              textAlign: "center",
+              boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
+            }}
+          >
+            <p>
+              Are you sure you want to delete{" "}
+              <strong>{deleteConfirm.node?.warehouse_name}</strong>?
+            </p>
+            <div style={{ marginTop: 20 }}>
+              <button
+                onClick={() => setDeleteConfirm({ show: false, node: null })}
+                style={{ marginRight: 8 }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirm.node)}
+                style={{ background: "red", color: "#fff" }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
