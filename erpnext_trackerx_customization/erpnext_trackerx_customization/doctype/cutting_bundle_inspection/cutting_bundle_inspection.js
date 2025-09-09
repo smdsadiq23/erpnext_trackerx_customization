@@ -898,6 +898,57 @@ function add_custom_styles() {
             padding: 15px;
             background: #f8f9fa;
         }
+        
+        /* Sampling Plan Enhanced Styles */
+        .sampling-plan-enhanced {
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box;
+        }
+        
+        .sampling-summary-cards {
+            width: 100% !important;
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+            gap: 15px !important;
+        }
+        
+        .sampling-plan-visual {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        
+        /* Force full width for section wrapper */
+        .frappe-control[data-fieldname="section_break_sampling_plan"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            grid-column: 1 / -1 !important;
+            flex: 1 1 100% !important;
+        }
+        
+        .frappe-control[data-fieldname="section_break_sampling_plan"] .form-section {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        
+        .frappe-control[data-fieldname="section_break_sampling_plan"] .form-section .section-head {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        
+        /* Force full width for sampling plan section column */
+        .form-column .frappe-control[data-fieldname="section_break_sampling_plan"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            flex-basis: 100% !important;
+        }
+        
+        /* Make sure parent column takes full width when containing sampling plan */
+        .form-column:has(.frappe-control[data-fieldname="section_break_sampling_plan"]) {
+            width: 100% !important;
+            max-width: 100% !important;
+            flex: 1 1 100% !important;
+        }
         </style>
     `;
     
@@ -1002,7 +1053,7 @@ function setup_sampling_plan_display(frm) {
      */
     if (frm.fields_dict.section_break_sampling_plan && frm.fields_dict.section_break_sampling_plan.wrapper) {
         let sampling_enhanced = `
-            <div class="sampling-plan-enhanced" style="margin: 15px 0; background: #f8f9fa; padding: 20px; border-radius: 8px;">
+            <div class="sampling-plan-enhanced" style="margin: 15px 0; background: #f8f9fa; padding: 20px; border-radius: 8px; width: 100% !important; max-width: 100% !important;">
                 <!-- Sampling Summary Cards -->
                 <div class="sampling-summary-cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
                     <div class="summary-card" style="background: white; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
@@ -1035,6 +1086,35 @@ function setup_sampling_plan_display(frm) {
         
         frm.fields_dict.section_break_sampling_plan.wrapper.find(".sampling-plan-enhanced").remove();
         frm.fields_dict.section_break_sampling_plan.wrapper.append(sampling_enhanced);
+        
+        // Force section wrapper and all parent elements to full width
+        setTimeout(() => {
+            const sectionElement = $(frm.fields_dict.section_break_sampling_plan.wrapper);
+            
+            // Apply full width to the section and all its parent containers
+            sectionElement.css({
+                'width': '100% !important',
+                'max-width': '100% !important'
+            });
+            
+            sectionElement.parent().css({
+                'width': '100% !important',
+                'max-width': '100% !important',
+                'flex': '1 1 100% !important'
+            });
+            
+            sectionElement.closest('.form-column').css({
+                'width': '100% !important',
+                'max-width': '100% !important',
+                'flex': '1 1 100% !important',
+                'flex-basis': '100% !important'
+            });
+            
+            sectionElement.closest('.form-page').css({
+                'width': '100% !important',
+                'max-width': '100% !important'
+            });
+        }, 100);
         
         // Update display with current data
         update_sampling_plan_display(frm);
