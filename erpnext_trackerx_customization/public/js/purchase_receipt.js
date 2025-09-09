@@ -2,8 +2,8 @@ frappe.ui.form.on('Purchase Receipt', {
     refresh(frm) {
         const grid = frm.fields_dict["items"]?.grid;
         if (grid && grid.wrapper) {
-            grid.wrapper.off('click', '.grid-row [data-fieldname="selected_warehouse"] input');
-            grid.wrapper.on('click', '.grid-row [data-fieldname="selected_warehouse"] input', function () {
+            grid.wrapper.off('click', '.grid-row [data-fieldname="custom_selected_warehouse"] input');
+            grid.wrapper.on('click', '.grid-row [data-fieldname="custom_selected_warehouse"] input', function () {
                 const row = $(this).closest('.grid-row');
                 const cdn = row.data('name');
                 if (cdn) {
@@ -68,7 +68,7 @@ function openLocationDialog(frm, cdt, cdn) {
                         frappe.msgprint(__("Please select a location"));
                         return;
                     }
-                    frappe.model.set_value(cdt, cdn, "selected_warehouse", warehouse);
+                    frappe.model.set_value(cdt, cdn, "custom_selected_warehouse", warehouse);
                     frappe.model.set_value(cdt, cdn, "warehouse", warehouse);
                     d.hide();
                 }
