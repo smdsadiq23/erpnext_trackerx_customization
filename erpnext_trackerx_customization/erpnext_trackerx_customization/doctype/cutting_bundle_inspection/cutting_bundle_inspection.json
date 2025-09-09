@@ -1,0 +1,516 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-09-05 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "inspector",
+  "inspection_status",
+  "column_break_basic",
+  "bundle_configuration_reference",
+  "inspection_date",
+  "section_break_auditor",
+  "auditor_time",
+  "department",
+  "shift",
+  "column_break_auditor",
+  "line",
+  "factory",
+  "section_break_lay_formation",
+  "cut_docket_id",
+  "fg_item",
+  "style_number",
+  "color",
+  "column_break_lay",
+  "no_of_plies",
+  "tracking_tech",
+  "section_break_bundle_details",
+  "bundle_configuration_items",
+  "bundle_details",
+  "shade_and_ply_details",
+  "section_break_aql",
+  "lot_size",
+  "inspection_level",
+  "inspection_regime",
+  "column_break_aql",
+  "sample_size",
+  "critical_aql",
+  "major_aql",
+  "minor_aql",
+  "section_break_sampling",
+  "bundles_to_sample",
+  "pieces_to_sample",
+  "column_break_sampling",
+  "critical_accept_limit",
+  "critical_reject_limit",
+  "major_accept_limit",
+  "major_reject_limit",
+  "minor_accept_limit",
+  "minor_reject_limit",
+  "section_break_sampling_plan",
+  "sampling_plan",
+  "section_break_checklist",
+  "inspection_checklist",
+  "section_break_defects",
+  "defect_records",
+  "section_break_results",
+  "critical_defects_found",
+  "major_defects_found",
+  "minor_defects_found",
+  "column_break_results",
+  "inspection_result",
+  "final_remarks",
+  "section_break_signoff",
+  "inspector_signature",
+  "completion_datetime",
+  "column_break_signoff",
+  "inspection_summary",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "CLI-BUNDLE-.YYYY.-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "inspector",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Inspector",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "inspection_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Inspection Status",
+   "options": "Draft\nIn Progress\nCompleted\nApproved\nRejected",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_basic",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bundle_configuration_reference",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Bundle Configuration Reference",
+   "options": "Bundle Creation",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "inspection_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Inspection Date",
+   "reqd": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_auditor",
+   "fieldtype": "Section Break",
+   "label": "Auditor Information"
+  },
+  {
+   "fieldname": "auditor_time",
+   "fieldtype": "Time",
+   "label": "Auditor Time"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Data",
+   "label": "Department"
+  },
+  {
+   "fieldname": "shift",
+   "fieldtype": "Select",
+   "label": "Shift",
+   "options": "\nShift A\nShift B\nShift C"
+  },
+  {
+   "fieldname": "column_break_auditor",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "line",
+   "fieldtype": "Data",
+   "label": "Line"
+  },
+  {
+   "fieldname": "factory",
+   "fieldtype": "Data",
+   "label": "Factory"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_lay_formation",
+   "fieldtype": "Section Break",
+   "label": "Lay Formation Details"
+  },
+  {
+   "fetch_from": "bundle_configuration_reference.cut_docket_id",
+   "fieldname": "cut_docket_id",
+   "fieldtype": "Link",
+   "label": "Cut Docket ID",
+   "options": "Cut Docket",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "bundle_configuration_reference.fg_item",
+   "fieldname": "fg_item",
+   "fieldtype": "Link",
+   "label": "FG Item",
+   "options": "Item",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "bundle_configuration_reference.style_number",
+   "fieldname": "style_number",
+   "fieldtype": "Data",
+   "label": "Style Number",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "bundle_configuration_reference.color",
+   "fieldname": "color",
+   "fieldtype": "Data",
+   "label": "Color",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_lay",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "bundle_configuration_reference.no_of_plies",
+   "fieldname": "no_of_plies",
+   "fieldtype": "Int",
+   "label": "No of Plies",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "bundle_configuration_reference.tracking_tech",
+   "fieldname": "tracking_tech",
+   "fieldtype": "Select",
+   "label": "Tracking Tech",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_bundle_details",
+   "fieldtype": "Section Break",
+   "label": "Bundle Details"
+  },
+  {
+   "fieldname": "bundle_configuration_items",
+   "fieldtype": "Table",
+   "label": "Bundle Configuration Items",
+   "options": "Bundle Creation Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bundle_details",
+   "fieldtype": "Table",
+   "label": "Bundle Details",
+   "options": "Bundle Details",
+   "read_only": 1
+  },
+  {
+   "fieldname": "shade_and_ply_details",
+   "fieldtype": "Table",
+   "label": "Shade and Ply Details",
+   "options": "Bundle Shade and Ply",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_aql",
+   "fieldtype": "Section Break",
+   "label": "AQL Sampling Simulator"
+  },
+  {
+   "fieldname": "lot_size",
+   "fieldtype": "Int",
+   "label": "Lot Size (Quantity)",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "inspection_level",
+   "fieldtype": "Link",
+   "label": "Inspection Level",
+   "options": "AQL Level"
+  },
+  {
+   "default": "Normal",
+   "fieldname": "inspection_regime",
+   "fieldtype": "Select",
+   "label": "Inspection Type",
+   "options": "Normal\nTightened\nReduced",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_aql",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sample_size",
+   "fieldtype": "Int",
+   "label": "Sample Size",
+   "read_only": 1
+  },
+  {
+   "default": "2.5",
+   "fieldname": "critical_aql",
+   "fieldtype": "Link",
+   "label": "Critical AQL",
+   "options": "AQL Standard"
+  },
+  {
+   "default": "4.0",
+   "fieldname": "major_aql",
+   "fieldtype": "Link",
+   "label": "Major AQL",
+   "options": "AQL Standard"
+  },
+  {
+   "default": "6.5",
+   "fieldname": "minor_aql",
+   "fieldtype": "Link",
+   "label": "Minor AQL",
+   "options": "AQL Standard"
+  },
+  {
+   "fieldname": "section_break_sampling",
+   "fieldtype": "Section Break",
+   "hidden": 1,
+   "label": "Sample Distribution & AQL Limits"
+  },
+  {
+   "fieldname": "bundles_to_sample",
+   "fieldtype": "Int",
+   "label": "Bundles to Sample",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pieces_to_sample",
+   "fieldtype": "Int",
+   "label": "Pieces to Sample",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_sampling",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "critical_accept_limit",
+   "fieldtype": "Int",
+   "label": "Critical Accept Limit",
+   "read_only": 1
+  },
+  {
+   "fieldname": "critical_reject_limit",
+   "fieldtype": "Int",
+   "label": "Critical Reject Limit",
+   "read_only": 1
+  },
+  {
+   "fieldname": "major_accept_limit",
+   "fieldtype": "Int",
+   "label": "Major Accept Limit",
+   "read_only": 1
+  },
+  {
+   "fieldname": "major_reject_limit",
+   "fieldtype": "Int",
+   "label": "Major Reject Limit",
+   "read_only": 1
+  },
+  {
+   "fieldname": "minor_accept_limit",
+   "fieldtype": "Int",
+   "label": "Minor Accept Limit",
+   "read_only": 1
+  },
+  {
+   "fieldname": "minor_reject_limit",
+   "fieldtype": "Int",
+   "label": "Minor Reject Limit",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_sampling_plan",
+   "fieldtype": "Section Break",
+   "label": "📊 Intelligent Sampling Plan"
+  },
+  {
+   "fieldname": "sampling_plan",
+   "fieldtype": "Table",
+   "label": "Sampling Plan",
+   "options": "Bundle Sampling Plan Item",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_checklist",
+   "fieldtype": "Section Break",
+   "label": "Inspection Checklist"
+  },
+  {
+   "allow_bulk_edit": 1,
+   "fieldname": "inspection_checklist",
+   "fieldtype": "Table",
+   "label": "Inspection Checklist",
+   "options": "Bundle Inspection Checklist Item"
+  },
+  {
+   "fieldname": "section_break_defects",
+   "fieldtype": "Section Break",
+   "label": "Defect Management"
+  },
+  {
+   "fieldname": "defect_records",
+   "fieldtype": "Table",
+   "label": "Defect Records",
+   "options": "Bundle Inspection Defect Item"
+  },
+  {
+   "fieldname": "section_break_results",
+   "fieldtype": "Section Break",
+   "label": "Inspection Results"
+  },
+  {
+   "default": "0",
+   "fieldname": "critical_defects_found",
+   "fieldtype": "Int",
+   "label": "Critical Defects Found",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "major_defects_found",
+   "fieldtype": "Int",
+   "label": "Major Defects Found",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "minor_defects_found",
+   "fieldtype": "Int",
+   "label": "Minor Defects Found",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_results",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "inspection_result",
+   "fieldtype": "Select",
+   "label": "Inspection Result",
+   "options": "\nPass\nFail",
+   "read_only": 1
+  },
+  {
+   "fieldname": "final_remarks",
+   "fieldtype": "Long Text",
+   "label": "Final Remarks"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_signoff",
+   "fieldtype": "Section Break",
+   "label": "Submit and Sign Off"
+  },
+  {
+   "fieldname": "inspector_signature",
+   "fieldtype": "Data",
+   "label": "Inspector Signature"
+  },
+  {
+   "fieldname": "completion_datetime",
+   "fieldtype": "Datetime",
+   "label": "Completion Time"
+  },
+  {
+   "fieldname": "column_break_signoff",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "inspection_summary",
+   "fieldtype": "Long Text",
+   "label": "Inspection Summary",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Cutting Bundle Inspection",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-09-05 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Cutting Bundle Inspection",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Quality Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Quality Inspector",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

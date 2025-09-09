@@ -88,25 +88,17 @@ after_migrate = [
 # app_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
 app_include_css = [
     "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css",
-    "/assets/erpnext_trackerx_customization/css/xystyle.css"
+    "/assets/erpnext_trackerx_customization/css/xystyle.css",
+    "/assets/erpnext_trackerx_customization/css/cutting_bundle_inspection.css"
 ]
 app_include_js = [
     "/assets/erpnext_trackerx_customization/js/fabric_inspection_routes.js",
 ]
 
-# Removed Vue.js applications - using traditional interface
-# app_include_js = "/assets/erpnext_trackerx_customization/js/erpnext_trackerx_customization.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
 # web_include_js = "/assets/erpnext_trackerx_customization/js/erpnext_trackerx_customization.js"
-
-# web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
-# web_include_css = [
-#     "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css",
-#     "/assets/erpnext_trackerx_customization/css/xystyle.css",
-#     "/assets/erpnext_trackerx_customization/css/xystyle1.css"
-# ]
 
 # include custom scss in every website theme (without file extension ".scss")
 # website_theme_scss = "erpnext_trackerx_customization/public/scss/website"
