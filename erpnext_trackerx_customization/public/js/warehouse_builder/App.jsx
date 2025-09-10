@@ -101,7 +101,7 @@ export function App() {
   // 🔹 Open Add Child modal
   function handleAddChild(node) {
     setSelectedParent(node);
-    setForm({ warehouse_name: "", warehouse_type: "" });
+    setForm({ warehouse_name: "", warehouse_type: "", capacity: "", capacity_unit: "" });
     setIsEditing(false);
     setShowModal(true);
   }
@@ -112,6 +112,8 @@ export function App() {
     setForm({
       warehouse_name: node.warehouse_name || "",
       warehouse_type: node.warehouse_type || "",
+      capacity: node.capacity || "",
+      capacity_unit: node.capacity_unit || "",
     });
     setIsEditing(true);
     setShowModal(true);
@@ -135,11 +137,14 @@ export function App() {
             fieldname: {
               warehouse_name: form.warehouse_name,
               warehouse_type: form.warehouse_type || "Stores",
+              capacity: Number(form.capacity) || 0,
+              capacity_unit: form.capacity_unit || "",
             },
           },
         });
         frappe.msgprint(`✅ Updated Warehouse: ${form.warehouse_name}`);
       } else {
+
         const res = await frappe.call({
           method: "frappe.client.insert",
           args: {
@@ -149,10 +154,25 @@ export function App() {
               warehouse_type: form.warehouse_type || "Stores",
               parent_warehouse: selectedParent?.name,
               is_group: 0,
+              capacity: Number(form.capacity) || 0,
+              capacity_unit: form.capacity_unit || "",
             },
           },
         });
         frappe.msgprint(`✅ Created Warehouse: ${res.message.warehouse_name}`);
+
+        // 🔹 ensure parent becomes group
+        if (selectedParent && selectedParent.is_group === 0) {
+          await frappe.call({
+            method: "frappe.client.set_value",
+            args: {
+              doctype: "Warehouse",
+              name: selectedParent.name,
+              fieldname: { is_group: 1 },
+            },
+          });
+        }
+
       }
 
       setShowModal(false);
@@ -250,7 +270,13 @@ export function App() {
             <div>
               <strong>{node.warehouse_name || node.name}</strong>
               <div style={{ fontSize: 12, color: "#888" }}>{node.name}</div>
+              {(node.capacity || node.capacity_unit) && (
+                <div style={{ fontSize: 12, color: "#555" }}>
+                  Capacity: {node.capacity || "0"} {node.capacity_unit || ""}
+                </div>
+              )}
             </div>
+
           </div>
           <button style={actionBtnStyle} onClick={() => handleAddChild(node)}>
             ➕ Add Child
@@ -350,6 +376,29 @@ export function App() {
                   ))}
                 </select>
               </div>
+              <div style={{ marginBottom: 10 }}>
+                <label>Capacity</label>
+                <input
+                  type="number"
+                  value={form.capacity}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, capacity: e.target.value }))
+                  }
+                  style={{ width: "100%", padding: 6, marginTop: 4 }}
+                />
+              </div>
+              <div style={{ marginBottom: 10 }}>
+                <label>Capacity Unit</label>
+                <input
+                  type="text"
+                  value={form.capacity_unit}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, capacity_unit: e.target.value }))
+                  }
+                  style={{ width: "100%", padding: 6, marginTop: 4 }}
+                />
+              </div>
+
               <div style={{ textAlign: "right" }}>
                 <button
                   type="button"
