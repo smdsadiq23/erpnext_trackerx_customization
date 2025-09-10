@@ -227,6 +227,7 @@ permission_query_conditions = {
 # 	"ToDo": "custom_app.overrides.CustomToDo"
 # }
 override_doctype_class = {
+    "Item": "erpnext_trackerx_customization.overrides.item.CustomItem",
     "BOM": "erpnext_trackerx_customization.overrides.bom.CustomBOM",
     "Pick List": "erpnext_trackerx_customization.overrides.pick_list.CustomPickList"
 }
