@@ -40,7 +40,7 @@ fixtures = [
         "filters": [
             [
                 "dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
-                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item"
+                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item", "Purchase Receipt Item"
                           ],
             ],
             [
@@ -54,7 +54,7 @@ fixtures = [
         "filters": [
             [
                 "doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
-                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item"
+                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item", "Purchase Receipt Item"
                             ]
             ],
             [
@@ -88,25 +88,17 @@ after_migrate = [
 # app_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
 app_include_css = [
     "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css",
-    "/assets/erpnext_trackerx_customization/css/xystyle.css"
+    "/assets/erpnext_trackerx_customization/css/xystyle.css",
+    "/assets/erpnext_trackerx_customization/css/cutting_bundle_inspection.css"
 ]
 app_include_js = [
     "/assets/erpnext_trackerx_customization/js/fabric_inspection_routes.js",
 ]
 
-# Removed Vue.js applications - using traditional interface
-# app_include_js = "/assets/erpnext_trackerx_customization/js/erpnext_trackerx_customization.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
 # web_include_js = "/assets/erpnext_trackerx_customization/js/erpnext_trackerx_customization.js"
-
-# web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
-# web_include_css = [
-#     "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css",
-#     "/assets/erpnext_trackerx_customization/css/xystyle.css",
-#     "/assets/erpnext_trackerx_customization/css/xystyle1.css"
-# ]
 
 # include custom scss in every website theme (without file extension ".scss")
 # website_theme_scss = "erpnext_trackerx_customization/public/scss/website"
@@ -227,6 +219,7 @@ permission_query_conditions = {
 # 	"ToDo": "custom_app.overrides.CustomToDo"
 # }
 override_doctype_class = {
+    "Item": "erpnext_trackerx_customization.overrides.item.CustomItem",
     "BOM": "erpnext_trackerx_customization.overrides.bom.CustomBOM",
     "Pick List": "erpnext_trackerx_customization.overrides.pick_list.CustomPickList"
 }
