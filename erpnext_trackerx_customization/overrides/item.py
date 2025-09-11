@@ -2,8 +2,7 @@ import frappe
 from frappe.model.document import Document
 
 class CustomItem(Document):
-    def before_save(self):
-        frappe.msgprint("reached here")
+    def before_save(self):    
         self.set_fg_component_names()
 
     def set_fg_component_names(self):
