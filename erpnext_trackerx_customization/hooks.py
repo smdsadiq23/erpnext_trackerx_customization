@@ -61,7 +61,14 @@ fixtures = [
                 "module", "=", "Erpnext Trackerx Customization"
             ]
         ]
-    }
+    },
+    {
+        "doctype": "DocField",
+        "filters": [
+            ["parent", "=", "Supplier"],
+            ["fieldname", "=", "supplier_type"]
+        ]
+    }    
 ]
 
 # AQL data fixtures for import during migration
