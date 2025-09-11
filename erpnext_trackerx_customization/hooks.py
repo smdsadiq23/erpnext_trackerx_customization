@@ -40,27 +40,28 @@ fixtures = [
         "filters": [
             [
                 "dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
-                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item", "Purchase Receipt Item"
+                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item", "Purchase Receipt Item", "Operation"
                           ],
             ],
             [
                 "module", "=", "Erpnext Trackerx Customization"
             ]
         ],
-        # "order_by": "modified asc" 
+        "order_by": "modified asc"
     },
     {
         "dt": "Property Setter",
         "filters": [
             [
                 "doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
-                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item", "Purchase Receipt Item"
+                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item", "Purchase Receipt Item", "Operation"
                             ]
             ],
             [
                 "module", "=", "Erpnext Trackerx Customization"
             ]
-        ]
+        ],
+        "order_by": "modified asc"
     }
 ]
 
