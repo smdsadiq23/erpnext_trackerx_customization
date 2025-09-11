@@ -46,8 +46,8 @@ fixtures = [
             [
                 "module", "=", "Erpnext Trackerx Customization"
             ]
-
-        ]
+        ],
+        # "order_by": "modified asc" 
     },
     {
         "dt": "Property Setter",

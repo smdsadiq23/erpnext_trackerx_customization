@@ -7,6 +7,23 @@ let allowed_item_groups_map = {
 };
 
 frappe.ui.form.on('BOM', {
+    custom_supplier: function(frm) {
+        if (frm.doc.custom_supplier) {
+            frm.set_query("item", function() {
+                return {
+                    filters: {
+                        custom_preferred_supplier: frm.doc.custom_supplier
+                    }
+                };
+            });
+        } else {
+            // Show all items if no supplier selected
+            frm.set_query("item", function() {
+                return {};
+            });
+        }
+    },
+
     calculate_total_cost(frm) {
         const formula = frm.doc.custom_costing_formula;
         let raw_material_cost = 0;
@@ -90,7 +107,56 @@ frappe.ui.form.on('BOM', {
         if (frm.doc.item) {
             copy_bom_operations_from_item(frm);
         }
+    },
+
+    calculate_summary: function(frm) {
+        if (!frm.doc.operations || frm.doc.operations.length === 0) {
+            frm.set_value('custom_operations_summary', []);
+            return;
+        }
+
+        const grouped = {};
+        frm.doc.operations.forEach(op => {
+            const ws_type = op.workstation_type;
+            if (!ws_type) return; // skip if not set
+
+            if (!grouped[ws_type]) {
+                grouped[ws_type] = {
+                    workstation_type: ws_type,
+                    time_in_mins: 0,
+                    operating_cost: 0
+                };
+            }
+            grouped[ws_type].time_in_mins += op.time_in_mins || 0;
+            grouped[ws_type].operating_cost += op.operating_cost || 0;
+        });
+
+        const summary = Object.values(grouped);
+        frm.set_value('custom_operations_summary', summary.map(row => ({
+            workstation_type: row.workstation_type,
+            operation_time: row.time_in_mins,        // 👈 mapped to your target field
+            operating_cost: row.operating_cost
+        })));
     }
+});
+
+
+frappe.ui.form.on('BOM Operation', {
+    add_row: function(frm, cdt, cdn) {
+        frm.trigger('calculate_summary');
+    },
+    remove_row: function(frm, cdt, cdn) {
+        frm.trigger('calculate_summary');
+    },
+    workstation_type: function(frm, cdt, cdn) {
+        frm.trigger('calculate_summary');
+    },
+    time_in_mins: function(frm, cdt, cdn) {
+        frm.trigger('calculate_summary');
+    },
+    operating_cost: function(frm, cdt, cdn) {
+        frm.trigger('calculate_summary');
+    }    
 });
 
 
