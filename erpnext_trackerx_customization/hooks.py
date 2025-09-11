@@ -62,6 +62,13 @@ fixtures = [
             ]
         ],
         "order_by": "modified asc"
+    },
+    {
+        "doctype": "DocField",
+        "filters": [
+            ["parent", "=", "Supplier"],
+            ["fieldname", "=", "supplier_type"]
+        ]
     }
 ]
 

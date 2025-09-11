@@ -182,3 +182,73 @@ def make_goods_receipt_note(source_name, target_doc=None):
     }, target_doc, set_missing_values)
 
     return doc
+
+
+@frappe.whitelist()
+def get_fg_components_by_item(item_code):
+    """
+    Returns list of component_name from Item's custom_fg_components child table.
+    Safe for client-side use — no permission checks on child table.
+    """
+    if not item_code:
+        return []
+
+    # Fetch child table records — no permission check needed in server method
+    components = frappe.get_all(
+        "FG Components",  # ⚠️ REPLACE WITH YOUR ACTUAL CHILD TABLE DOCTYPE
+        filters={
+            "parent": item_code,
+            "parentfield": "custom_fg_components",
+            "parenttype": "Item"
+        },
+        fields=["name"],
+        order_by="idx"
+    )
+
+    # Return list of names
+    return [c.name for c in components]
+
+
+@frappe.whitelist()
+def get_suppliers_by_process_type(process_type):
+    """
+    Returns list of Supplier names who have given process_type in their custom_process_specialization
+    """
+    if not process_type:
+        return []
+
+    # Fetch suppliers from child table
+    supplier_names = frappe.get_all(
+        "Supplier Specialization",  # ← Child Table Doctype Name (verify this!)
+        filters={
+            "process_type": process_type,
+            "parenttype": "Supplier",
+            "parentfield": "custom_process_specialization"
+        },
+        fields=["parent"],
+        distinct=True
+    )
+
+    return [s.parent for s in supplier_names if s.parent]
+
+
+@frappe.whitelist()
+def get_supplier_rate_for_process(supplier, process_type):
+    """
+    Returns rate_per_unit from Supplier Specialization for given supplier + process_type
+    """
+    if not supplier or not process_type:
+        return None
+
+    rate = frappe.db.get_value(
+        "Supplier Specialization",  # ← Verify this is your actual child table doctype
+        {
+            "parent": supplier,
+            "process_type": process_type,
+            "parenttype": "Supplier",
+            "parentfield": "custom_process_specialization"
+        },
+        "rate_per_unit"
+    )
+
+    return rate

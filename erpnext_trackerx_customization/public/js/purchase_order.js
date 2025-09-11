@@ -56,8 +56,141 @@ frappe.ui.form.on('Purchase Order', {
                 create_goods_receipt_note(frm);
             }, ('Create'));
         }
-    }
+    },
+
+    custom_process_type: function(frm) {
+        if (!frm.doc.custom_process_type) {
+            // Clear filter if no process selected
+            frm.set_query('supplier', function() {
+                return {};
+            });
+            return;
+        }
+
+        // Show loading state
+        frm.set_df_property('supplier', 'description', 'Loading suppliers...');
+        frm.refresh_field('supplier');
+
+        frappe.call({
+            method: 'erpnext_trackerx_customization.api.purchase_order.get_suppliers_by_process_type',
+            args: {
+                process_type: frm.doc.custom_process_type
+            },
+            callback: function(r) {
+                frm.set_df_property('supplier', 'description', '');
+                if (r.exc) {
+                    frappe.msgprint(__('Error loading suppliers.'));
+                    frm.set_query('supplier', function() { return {}; });
+                    return;
+                }
+
+                const suppliers = r.message || [];
+
+                if (suppliers.length === 0) {
+                    frappe.msgprint(__('No suppliers found for this process type.'));
+                    frm.set_query('supplier', function() { return { filters: { name: ['in', []] } }; });
+                    return;
+                }
+
+                // Set filter on supplier field
+                frm.set_query('supplier', function() {
+                    return {
+                        filters: {
+                            name: ['in', suppliers]
+                        }
+                    };
+                });
+
+                // If current supplier is not in list, clear it
+                if (frm.doc.supplier && !suppliers.includes(frm.doc.supplier)) {
+                    frm.set_value('supplier', '');
+                }
+
+                frm.refresh_field('supplier');
+            }
+        });
+    },
+
+    supplier: function(frm) {
+        if (!frm.doc.supplier) {
+            // Clear filter if no supplier selected
+            frm.set_query('item_code', 'items', function() {
+                return {};
+            });
+            return;
+        }
+
+        // Set filter on item_code in child table
+        frm.set_query('item_code', 'items', function() {
+            return {
+                filters: {
+                    custom_preferred_supplier: frm.doc.supplier
+                }
+            };
+        });
+    }    
 });
+
+frappe.ui.form.on('Purchase Order Item', {
+  item_code: function (frm, cdt, cdn) {
+    if (!cdn) {
+      console.warn("Invalid row reference");
+      return;
+    }
+
+    const row = locals[cdt][cdn];
+    // If no item_code, clear global options on the child field and exit
+    if (!row || !row.item_code) {
+      frm.fields_dict['items'].grid.update_docfield_property(
+        'custom_sfg_code',
+        'options',
+        ''
+      );
+      return;
+    }
+
+    // Show loading in the Select options (applies to all rows)
+    frm.fields_dict['items'].grid.update_docfield_property(
+      'custom_sfg_code',
+      'options',
+      'Loading...'
+    );
+
+    frappe.call({
+      method: 'erpnext_trackerx_customization.api.purchase_order.get_fg_components_by_item',
+      args: { item_code: row.item_code },
+      callback: function (r) {
+        if (r.exc) {
+          frappe.msgprint(__('Error loading components.'));
+          frm.fields_dict['items'].grid.update_docfield_property(
+            'custom_sfg_code',
+            'options',
+            ''
+          );
+          return;
+        }
+
+        const list = r.message || [];
+        const options = list.join('\n'); // Select expects newline-separated options
+
+        frm.fields_dict['items'].grid.update_docfield_property(
+          'custom_sfg_code',
+          'options',
+          options
+        );
+
+        // If current value no longer valid, clear it for THIS row
+        if (row.custom_sfg_code && !list.includes(row.custom_sfg_code)) {
+          frappe.model.set_value(cdt, cdn, 'custom_sfg_code', '');
+        }
+
+        // Refresh the grid field so the new options show up in the UI
+        frm.refresh_field('items');
+      }
+    });
+  }
+});
+
 
 function get_items_from_material_requirement_plan(frm, values) {
     frappe.call({
