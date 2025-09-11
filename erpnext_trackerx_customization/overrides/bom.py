@@ -4,6 +4,39 @@ import frappe
 from frappe.utils import flt
 
 class CustomBOM(BaseBOM):
+    def before_save(self):
+        self.calculate_operation_summary()
+
+    def calculate_operation_summary(self):
+        # Clear existing rows
+        self.set("custom_operations_summary", [])
+
+        if not self.operations:
+            return
+
+        grouped = {}
+        for op in self.operations:
+            ws_type = op.workstation_type
+            if not ws_type:
+                continue  # skip if not set
+
+            if ws_type not in grouped:
+                grouped[ws_type] = {
+                    "workstation_type": ws_type,
+                    "time_in_mins": 0,
+                    "operating_cost": 0
+                }
+            grouped[ws_type]["time_in_mins"] += op.time_in_mins or 0
+            grouped[ws_type]["operating_cost"] += op.operating_cost or 0
+
+        # Add to child table
+        for data in grouped.values():
+            self.append("custom_operations_summary", {
+                "workstation_type": data["workstation_type"],
+                "operation_time": data["time_in_mins"],        # 👈 mapped to target field
+                "operating_cost": data["operating_cost"]
+            })       
+
     def calculate_cost(self, *args, **kwargs):
         # Step 1: Standard ERPNext costing logic
         super().calculate_cost(*args, **kwargs)
