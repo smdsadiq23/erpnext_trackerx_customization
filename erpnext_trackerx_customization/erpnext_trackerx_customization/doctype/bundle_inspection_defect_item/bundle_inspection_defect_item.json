@@ -1,0 +1,111 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-05 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "bundle_number",
+  "component",
+  "defect_name",
+  "column_break_1",
+  "defect_category",
+  "defect_severity",
+  "defect_count",
+  "section_break_1",
+  "defect_description",
+  "photo_evidence",
+  "column_break_2",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "bundle_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Bundle Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "component",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Component",
+   "reqd": 1
+  },
+  {
+   "fieldname": "defect_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Defect Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "defect_category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Defect Category",
+   "options": "\nFabric\nCutting\nPrint\nEmbroidery\nStitching\nFinishing\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "defect_severity",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Defect Severity",
+   "options": "Critical\nMajor\nMinor",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "defect_count",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Defect Count",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break",
+   "label": "Defect Details"
+  },
+  {
+   "fieldname": "defect_description",
+   "fieldtype": "Long Text",
+   "label": "Defect Description"
+  },
+  {
+   "fieldname": "photo_evidence",
+   "fieldtype": "Attach Image",
+   "label": "Photo Evidence",
+   "make_attachment_public": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Long Text",
+   "label": "Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-05 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Bundle Inspection Defect Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
