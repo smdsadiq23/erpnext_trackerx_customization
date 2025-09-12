@@ -9,3 +9,5 @@ __pycache__
 /.idea/misc.xml
 /.idea/inspectionProfiles/profiles_settings.xml
 /.idea/vcs.xml
+erpnext_trackerx_customization/public/dist
+.gitignore
