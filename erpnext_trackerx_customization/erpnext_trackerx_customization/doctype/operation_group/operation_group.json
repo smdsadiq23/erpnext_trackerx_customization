@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:group_number",
+ "color": "Red",
  "creation": "2025-09-01 20:04:11.489974",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -34,11 +34,10 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-01 20:35:18.672718",
+ "modified": "2025-09-12 18:59:31.788008",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Operation Group",
- "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
@@ -55,7 +54,9 @@
   }
  ],
  "row_format": "Dynamic",
+ "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "group_name"
 }
