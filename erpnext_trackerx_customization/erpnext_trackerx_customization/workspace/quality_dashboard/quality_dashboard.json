@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"-bFp4fn3mu\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Quality Dashboard</span>\",\"col\":12}},{\"id\":\"V292i7E80U\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inspection List\",\"col\":5}}]",
+ "content": "[{\"id\":\"-bFp4fn3mu\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Quality Dashboard</span>\",\"col\":12}},{\"id\":\"ZizY7NoM4s\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Cut Lay Inspection List\",\"col\":6}},{\"id\":\"V292i7E80U\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Inspection List\",\"col\":6}}]",
  "creation": "2025-08-18 11:22:55.397949",
  "custom_blocks": [],
  "docstatus": 0,
@@ -13,7 +13,7 @@
  "is_hidden": 0,
  "label": "Quality Dashboard",
  "links": [],
- "modified": "2025-08-18 11:53:35.523555",
+ "modified": "2025-09-04 19:12:42.223245",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Quality Dashboard",
@@ -44,6 +44,14 @@
    "label": "Inspection List",
    "link_to": "quality_dashboard",
    "type": "Page"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "label": "Cut Lay Inspection List",
+   "link_to": "Cutting Lay Inspection",
+   "stats_filter": "[[\"Cutting Lay Inspection\",\"inspection_status\",\"=\",\"Draft\",false]]",
+   "type": "DocType"
   }
  ],
  "title": "Quality Dashboard"

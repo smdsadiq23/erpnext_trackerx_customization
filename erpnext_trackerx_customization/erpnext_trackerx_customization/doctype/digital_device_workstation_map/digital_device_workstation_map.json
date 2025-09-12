@@ -1,43 +1,53 @@
 {
  "actions": [],
  "allow_rename": 1,
- "color": "Red",
- "creation": "2025-09-01 20:04:11.489974",
+ "creation": "2025-09-04 12:39:04.882526",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "group_number",
-  "group_name"
+  "digital_device",
+  "workstation",
+  "link_status"
  ],
  "fields": [
   {
    "allow_in_quick_entry": 1,
-   "bold": 1,
-   "fieldname": "group_number",
-   "fieldtype": "Data",
+   "fieldname": "digital_device",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Group Number",
-   "reqd": 1,
-   "unique": 1
+   "label": "Digital Device",
+   "options": "Digital Device",
+   "reqd": 1
   },
   {
    "allow_in_quick_entry": 1,
-   "fieldname": "group_name",
-   "fieldtype": "Data",
+   "fieldname": "workstation",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Group Name",
+   "label": "Workstation",
+   "options": "Workstation",
+   "reqd": 1
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "fieldname": "link_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Link Status",
+   "options": "Linked\nUnlinked",
    "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-12 18:59:31.788008",
+ "modified": "2025-09-04 12:41:01.351073",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
- "name": "Operation Group",
+ "name": "Digital Device Workstation Map",
  "owner": "Administrator",
  "permissions": [
   {
@@ -54,9 +64,7 @@
   }
  ],
  "row_format": "Dynamic",
- "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
- "title_field": "group_name"
+ "states": []
 }

@@ -1,0 +1,128 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-03 16:45:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "checklist_master_reference",
+  "checkpoint",
+  "description",
+  "category",
+  "column_break_1",
+  "status",
+  "is_mandatory",
+  "section_break_1",
+  "remarks",
+  "photo_evidence",
+  "column_break_2",
+  "checked_by",
+  "checked_date"
+ ],
+ "fields": [
+  {
+   "allow_in_quick_entry": 1,
+   "fieldname": "checklist_master_reference",
+   "fieldtype": "Link",
+   "label": "Checklist Master Reference",
+   "options": "Cut Lay Checklists",
+   "reqd": 1
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "fetch_from": "checklist_master_reference.checkpoint",
+   "fieldname": "checkpoint",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Checkpoint",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "checklist_master_reference.description",
+   "fieldname": "description",
+   "fieldtype": "Long Text",
+   "label": "Description",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "checklist_master_reference.category",
+   "fieldname": "category",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Category",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Pending\nPass\nFail\nN/A",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fetch_from": "checklist_master_reference.is_mandatory",
+   "fieldname": "is_mandatory",
+   "fieldtype": "Check",
+   "label": "Is Mandatory",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break",
+   "label": "Inspection Details"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Long Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "photo_evidence",
+   "fieldtype": "Attach Image",
+   "label": "Photo Evidence",
+   "make_attachment_public": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "checked_by",
+   "fieldtype": "Link",
+   "label": "Checked By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "checked_date",
+   "fieldtype": "Datetime",
+   "label": "Checked Date",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-04 18:43:01.041956",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Cutting Lay Inspection Checklist Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
