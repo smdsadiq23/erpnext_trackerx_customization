@@ -24,9 +24,9 @@ const nodeTypes = {
   operationProcess: OperationProcessNode,
 };
 
-const FlowCanvas = ({ operationProcesses, processGroups, streams, processMaps }) => {
+const FlowCanvas = ({ operationProcesses, processGroups, streams, processMaps, defaultComponents, processMapNumber, selectedItem, description, processMapName }) => {
   const { screenToFlowPosition } = useReactFlow();
-  const defaultComponents = ['Front', 'Back', 'Sleeve'];
+  // const defaultComponents = ['Front', 'Back', 'Sleeve'];
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [edgeComponents, setEdgeComponents] = useState({});
@@ -37,6 +37,8 @@ const FlowCanvas = ({ operationProcesses, processGroups, streams, processMaps })
   const [targetNode, setTargetNode] = useState(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState(null);
   const [csrfToken, setCsrfToken] = useState('');
+
+
 
   useEffect(() => {
     // Try frappe.csrf_token first
@@ -244,8 +246,12 @@ const FlowCanvas = ({ operationProcesses, processGroups, streams, processMaps })
   const BASE_URL = `${window.location.protocol}//${window.location.hostname}${window.location.port ? `:${window.location.port}` : ''}`;;
 
   const handleSaveMap = async () => {
-    const map_name = prompt("Enter a name for this Process Map:");
-    if (!map_name) return alert("Map name is required to save.");
+    // const map_name = prompt("Enter a name for this Process Map:");
+    // if (!map_name) return alert("Map name is required to save.");
+
+    if (!processMapName || !processMapNumber || !selectedItem) {
+      return alert("Process Map Name, Number, and FG Item are required.");
+    }
 
     const nodePayload = nodes.map((node) => ({
       id: node.id,
@@ -270,10 +276,12 @@ const FlowCanvas = ({ operationProcesses, processGroups, streams, processMaps })
     console.log("payload", nodePayload, edgePayload);
 
     const payload = {
-      map_name,
+      map_name: processMapName,
       nodes: JSON.stringify(nodePayload),
       edges: JSON.stringify(edgePayload),
-      description: "Saved from React Flow UI"
+      description,
+      process_map_number: processMapNumber, // from textbox
+      select_fg: selectedItem,
     };
 
     try {
@@ -364,7 +372,7 @@ const FlowCanvas = ({ operationProcesses, processGroups, streams, processMaps })
   return (
     <div className="container-fluid" style={{ height: '100vh' }}>
       <div className="row h-100">
-     
+
         <Sidebar
           operationProcesses={operationProcesses}
           processGroups={processGroups}
