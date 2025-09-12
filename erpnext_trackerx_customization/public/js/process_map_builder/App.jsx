@@ -10,6 +10,7 @@ import FlowCanvas from './Components/FlowCanvas';
 
 export function App() {
   const [operationProcesses, setOperationProcesses] = useState([]);
+  const [operation, setOperation] = useState([]);
   const [processGroups, setProcessGroups] = useState([]);
   const [streams, setStreams] = useState([]);
   const [processMaps, setProcessMaps] = useState([]);
@@ -58,19 +59,28 @@ export function App() {
 
   useEffect(() => {
     const fetchAll = async () => {
-      const [opData, pgData, streamData, pmData] = await Promise.all([
+      const [opData, pgData, streamData, operationData, pmData] = await Promise.all([
         fetchDocType('Operation Process'),
         fetchDocType('Process Group'),
         fetchDocType('Stream'),
+        fetchDocType('Operation'),
         fetchProcessMaps(),
       ]);
-      setOperationProcesses(opData);
+
+      let operationDataProcessed = operationData?.map((row) => {
+        return { process_name: row.name }
+      })
+      setOperationProcesses(operationDataProcessed);
       setProcessGroups(pgData);
       setStreams(streamData);
+      setOperation(operationData);
       setProcessMaps(pmData);
     };
     fetchAll();
   }, []);
+
+  console.log("operations", operation);
+
 
   return (<>
     {/* <div style={styles.titleBold}>React flow</div> */}
