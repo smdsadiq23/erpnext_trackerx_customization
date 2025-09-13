@@ -4,6 +4,7 @@ import "@xyflow/react/dist/style.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { Modal, Button } from "react-bootstrap";
 import FlowCanvas from "./Components/FlowCanvas";
+import { normalizeNodes, normalizeEdges } from "./nodeNormalizer";
 
 export function App() {
   const [operationProcesses, setOperationProcesses] = useState([]);
@@ -14,26 +15,36 @@ export function App() {
   const [items, setItems] = useState([]);
   const [fgComponents, setFgComponents] = useState([]);
 
-  // Modal state
+  // Modal + Process Map state
   const [showItemModal, setShowItemModal] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
   const [processMapNo, setProcessMapNo] = useState("");
   const [description, setDescription] = useState("");
   const [processMapName, setProcessMapName] = useState("");
 
+  // Pre-loaded map data (when URL has id)
+  const [loadedNodes, setLoadedNodes] = useState([]);
+  const [loadedEdges, setLoadedEdges] = useState([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+
   const BASE_URL = `${window.location.protocol}//${window.location.hostname}${window.location.port ? `:${window.location.port}` : ""
     }`;
 
-  // Generic fetcher for doctypes
+  // Detect URL param
+  const pathParts = window.location.pathname.split("/");
+  const processMapId =
+    pathParts[pathParts.length - 1] !== "process-map-builder"
+      ? pathParts[pathParts.length - 1]
+      : null;
+
+  // Fetch docType helper
   const fetchDocType = async (doctypeName) => {
     try {
       const response = await fetch(
         `${BASE_URL}/api/resource/${doctypeName}?fields=["*"]`,
         {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
         }
       );
@@ -45,18 +56,19 @@ export function App() {
     }
   };
 
-  // Fetch single Item details (with FG components)
   const fetchItemDetails = async (itemName) => {
+    if (!itemName) return null;
     try {
-      const response = await fetch(`${BASE_URL}/api/resource/Item/${itemName}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${BASE_URL}/api/resource/Item/${itemName}`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        }
+      );
       const result = await response.json();
-      return result.data; // full Item doc with FG components
+      return result.data;
     } catch (error) {
       console.error("Error fetching Item details:", error);
       return null;
@@ -69,9 +81,7 @@ export function App() {
         `${BASE_URL}/api/resource/Process Map?fields=["*"]`,
         {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
         }
       );
@@ -83,7 +93,7 @@ export function App() {
     }
   };
 
-  // On mount → get all Items for dropdown
+  // Load dropdown items
   useEffect(() => {
     const loadItems = async () => {
       const itemList = await fetchDocType("Item");
@@ -92,145 +102,230 @@ export function App() {
     loadItems();
   }, []);
 
-  // Confirm item selection → fetch FG components + process map data
+  // Case 2 → URL has processMapId → fetch directly
+  useEffect(() => {
+    const loadExistingMap = async () => {
+      if (!processMapId) return;
+
+      try {
+        const res = await fetch(
+          `${BASE_URL}/api/resource/Process Map/${processMapId}?fields=["*"]`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+          }
+        );
+
+        const result = await res.json();
+        const mapData = result.data;
+
+        setProcessMapName(mapData.map_name);
+        setProcessMapNo(mapData.process_map_number);
+        setDescription(mapData.description);
+        setSelectedItem(mapData.select_fg);
+
+        // ✅ Normalize nodes & edges here
+        setLoadedNodes(normalizeNodes(JSON.parse(mapData.nodes || "[]")));
+        setLoadedEdges(normalizeEdges(JSON.parse(mapData.edges || "[]")));
+
+        // FG components
+        if (mapData.select_fg) {
+          const details = await fetchItemDetails(mapData.select_fg);
+          const fgComps =
+            details?.custom_fg_components?.map((row) => row.component_name) ||
+            [];
+          setFgComponents(fgComps);
+        }
+
+        // Fetch other references in parallel
+        const [opData, pgData, streamData, operationData, pmData] =
+          await Promise.all([
+            fetchDocType("Operation Process"),
+            fetchDocType("Process Group"),
+            fetchDocType("Stream"),
+            fetchDocType("Operation"),
+            fetchProcessMaps(),
+          ]);
+
+        let operationDataProcessed = operationData?.map((row) => ({
+          process_name: row.name,
+        }));
+        setOperationProcesses(operationDataProcessed);
+        setProcessGroups(pgData);
+        setStreams(streamData);
+        setOperation(operationData);
+        setProcessMaps(pmData);
+
+        setShowItemModal(false); // 🚀 Skip modal if URL provided
+        setIsEditMode(true)
+      } catch (err) {
+        console.error("❌ Failed to load process map:", err);
+      }
+    };
+
+    loadExistingMap();
+  }, [processMapId]);
+
   const handleConfirmItem = async () => {
     if (!selectedItem) return;
 
     const details = await fetchItemDetails(selectedItem);
-
-    // ✅ Extract FG Components
-    const fgComps = details?.custom_fg_components?.map((row) => row.component_name) || [];
+    const fgComps =
+      details?.custom_fg_components?.map((row) => row.component_name) || [];
     setFgComponents(fgComps);
 
-    // Fetch other process map related data
-    const [opData, pgData, streamData, operationData, pmData] = await Promise.all([
-      fetchDocType("Operation Process"),
-      fetchDocType("Process Group"),
-      fetchDocType("Stream"),
-      fetchDocType("Operation"),
-      fetchProcessMaps(),
-    ]);
+    const [opData, pgData, streamData, operationData, pmData] =
+      await Promise.all([
+        fetchDocType("Operation Process"),
+        fetchDocType("Process Group"),
+        fetchDocType("Stream"),
+        fetchDocType("Operation"),
+        fetchProcessMaps(),
+      ]);
 
-    let operationDataProcessed = operationData?.map((row) => {
-      return { process_name: row.name };
-    });
-
+    let operationDataProcessed = operationData?.map((row) => ({
+      process_name: row.name,
+    }));
     setOperationProcesses(operationDataProcessed);
     setProcessGroups(pgData);
     setStreams(streamData);
     setOperation(operationData);
     setProcessMaps(pmData);
 
-    setShowItemModal(false); // close modal once everything is ready
+    setShowItemModal(false);
   };
 
   return (
     <>
-      {/* Item Selection Modal */}
-      {/* <Modal show={showItemModal} backdrop="static" keyboard={false}>
-        <Modal.Header>
-          <Modal.Title>Select an Item</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <select
-            className="form-select"
-            value={selectedItem || ""}
-            onChange={(e) => setSelectedItem(e.target.value)}
-          >
-            <option value="">-- Select Item --</option>
-            {items.map((item) => (
-              <option key={item.name} value={item.name}>
-                {item.item_name || item.name}
-              </option>
-            ))}
-          </select>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button
-            variant="primary"
-            onClick={handleConfirmItem}
-            disabled={!selectedItem}
-          >
-            Confirm
-          </Button>
-        </Modal.Footer>
-      </Modal> */}
+      {/* Case 1 → Only show modal if no mapId */}
+      {/* {!processMapId && (
+        <Modal show={showItemModal} backdrop="static" keyboard={false}>
+          <Modal.Header>
+            <Modal.Title>Enter Process Map Details</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <label className="form-label fw-semibold">FG Item</label>
+            <select
+              className="form-select mb-3"
+              value={selectedItem || ""}
+              onChange={(e) => setSelectedItem(e.target.value)}
+            >
+              <option value="">-- Select Item --</option>
+              {items.map((item) => (
+                <option key={item.name} value={item.name}>
+                  {item.item_name || item.name}
+                </option>
+              ))}
+            </select>
 
-      <Modal show={showItemModal} backdrop="static" keyboard={false}>
-        <Modal.Header>
-          <Modal.Title>Enter Process Map Details</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {/* Select FG Item */}
-          <div>
-            <div>
+            <label className="form-label fw-semibold">Process Map Name</label>
+            <input
+              type="text"
+              className="form-control mb-3"
+              value={processMapName}
+              onChange={(e) => setProcessMapName(e.target.value)}
+            />
+
+            <label className="form-label fw-semibold">Process Map Number</label>
+            <input
+              type="text"
+              className="form-control mb-3"
+              value={processMapNo}
+              onChange={(e) => setProcessMapNo(e.target.value)}
+            />
+
+            <label className="form-label fw-semibold">Description</label>
+            <textarea
+              className="form-control"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </Modal.Body>
+          <Modal.Footer>
+            <Button
+              variant="primary"
+              onClick={handleConfirmItem}
+              disabled={!selectedItem || !processMapName || !processMapNo}
+            >
+              Confirm
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      )} */}
+
+      {!processMapId && (
+        <Modal show={showItemModal} backdrop="static" keyboard={false}>
+          <Modal.Header>
+            <Modal.Title>Enter Process Map Details</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {/* FG Item Group */}
+            <div className="mb-3">
               <label className="form-label fw-semibold">FG Item</label>
+              <div>
+                <select
+                  className="form-select"
+                  value={selectedItem || ""}
+                  onChange={(e) => setSelectedItem(e.target.value)}
+                >
+                  <option value="">-- Select Item --</option>
+                  {items.map((item) => (
+                    <option key={item.name} value={item.name}>
+                      {item.item_name || item.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
             </div>
-            <div>
-              <select
-                className="form-select form-select-lg mb-3 rounded border shadow-sm"
-                value={selectedItem || ""}
-                onChange={(e) => setSelectedItem(e.target.value)}
-                style={{ backgroundColor: '#f8f9fa' }}
-              >
-                <option value="">-- Select Item --</option>
-                {items.map((item) => (
-                  <option key={item.name} value={item.name}>
-                    {item.item_name || item.name}
-                  </option>
-                ))}
-              </select>
+
+            {/* Process Map Name Group */}
+            <div className="mb-3">
+              <label className="form-label fw-semibold">Process Map Name</label>
+              <input
+                type="text"
+                className="form-control"
+                value={processMapName}
+                onChange={(e) => setProcessMapName(e.target.value)}
+              />
             </div>
 
+            {/* Process Map Number Group */}
+            <div className="mb-3">
+              <label className="form-label fw-semibold">Process Map Number</label>
+              <input
+                type="text"
+                className="form-control"
+                value={processMapNo}
+                onChange={(e) => setProcessMapNo(e.target.value)}
+              />
+            </div>
 
-          </div>
+            {/* Description Group */}
+            <div className="mb-3">
+              <label className="form-label fw-semibold">Description</label>
+              <textarea
+                className="form-control"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3} // Optional: Add rows for better textarea sizing
+              />
+            </div>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button
+              variant="primary"
+              onClick={handleConfirmItem}
+              disabled={!selectedItem || !processMapName || !processMapNo}
+            >
+              Confirm
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      )}
 
-
-          {/* Process Map Name */}
-          <label className="form-label fw-semibold">Process Map Name</label>
-          <input
-            type="text"
-            className="form-control mb-3 rounded border shadow-sm"
-            value={processMapName}
-            onChange={(e) => setProcessMapName(e.target.value)}
-            placeholder="Enter Process Map Name"
-          />
-
-          {/* Process Map Number */}
-          <label className="form-label fw-semibold">Process Map Number</label>
-          <input
-            type="text"
-            className="form-control mb-3 rounded border shadow-sm"
-            value={processMapNo}
-            onChange={(e) => setProcessMapNo(e.target.value)}
-            placeholder="Enter Process Map Number"
-          />
-
-          {/* Description */}
-          <label className="form-label fw-semibold">Description</label>
-          <textarea
-            className="form-control rounded border shadow-sm"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Optional description"
-            rows={3}
-          />
-        </Modal.Body>
-
-        <Modal.Footer>
-          <Button
-            variant="primary"
-            onClick={handleConfirmItem}
-            disabled={!selectedItem || !processMapName || !processMapNo}
-          >
-            Confirm
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-
-
-      {/* Render FlowCanvas only after FG components are ready */}
+      {/* Canvas */}
       {!showItemModal && fgComponents.length > 0 && (
         <ReactFlowProvider>
           <FlowCanvas
@@ -243,6 +338,10 @@ export function App() {
             selectedItem={selectedItem}
             description={description}
             processMapName={processMapName}
+            initialNodes={loadedNodes}
+            initialEdges={loadedEdges}
+            isEditMode={isEditMode}
+            setIsEditMode={setIsEditMode}
           />
         </ReactFlowProvider>
       )}

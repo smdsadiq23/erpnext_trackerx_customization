@@ -13,7 +13,8 @@
   "description",
   "nodes",
   "edges",
-  "amended_from"
+  "amended_from",
+  "edit_map_button"
  ],
  "fields": [
   {
@@ -72,13 +73,18 @@
    "label": "Process Map Number",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "edit_map_button",
+   "fieldtype": "Button",
+   "label": "Edit"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-03 13:40:08.921679",
+ "modified": "2025-09-14 02:09:52.380891",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Process Map",
