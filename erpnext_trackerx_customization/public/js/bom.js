@@ -109,56 +109,140 @@ frappe.ui.form.on('BOM', {
         }
     },
 
-    calculate_summary: function(frm) {
-        if (!frm.doc.operations || frm.doc.operations.length === 0) {
+    calculate_summary: async function (frm) {
+        // (optional) commit any open Operations row so latest values are in frm.doc
+        const grid = frm.fields_dict["operations"]?.grid;
+        const open = grid?.grid_rows?.find(r => r.open_form);
+        if (open) { open.toggle_view(); await frappe.after_ajax(); }
+
+        const ops = frm.doc.operations || [];
+        if (!ops.length) {
             frm.set_value('custom_operations_summary', []);
             return;
         }
 
-        console.log("reached here")
+        const grouped = {}; // key: "<group>__<method>"
+        ops.forEach(op => {
+            const op_group  = op.custom_operation_group;
+            const op_method = op.custom_order_method;      // <- field from BOM Operation
+            if (!op_group || !op_method) return;
 
-        const grouped = {};
-        frm.doc.operations.forEach(op => {
-            const op_group = op.custom_operation_group;  // ← Updated field name
-            if (!op_group) return; // skip if not set
-
-            if (!grouped[op_group]) {
-                grouped[op_group] = {
-                    operation_group: op_group,           // ← Updated field name
+            const key = `${op_group}__${op_method}`;
+            if (!grouped[key]) {
+                grouped[key] = {
+                    order_method: op_method,                    
+                    operation_group: op_group,
                     time_in_mins: 0,
                     operating_cost: 0
                 };
             }
-            grouped[op_group].time_in_mins += op.time_in_mins || 0;
-            grouped[op_group].operating_cost += op.operating_cost || 0;
+            grouped[key].time_in_mins   += flt(op.time_in_mins || 0);
+            grouped[key].operating_cost += flt(op.operating_cost || 0);
         });
 
-        const summary = Object.values(grouped);
-        frm.set_value('custom_operations_summary', summary.map(row => ({
-            operation_group: row.operation_group,
-            operation_time: row.time_in_mins,
-            operating_cost: row.operating_cost
-        })));
-    }
+        const summary_rows = Object.values(grouped).map(r => ({
+            order_method: r.order_method,
+            operation_group: r.operation_group,
+            operation_time: r.time_in_mins,
+            operating_cost: r.operating_cost
+        }));
+
+        frm.set_value('custom_operations_summary', summary_rows);
+    },
+
+    calculate_order_method_costs: async function (frm) {
+        // Commit any open Operations row so latest values are in frm.doc
+        const grid = frm.fields_dict["operations"]?.grid;
+        const open = grid?.grid_rows?.find(r => r.open_form);
+        if (open) { open.toggle_view(); await frappe.after_ajax(); }
+
+        const ops = frm.doc.operations || [];
+        if (!ops.length) {
+            await frm.set_value('custom_cost_by_order_method', []);
+            return;
+        }
+
+        // Use company-currency totals for consistency with row operating_cost
+        const raw   = flt(frm.doc.raw_material_cost || 0);
+        const scrap = flt(frm.doc.scrap_material_cost || 0);
+
+        // Robust number coercion (handles "₹ 2,000.00")
+        const toNumber = (v) => {
+            if (typeof v === 'number') return v;
+            const n = parseFloat(String(v).replace(/[^0-9.-]/g, ''));
+            return isNaN(n) ? 0 : n;
+        };
+
+        // Group by order method
+        const grouped = {}; // key: "<order_method>"
+        ops.forEach(op => {
+            const om = op.custom_order_method;
+            if (!om) return;
+
+            if (!grouped[om]) {
+                grouped[om] = {
+                    order_method: om,
+                    operating_cost: 0
+                };
+            }
+
+            // Prefer explicit operating_cost (company currency); fall back to compute if absent
+            let cost = toNumber(op.operating_cost ?? 0);
+            if (!cost) {
+                const mins   = toNumber(op.time_in_mins ?? op.operation_time ?? 0);
+                const hrRate = toNumber(op.hour_rate ?? 0);
+                const fixed  = toNumber(op.fixed_cost ?? 0);
+                cost = (mins / 60) * hrRate + fixed;
+            }
+
+            grouped[om].operating_cost += cost;
+        });
+
+        // Build rows and write in one go
+        const rows = Object.values(grouped).map(r => ({
+            omc_order_method:   r.order_method,
+            omc_operating_cost: r.operating_cost,
+            omc_total_cost:     r.operating_cost + raw + scrap
+        }));
+
+        frm.set_value('custom_cost_by_order_method', rows);
+    },
+
+    base_raw_material_cost: function(frm) {
+        frm.trigger('calculate_order_method_costs');
+    },
+    
+    base_scrap_material_cost: function(frm) {
+        frm.trigger('calculate_order_method_costs');
+    }    
 });
 
 
 frappe.ui.form.on('BOM Operation', {
     add_row: function(frm, cdt, cdn) {
         frm.trigger('calculate_summary');
+        frm.trigger('calculate_order_method_costs'); 
     },
     remove_row: function(frm, cdt, cdn) {
         frm.trigger('calculate_summary');
+        frm.trigger('calculate_order_method_costs'); 
     },
+    custom_order_method: function(frm, cdt, cdn) { 
+        frm.trigger('calculate_summary');
+        frm.trigger('calculate_order_method_costs');
+    },       
     custom_operation_group: function(frm, cdt, cdn) {
         frm.trigger('calculate_summary');
+        frm.trigger('calculate_order_method_costs'); 
     },
     time_in_mins: function(frm, cdt, cdn) {
         frm.trigger('calculate_summary');
+        frm.trigger('calculate_order_method_costs'); 
     },
     operating_cost: function(frm, cdt, cdn) {
         frm.trigger('calculate_summary');
-    }   
+        frm.trigger('calculate_order_method_costs'); 
+    } 
 });
 
 
