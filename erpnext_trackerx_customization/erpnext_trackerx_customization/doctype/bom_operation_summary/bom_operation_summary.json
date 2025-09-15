@@ -6,6 +6,7 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "order_method",
   "operation_group",
   "operation_time",
   "operating_cost"
@@ -36,13 +37,22 @@
    "label": "Operation Group",
    "options": "Operation Group",
    "read_only": 1
+  },
+  {
+   "columns": 2,
+   "fieldname": "order_method",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Order Method",
+   "options": "Order Method",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-13 11:59:45.633060",
+ "modified": "2025-09-15 16:46:55.785401",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "BOM Operation Summary",

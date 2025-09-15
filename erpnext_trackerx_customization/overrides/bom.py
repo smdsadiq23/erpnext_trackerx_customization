@@ -6,7 +6,10 @@ from frappe.utils import flt
 class CustomBOM(BaseBOM):
     def before_save(self):
         self.calculate_operation_summary()
-        super().before_save()
+
+    def before_submit(self):
+        # Optional: in case ERPNext or an app re-triggers costing during submit
+        self.calculate_order_method_costs()
 
     def calculate_operation_summary(self):
         # Clear existing rows
@@ -15,28 +18,34 @@ class CustomBOM(BaseBOM):
         if not self.operations:
             return
 
-        grouped = {}
+        grouped = {}  # key: (group, method)
         for op in self.operations:
-            op_group = op.custom_operation_group  # ← Updated field name
-            if not op_group:
-                continue  # skip if not set
+            op_group = getattr(op, "custom_operation_group", None)
+            order_method = getattr(op, "custom_order_method", None)
+            if not op_group or not order_method:
+                continue  # skip if either is not set
 
-            if op_group not in grouped:
-                grouped[op_group] = {
-                    "operation_group": op_group,      # ← Updated field name
-                    "time_in_mins": 0,
-                    "operating_cost": 0
+            key = (op_group, order_method)
+            if key not in grouped:
+                grouped[key] = {
+                    "operation_group": op_group,
+                    "order_method": order_method,
+                    "time_in_mins": 0.0,
+                    "operating_cost": 0.0,
                 }
-            grouped[op_group]["time_in_mins"] += op.time_in_mins or 0
-            grouped[op_group]["operating_cost"] += op.operating_cost or 0
 
-        # Add to child table
-        for data in grouped.values():
+            grouped[key]["time_in_mins"] += flt(getattr(op, "time_in_mins", 0))
+            # use operating_cost (company currency). If you need base, swap to base_operating_cost.
+            grouped[key]["operating_cost"] += flt(getattr(op, "operating_cost", 0))
+
+        # Add to child table (optionally sorted by group, then method)
+        for _, data in sorted(grouped.items(), key=lambda k: (k[0][0], k[0][1])):
             self.append("custom_operations_summary", {
-                "operation_group": data["operation_group"],    # ← Updated
+                "order_method": data["order_method"],
+                "operation_group": data["operation_group"],
                 "operation_time": data["time_in_mins"],
-                "operating_cost": data["operating_cost"]
-            })   
+                "operating_cost": data["operating_cost"],
+            })       
 
     def calculate_cost(self, *args, **kwargs):
         # Step 1: Standard ERPNext costing logic
@@ -53,6 +62,33 @@ class CustomBOM(BaseBOM):
             + flt(self.operating_cost)
             + flt(self.scrap_material_cost)
         )
+
+        self.calculate_order_method_costs()
+
+    def calculate_order_method_costs(self):
+        self.set("custom_cost_by_order_method", [])
+        if not self.operations:
+            return
+
+        # company currency fields
+        raw = flt(self.raw_material_cost) or 0
+        scrap = flt(self.scrap_material_cost) or 0
+
+        grouped = {}
+        for op in self.operations:
+            om = op.custom_order_method
+            if not om:
+                continue
+            grouped.setdefault(om, {"order_method": om, "operating_cost": 0})
+            grouped[om]["operating_cost"] += flt(op.operating_cost) or 0  # company currency
+
+        for data in grouped.values():
+            total_cost = data["operating_cost"] + raw + scrap
+            self.append("custom_cost_by_order_method", {
+                "omc_order_method": data["order_method"],
+                "omc_operating_cost": data["operating_cost"],
+                "omc_total_cost": total_cost,
+            })         
 
     def calculate_custom_table_costs(self):
         custom_tables = [
@@ -89,8 +125,6 @@ class CustomBOM(BaseBOM):
                     flt(getattr(d, "stock_qty", d.qty), d.precision("stock_qty"))
                     / flt(self.quantity, self.precision("quantity"))
                 )
-
-
 
     def calculate_custom_material_costs(self):
         size_cost_map = defaultdict(list)
