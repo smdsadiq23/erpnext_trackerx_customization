@@ -58,59 +58,6 @@ frappe.ui.form.on('Purchase Order', {
         }
     },
 
-    custom_process_type: function(frm) {
-        if (!frm.doc.custom_process_type) {
-            // Clear filter if no process selected
-            frm.set_query('supplier', function() {
-                return {};
-            });
-            return;
-        }
-
-        // Show loading state
-        frm.set_df_property('supplier', 'description', 'Loading suppliers...');
-        frm.refresh_field('supplier');
-
-        frappe.call({
-            method: 'erpnext_trackerx_customization.api.purchase_order.get_suppliers_by_process_type',
-            args: {
-                process_type: frm.doc.custom_process_type
-            },
-            callback: function(r) {
-                frm.set_df_property('supplier', 'description', '');
-                if (r.exc) {
-                    frappe.msgprint(__('Error loading suppliers.'));
-                    frm.set_query('supplier', function() { return {}; });
-                    return;
-                }
-
-                const suppliers = r.message || [];
-
-                if (suppliers.length === 0) {
-                    frappe.msgprint(__('No suppliers found for this process type.'));
-                    frm.set_query('supplier', function() { return { filters: { name: ['in', []] } }; });
-                    return;
-                }
-
-                // Set filter on supplier field
-                frm.set_query('supplier', function() {
-                    return {
-                        filters: {
-                            name: ['in', suppliers]
-                        }
-                    };
-                });
-
-                // If current supplier is not in list, clear it
-                if (frm.doc.supplier && !suppliers.includes(frm.doc.supplier)) {
-                    frm.set_value('supplier', '');
-                }
-
-                frm.refresh_field('supplier');
-            }
-        });
-    },
-
     supplier: function(frm) {
         if (!frm.doc.supplier) {
             // Clear filter if no supplier selected
