@@ -69,7 +69,7 @@ fixtures = [
             ["parent", "=", "Supplier"],
             ["fieldname", "=", "supplier_type"]
         ]
-    }
+    } 
 ]
 
 # AQL data fixtures for import during migration
@@ -274,7 +274,7 @@ doc_events= {
     },
     "Supplier Group": {
         "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.supplier_group.before_delete"
-    },
+    }
 }
 
 # Scheduled Tasks
@@ -388,6 +388,7 @@ override_whitelisted_methods = {
 # default_log_clearing_doctypes = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
+
 
 
 boot_session = "erpnext_trackerx_customization.utils.constants.boot_session"

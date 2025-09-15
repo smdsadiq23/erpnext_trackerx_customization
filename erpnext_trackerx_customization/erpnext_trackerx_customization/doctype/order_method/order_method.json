@@ -1,34 +1,19 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:group_name",
- "color": "Red",
- "creation": "2025-09-01 20:04:11.489974",
+ "autoname": "field:order_method",
+ "creation": "2025-09-12 18:39:29.370881",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "group_number",
-  "group_name"
+  "order_method"
  ],
  "fields": [
   {
-   "allow_in_quick_entry": 1,
-   "bold": 1,
-   "fieldname": "group_number",
+   "fieldname": "order_method",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Group Number",
-   "reqd": 1,
-   "unique": 1
-  },
-  {
-   "allow_in_quick_entry": 1,
-   "fieldname": "group_name",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Group Name",
+   "label": "Order Method",
    "reqd": 1,
    "unique": 1
   }
@@ -36,10 +21,10 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-13 11:58:38.383521",
+ "modified": "2025-09-13 11:44:26.899858",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
- "name": "Operation Group",
+ "name": "Order Method",
  "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
@@ -61,5 +46,5 @@
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
- "title_field": "group_name"
+ "title_field": "order_method"
 }

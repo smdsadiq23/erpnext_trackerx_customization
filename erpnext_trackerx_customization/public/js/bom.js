@@ -115,26 +115,28 @@ frappe.ui.form.on('BOM', {
             return;
         }
 
+        console.log("reached here")
+
         const grouped = {};
         frm.doc.operations.forEach(op => {
-            const ws_type = op.workstation_type;
-            if (!ws_type) return; // skip if not set
+            const op_group = op.custom_operation_group;  // ← Updated field name
+            if (!op_group) return; // skip if not set
 
-            if (!grouped[ws_type]) {
-                grouped[ws_type] = {
-                    workstation_type: ws_type,
+            if (!grouped[op_group]) {
+                grouped[op_group] = {
+                    operation_group: op_group,           // ← Updated field name
                     time_in_mins: 0,
                     operating_cost: 0
                 };
             }
-            grouped[ws_type].time_in_mins += op.time_in_mins || 0;
-            grouped[ws_type].operating_cost += op.operating_cost || 0;
+            grouped[op_group].time_in_mins += op.time_in_mins || 0;
+            grouped[op_group].operating_cost += op.operating_cost || 0;
         });
 
         const summary = Object.values(grouped);
         frm.set_value('custom_operations_summary', summary.map(row => ({
-            workstation_type: row.workstation_type,
-            operation_time: row.time_in_mins,        // 👈 mapped to your target field
+            operation_group: row.operation_group,
+            operation_time: row.time_in_mins,
             operating_cost: row.operating_cost
         })));
     }
@@ -148,7 +150,7 @@ frappe.ui.form.on('BOM Operation', {
     remove_row: function(frm, cdt, cdn) {
         frm.trigger('calculate_summary');
     },
-    workstation_type: function(frm, cdt, cdn) {
+    custom_operation_group: function(frm, cdt, cdn) {
         frm.trigger('calculate_summary');
     },
     time_in_mins: function(frm, cdt, cdn) {
@@ -156,7 +158,7 @@ frappe.ui.form.on('BOM Operation', {
     },
     operating_cost: function(frm, cdt, cdn) {
         frm.trigger('calculate_summary');
-    }    
+    }   
 });
 
 
@@ -451,6 +453,8 @@ function copy_bom_operations_from_item(frm) {
                 
                 // Refresh the operations table to show the copied data
                 frm.refresh_field("operations");
+
+                frm.trigger('calculate_summary');
                 
                 // Show success message
                 frappe.show_alert({
