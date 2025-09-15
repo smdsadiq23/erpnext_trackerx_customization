@@ -381,3 +381,23 @@ override_whitelisted_methods = {
 
 
 boot_session = "erpnext_trackerx_customization.utils.constants.boot_session"
+
+# Document Events
+# ---------------
+doc_events = {
+    "Warehouse": {
+        "after_insert": "erpnext_trackerx_customization.warehouse_hooks.on_warehouse_create",
+        "on_update": "erpnext_trackerx_customization.warehouse_hooks.on_warehouse_update",
+    }
+}
+
+# Background Jobs
+# ---------------
+scheduler_events = {
+    "daily": [
+        "erpnext_trackerx_customization.warehouse_hooks.daily_capacity_sync"
+    ],
+    "weekly": [
+        "erpnext_trackerx_customization.warehouse_hooks.weekly_capacity_report"
+    ]
+}
