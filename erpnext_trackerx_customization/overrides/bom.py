@@ -6,6 +6,7 @@ from frappe.utils import flt
 class CustomBOM(BaseBOM):
     def before_save(self):
         self.calculate_operation_summary()
+        super().before_save()
 
     def calculate_operation_summary(self):
         # Clear existing rows
