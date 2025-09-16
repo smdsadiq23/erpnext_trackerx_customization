@@ -39,7 +39,7 @@ fixtures = [
         "dt": "Custom Field",
         "filters": [
             [
-                "dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
+                "dt", "in", ["Item", "BOM", "BOM Item", 'BOM Operation', "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
                           "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item", "Purchase Receipt Item", "Operation"
                           ],
             ],
@@ -53,7 +53,7 @@ fixtures = [
         "dt": "Property Setter",
         "filters": [
             [
-                "doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
+                "doc_type", "in", ["Item", "BOM", "BOM Item", 'BOM Operation', "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
                           "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item", "Purchase Receipt Item", "Operation"
                             ]
             ],
@@ -274,6 +274,10 @@ doc_events= {
     },
     "Supplier Group": {
         "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.supplier_group.before_delete"
+    },
+    "Warehouse": {
+        "after_insert": "erpnext_trackerx_customization.warehouse_hooks.on_warehouse_create",
+        "on_update": "erpnext_trackerx_customization.warehouse_hooks.on_warehouse_update",
     }
 }
 
@@ -390,5 +394,15 @@ override_whitelisted_methods = {
 # }
 
 
-
 boot_session = "erpnext_trackerx_customization.utils.constants.boot_session"
+
+# Background Jobs
+# ---------------
+scheduler_events = {
+    "daily": [
+        "erpnext_trackerx_customization.warehouse_hooks.daily_capacity_sync"
+    ],
+    "weekly": [
+        "erpnext_trackerx_customization.warehouse_hooks.weekly_capacity_report"
+    ]
+}

@@ -25,6 +25,7 @@
   "ordered_quantity",
   "supplier_part_no__code",
   "accepted_warehouse",
+  "putaway_rule",
   "amount",
   "shelf_life_months",
   "expiration_date",
@@ -74,6 +75,14 @@
    "in_list_view": 1,
    "label": "Accepted Warehouse",
    "read_only": 1
+  },
+  {
+   "fieldname": "putaway_rule",
+   "fieldtype": "Link",
+   "label": "Applied Putaway Rule",
+   "options": "Putaway Rule",
+   "read_only": 1,
+   "description": "Putaway rule that was applied to assign the warehouse"
   },
   {
    "allow_in_quick_entry": 1,

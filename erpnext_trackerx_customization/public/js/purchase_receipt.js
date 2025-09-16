@@ -41,31 +41,21 @@ function openLocationDialog(frm, cdt, cdn) {
                         default: ROOT,
                         onchange: function () {
                             ROOT = d.get_value("root_warehouse");
-                            if (!ROOT) return;
+                            d.fields_dict.html_levels.$wrapper.empty();
+                            d.selected_bin = null;
 
-                            // Fetch Zones under selected root
-                            frappe.call({
-                                method: "frappe.desk.treeview.get_children",
-                                args: { doctype: "Warehouse", parent: ROOT },
-                                callback: function (res2) {
-                                    const zones = (res2.message || []).map(x => x.value);
-                                    const labels = buildLabelSequence("Zone");
-                                    d.fields_dict.html_zone.$wrapper.empty();
-                                    renderBoxes(d, d.fields_dict.html_zone.$wrapper, zones, labels[0], zoneSelected);
-                                }
-                            });
+                            if (ROOT) {
+                                loadChildrenRecursive(d, ROOT, 1);
+                            }
                         }
                     },
-                    { fieldname: "html_zone", fieldtype: "HTML" },
-                    { fieldname: "html_rack", fieldtype: "HTML" },
-                    { fieldname: "html_level", fieldtype: "HTML" },
-                    { fieldname: "html_bin", fieldtype: "HTML" }
+                    { fieldname: "html_levels", fieldtype: "HTML" }
                 ],
                 primary_action_label: __("Set Warehouse"),
-                primary_action(values) {
+                primary_action() {
                     let warehouse = d.selected_bin || "";
                     if (!warehouse) {
-                        frappe.msgprint(__("Please select a location"));
+                        frappe.msgprint(__("Please select a Bin (final level)"));
                         return;
                     }
                     frappe.model.set_value(cdt, cdn, "custom_selected_warehouse", warehouse);
@@ -79,69 +69,50 @@ function openLocationDialog(frm, cdt, cdn) {
     });
 }
 
-// --- Supporting Functions ---
-function renderBoxes(dialog, wrapper, items, label, clickHandler, selected) {
-    if (!items || !items.length) {
-        wrapper.html(`<div><b>${label}:</b> ${__("No options available")}</div>`);
-        return;
-    }
-    let html = `<div><b>${label}:</b></div><div style="display: flex; flex-wrap: wrap; gap: 10px;">`;
-    html += items.map(i => `
-        <div class="wh-box ${selected === i ? "active" : ""}" 
-             data-value="${i}"
-             style="padding: 6px 12px; border: 1px solid #ccc; border-radius: 6px;
-                    cursor: pointer; background:${selected === i ? '#4B7BEC' : '#fff'};
-                    color:${selected === i ? '#fff' : '#000'};">
-            ${i}
-        </div>`).join("");
-    html += "</div>";
-    wrapper.html(html);
-
-    wrapper.find(".wh-box").on("click", function () {
-        wrapper.find(".wh-box").removeClass("active").css({ background: "#fff", color: "#000" });
-        $(this).addClass("active").css({ background: "#96be37", color: "#fff" });
-        clickHandler(dialog, $(this).data("value"));
-    });
-}
-
-function zoneSelected(dialog, zone) {
-    dialog.selected_zone = zone;
-    loadChildren(zone, (racks) => {
-        renderBoxes(dialog, dialog.fields_dict.html_rack.$wrapper, racks, "Rack", rackSelected);
-    });
-}
-
-function rackSelected(dialog, rack) {
-    dialog.selected_rack = rack;
-    loadChildren(rack, (levels) => {
-        renderBoxes(dialog, dialog.fields_dict.html_level.$wrapper, levels, "Level", levelSelected);
-    });
-}
-
-function levelSelected(dialog, level) {
-    dialog.selected_level = level;
-    loadChildren(level, (bins) => {
-        renderBoxes(dialog, dialog.fields_dict.html_bin.$wrapper, bins, "Bin", binSelected);
-    });
-}
-
-function binSelected(dialog, bin) {
-    dialog.selected_bin = bin;
-}
-
-function loadChildren(parentName, callback) {
+// --- Recursive Child Loader ---
+function loadChildrenRecursive(dialog, parentName, level) {
     frappe.call({
         method: "frappe.desk.treeview.get_children",
         args: { doctype: "Warehouse", parent: parentName },
         callback(res) {
-            let opts = (res.message || []).map(x => x.value);
-            callback(opts);
+            const children = (res && res.message) ? res.message.map(x => x.value) : [];
+
+            if (!children.length) {
+                // no children → this is a Bin
+                dialog.selected_bin = parentName;
+                frappe.msgprint(__("Selected Bin: {0}", [parentName]));
+                return;
+            }
+
+            const wrapper = dialog.fields_dict.html_levels.$wrapper;
+            const label = __("Level {0}", [level]);
+
+            renderBoxes(dialog, wrapper, children, label, (dlg, child) => {
+                dlg.selected_bin = null;
+                loadChildrenRecursive(dlg, child, level + 1);
+            });
         }
     });
 }
 
-function buildLabelSequence(start) {
-    const seq = ["Zone", "Rack", "Level", "Bin"];
-    const idx = seq.indexOf(start);
-    return idx === -1 ? seq : seq.slice(idx);
+// --- Render clickable boxes ---
+function renderBoxes(dialog, wrapper, items, label, clickHandler) {
+    let html = `
+        <div><b>${label}:</b></div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin:5px 0 15px">
+            ${items.map(i => `
+                <div class="wh-box"
+                     data-value="${i}"
+                     style="padding:8px 14px; border:1px solid #ccc; border-radius:6px;
+                            cursor:pointer; background:#fff; color:#000;">
+                    ${i}
+                </div>`).join("")}
+        </div>`;
+    wrapper.append(html);
+
+    wrapper.find(".wh-box").off("click").on("click", function () {
+        wrapper.find(".wh-box").css({ background: "#fff", color: "#000" });
+        $(this).css({ background: "#82a52f", color: "#fff" });
+        clickHandler(dialog, $(this).data("value"));
+    });
 }
