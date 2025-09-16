@@ -40,28 +40,36 @@ fixtures = [
         "filters": [
             [
                 "dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
-                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item", "Purchase Receipt Item"
+                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item", "Purchase Receipt Item", "Operation"
                           ],
             ],
             [
                 "module", "=", "Erpnext Trackerx Customization"
             ]
-
-        ]
+        ],
+        "order_by": "modified asc"
     },
     {
         "dt": "Property Setter",
         "filters": [
             [
                 "doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
-                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item", "Purchase Receipt Item"
+                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item", "Purchase Receipt Item", "Operation"
                             ]
             ],
             [
                 "module", "=", "Erpnext Trackerx Customization"
             ]
+        ],
+        "order_by": "modified asc"
+    },
+    {
+        "doctype": "DocField",
+        "filters": [
+            ["parent", "=", "Supplier"],
+            ["fieldname", "=", "supplier_type"]
         ]
-    }
+    } 
 ]
 
 # AQL data fixtures for import during migration
@@ -93,6 +101,7 @@ app_include_css = [
 ]
 app_include_js = [
     "/assets/erpnext_trackerx_customization/js/fabric_inspection_routes.js",
+    "/assets/erpnext_trackerx_customization/js/process_map.js"
 ]
 
 
@@ -219,6 +228,7 @@ permission_query_conditions = {
 # 	"ToDo": "custom_app.overrides.CustomToDo"
 # }
 override_doctype_class = {
+    "Item": "erpnext_trackerx_customization.overrides.item.CustomItem",
     "BOM": "erpnext_trackerx_customization.overrides.bom.CustomBOM",
     "Pick List": "erpnext_trackerx_customization.overrides.pick_list.CustomPickList"
 }
@@ -265,6 +275,10 @@ doc_events= {
     "Supplier Group": {
         "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.supplier_group.before_delete"
     },
+    "Warehouse": {
+        "after_insert": "erpnext_trackerx_customization.warehouse_hooks.on_warehouse_create",
+        "on_update": "erpnext_trackerx_customization.warehouse_hooks.on_warehouse_update",
+    }
 }
 
 # Scheduled Tasks
@@ -381,15 +395,6 @@ override_whitelisted_methods = {
 
 
 boot_session = "erpnext_trackerx_customization.utils.constants.boot_session"
-
-# Document Events
-# ---------------
-doc_events = {
-    "Warehouse": {
-        "after_insert": "erpnext_trackerx_customization.warehouse_hooks.on_warehouse_create",
-        "on_update": "erpnext_trackerx_customization.warehouse_hooks.on_warehouse_update",
-    }
-}
 
 # Background Jobs
 # ---------------

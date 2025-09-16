@@ -43,6 +43,7 @@ def prepare_po_item(mrp_item, mrp_doc):
     po_item = {
         'item_code': mrp_item.item_code,
         'item_name': mrp_item.item_name,
+        "custom_size": mrp_item.size,
         'description': mrp_item.description,
         'qty': mrp_item.qty,
         'uom': mrp_item.uom,
@@ -95,6 +96,7 @@ def prepare_po_item_from_summary(summary_item, mrp_doc):
     
     return po_item
 
+
 def get_item_rate(item_code, company):
     """
     Get item rate from Item Price or Last Purchase Rate
@@ -122,8 +124,6 @@ def get_item_rate(item_code, company):
     valuation_rate = frappe.db.get_value('Item', item_code, 'valuation_rate')
     
     return valuation_rate or 0
-
-
 
 
 # File: erpnext_trackerx_customization/api/purchase_order.py
@@ -182,3 +182,82 @@ def make_goods_receipt_note(source_name, target_doc=None):
     }, target_doc, set_missing_values)
 
     return doc
+
+
+@frappe.whitelist()
+def get_fg_components_by_item(item_code):
+    """
+    Returns list of component_name from Item's custom_fg_components child table.
+    Safe for client-side use — no permission checks on child table.
+    """
+    if not item_code:
+        return []
+
+    # Fetch child table records — no permission check needed in server method
+    components = frappe.get_all(
+        "FG Components",  # ⚠️ REPLACE WITH YOUR ACTUAL CHILD TABLE DOCTYPE
+        filters={
+            "parent": item_code,
+            "parentfield": "custom_fg_components",
+            "parenttype": "Item"
+        },
+        fields=["name"],
+        order_by="idx"
+    )
+
+    # Return list of names
+    return [c.name for c in components]
+
+
+@frappe.whitelist()
+def get_rate_from_bom_by_order_method(item_code, supplier, order_method):
+    """
+    Fetch rate from BOM's custom_cost_by_order_method based on:
+    - Item (matched by item_code and custom_preferred_supplier)
+    - Its default BOM
+    - Order Method in BOM's cost_by_order_method table
+    """
+    if not item_code or not supplier or not order_method:
+        return None
+
+    # Step 1: Verify item matches supplier
+    item = frappe.db.get_value("Item", {
+        "name": item_code,
+        "custom_preferred_supplier": supplier
+    }, "name")
+
+    if not item:
+        frappe.log_error(f"Item {item_code} not linked to supplier {supplier}", "Purchase Order Rate Lookup")
+        return None
+
+    # Step 2: Get default BOM for item
+    bom_name = frappe.db.get_value("BOM", {
+        "item": item_code,
+        "is_default": 1,
+        "docstatus": 1
+    }, "name")
+    
+    if not bom_name:
+        frappe.log_error(f"No default BOM found for item {item_code}", "Purchase Order Rate Lookup")
+        return None
+
+    # Step 3: Get total_cost from custom_cost_by_order_method
+    total_cost = frappe.db.get_value("BOM Order Method Cost", {
+        "parent": bom_name,
+        "parentfield": "custom_cost_by_order_method",
+        "parenttype": "BOM",
+        "omc_order_method": order_method
+    }, "omc_total_cost")
+
+    frappe.msgprint(order_method)
+    frappe.msgprint(str(total_cost))
+
+    if total_cost is None:
+        frappe.log_error(f"No cost found for order method {order_method} in BOM {bom_name}", "Purchase Order Rate Lookup")
+        return None
+
+    # Return updated item data
+    return {
+        "rate": total_cost,
+        "message": f"Rate updated from BOM: ₹{total_cost}"
+    }

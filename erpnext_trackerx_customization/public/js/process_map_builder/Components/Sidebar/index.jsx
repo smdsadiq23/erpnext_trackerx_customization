@@ -32,7 +32,7 @@ const Sidebar = ({
       ))}
 
       <hr />
-      <h5>Process Groups</h5>
+      {/* <h5>Process Groups</h5>
       {processGroups.map((pg) => {
         const relatedProcesses = operationProcesses
           .filter((op) => op.process_group === pg.name)
@@ -82,7 +82,7 @@ const Sidebar = ({
         </div>
       ))}
 
-      <hr />
+      <hr /> */}
       <button onClick={handleSaveMap} className="btn btn-success w-100 mt-4">
         Save Process Map
       </button>
