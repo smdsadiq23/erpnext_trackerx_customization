@@ -59,9 +59,8 @@
   },
   {
    "fieldname": "test_category",
-   "fieldtype": "Select",
-   "label": "Test Category",
-   "options": "Physical Testing\nPhysical Properties\nChemical Testing\nVisual Inspection\nDimensional Check\nColor Matching\nOther"
+   "fieldtype": "Data",
+   "label": "Test Category"
   },
   {
    "fieldname": "column_break_2",

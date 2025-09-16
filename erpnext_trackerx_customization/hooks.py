@@ -274,6 +274,10 @@ doc_events= {
     },
     "Supplier Group": {
         "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.supplier_group.before_delete"
+    },
+    "Warehouse": {
+        "after_insert": "erpnext_trackerx_customization.warehouse_hooks.on_warehouse_create",
+        "on_update": "erpnext_trackerx_customization.warehouse_hooks.on_warehouse_update",
     }
 }
 
@@ -390,5 +394,15 @@ override_whitelisted_methods = {
 # }
 
 
-
 boot_session = "erpnext_trackerx_customization.utils.constants.boot_session"
+
+# Background Jobs
+# ---------------
+scheduler_events = {
+    "daily": [
+        "erpnext_trackerx_customization.warehouse_hooks.daily_capacity_sync"
+    ],
+    "weekly": [
+        "erpnext_trackerx_customization.warehouse_hooks.weekly_capacity_report"
+    ]
+}
