@@ -1,0 +1,51 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-15 13:26:59.621698",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "omc_order_method",
+  "omc_operating_cost",
+  "omc_total_cost"
+ ],
+ "fields": [
+  {
+   "fieldname": "omc_order_method",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Order Method",
+   "options": "Order Method",
+   "read_only": 1
+  },
+  {
+   "fieldname": "omc_operating_cost",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Operating Cost",
+   "read_only": 1
+  },
+  {
+   "fieldname": "omc_total_cost",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Total Cost",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-15 15:58:59.124066",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "BOM Order Method Cost",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
