@@ -221,14 +221,15 @@ frappe.ui.form.on('BOM', {
                 };
             }
 
-            // Prefer explicit operating_cost (company currency); fall back to compute if absent
+            // Prefer explicit operating_cost (company currency); fall back to compute if absent.
             let cost = toNumber(op.operating_cost ?? 0);
-            if (!cost) {
-                const mins   = toNumber(op.time_in_mins ?? op.operation_time ?? 0);
-                const hrRate = toNumber(op.hour_rate ?? 0);
-                const fixed  = toNumber(op.fixed_cost ?? 0);
-                cost = (mins / 60) * hrRate + fixed;
-            }
+            // Fall back calculation disabled for now.
+            // if (!cost) {
+            //     const mins   = toNumber(op.time_in_mins ?? op.operation_time ?? 0);
+            //     const hrRate = toNumber(op.hour_rate ?? 0);
+            //     const fixed  = toNumber(op.fixed_cost ?? 0);
+            //     cost = (mins / 60) * hrRate + fixed;
+            // }
 
             grouped[om].operating_cost += cost;
         });
