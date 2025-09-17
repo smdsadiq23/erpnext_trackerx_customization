@@ -94,13 +94,48 @@ export function App() {
   };
 
   // Load dropdown items
+  // useEffect(() => {
+  //   const loadItems = async () => {
+  //     const itemList = await fetchDocType("Item");
+  //     setItems(itemList);
+  //   };
+  //   loadItems();
+  // }, []);
+
   useEffect(() => {
-    const loadItems = async () => {
-      const itemList = await fetchDocType("Item");
-      setItems(itemList);
-    };
-    loadItems();
-  }, []);
+  const loadItems = async () => {
+    const itemList = await fetchDocTypeItem("Item", [
+      ["custom_select_master", "=", "Finished Goods"],
+    ]);
+    setItems(itemList);
+  };
+  loadItems();
+}, []);
+
+
+const fetchDocTypeItem = async (doctypeName, filters = []) => {
+  try {
+    const url = new URL(`${BASE_URL}/api/resource/${doctypeName}`);
+    url.searchParams.append("fields", JSON.stringify(["*"]));
+
+    if (filters.length > 0) {
+      url.searchParams.append("filters", JSON.stringify(filters));
+    }
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+
+    const result = await response.json();
+    return result.data || [];
+  } catch (error) {
+    console.error(`Error fetching ${doctypeName}:`, error);
+    return [];
+  }
+};
+
 
   // Case 2 → URL has processMapId → fetch directly
   useEffect(() => {
