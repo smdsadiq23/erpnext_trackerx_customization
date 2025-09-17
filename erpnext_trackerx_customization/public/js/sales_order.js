@@ -5,6 +5,26 @@ frappe.ui.form.on('Sales Order', {
     },
 
     refresh(frm) {
+        // Apply filters to custom_merchant (only users with role "Merchant")
+        frm.set_query('custom_merchant', function() {
+            return {
+                query: 'frappe.core.doctype.user.user.user_query',
+                filters: {
+                    role: 'Merchant'
+                }
+            };
+        });
+
+        // Apply filters to custom_merchant_manager (only users with role "Merchant Manager")
+        frm.set_query('custom_merchant_manager', function() {
+            return {
+                query: 'frappe.core.doctype.user.user.user_query',
+                filters: {
+                    role: 'Merchant Manager'
+                }
+            };
+        });
+                
         // Wait for default buttons to load, then remove Work Order
         setTimeout(() => {
           frm.remove_custom_button('Work Order', 'Create');
