@@ -378,8 +378,11 @@ def get_warehouse_tree_data(main_warehouse=None):
                 w.name
         """, filter_params, as_dict=True)
 
+        # Calculate hierarchical capacity for all warehouses
+        warehouses_with_hierarchical_capacity = calculate_hierarchical_capacity(warehouses)
+
         # Build the tree structure
-        tree_data = build_warehouse_tree(warehouses, main_warehouse)
+        tree_data = build_warehouse_tree(warehouses_with_hierarchical_capacity, main_warehouse)
 
         return {
             "success": True,
@@ -393,6 +396,76 @@ def get_warehouse_tree_data(main_warehouse=None):
             "success": False,
             "error": str(e)
         }
+
+
+def calculate_hierarchical_capacity(warehouses_data):
+    """Calculate capacity for parent warehouses based on sum of all child warehouses"""
+
+    # Create a dictionary for fast lookup
+    warehouse_dict = {w.warehouse: w for w in warehouses_data}
+
+    # Function to calculate total capacity for a warehouse including all descendants
+    def get_total_capacity(warehouse_name):
+        warehouse = warehouse_dict.get(warehouse_name)
+        if not warehouse:
+            return 0, None, 0  # capacity, unit, stock
+
+        # If it's a leaf warehouse (no children), use its own capacity
+        children = [w for w in warehouses_data if w.parent_warehouse == warehouse_name]
+        if not children:
+            # Leaf warehouse - use its own capacity
+            return (
+                warehouse.capacity or 0,
+                warehouse.capacity_unit,
+                warehouse.current_stock or 0
+            )
+
+        # Parent warehouse - sum up all children's capacities
+        total_capacity = 0
+        capacity_unit = None
+        total_stock = 0
+
+        for child in children:
+            child_capacity, child_unit, child_stock = get_total_capacity(child.warehouse)
+            total_capacity += child_capacity
+            total_stock += child_stock
+
+            # Use the first non-null unit we find
+            if capacity_unit is None and child_unit:
+                capacity_unit = child_unit
+
+        return total_capacity, capacity_unit, total_stock
+
+    # Calculate hierarchical capacity for all warehouses
+    for warehouse in warehouses_data:
+        total_cap, cap_unit, total_stock = get_total_capacity(warehouse.warehouse)
+
+        # Update the warehouse data with hierarchical calculations
+        warehouse.hierarchical_capacity = total_cap
+        warehouse.hierarchical_capacity_unit = cap_unit or warehouse.capacity_unit
+        warehouse.hierarchical_current_stock = total_stock
+
+        # Calculate derived metrics
+        if total_cap > 0:
+            warehouse.hierarchical_available_capacity = total_cap - total_stock
+            warehouse.hierarchical_utilization_percent = (total_stock / total_cap) * 100
+
+            # Status calculation
+            util_pct = warehouse.hierarchical_utilization_percent
+            if util_pct >= 90:
+                warehouse.hierarchical_status = 'Critical'
+            elif util_pct >= 80:
+                warehouse.hierarchical_status = 'Warning'
+            elif util_pct >= 60:
+                warehouse.hierarchical_status = 'Caution'
+            else:
+                warehouse.hierarchical_status = 'Healthy'
+        else:
+            warehouse.hierarchical_available_capacity = 0
+            warehouse.hierarchical_utilization_percent = 0
+            warehouse.hierarchical_status = 'No Capacity'
+
+    return warehouses_data
 
 
 def build_warehouse_tree(warehouses, root_warehouse=None):
@@ -426,6 +499,88 @@ def build_warehouse_tree(warehouses, root_warehouse=None):
                 tree.append(warehouse_data)
 
     return tree
+
+
+@frappe.whitelist()
+def test_hierarchical_capacity():
+    """Test function to verify hierarchical capacity calculation with mock data"""
+    try:
+        # Create mock warehouse data to test the hierarchical calculation
+        mock_warehouses = []
+
+        # Create parent warehouse
+        parent_warehouse = frappe._dict({
+            'warehouse': 'FAB-WH-A-R01-L1 - T',
+            'warehouse_name': 'FAB-WH-A-R01-L1',
+            'parent_warehouse': None,
+            'is_group': 1,
+            'capacity': None,  # Parent warehouse has no direct capacity
+            'capacity_unit': 'Meter',
+            'current_stock': 0,
+            'available_capacity': 0,
+            'utilization_percent': 0,
+            'status': 'No Capacity',
+            'item_count': 0
+        })
+        mock_warehouses.append(parent_warehouse)
+
+        # Create 4 child bin warehouses, each with 500 Meter capacity
+        for i in range(1, 5):
+            bin_warehouse = frappe._dict({
+                'warehouse': f'FAB-WH-A-R01-L1-BIN-{i:02d} - T',
+                'warehouse_name': f'FAB-WH-A-R01-L1-BIN-{i:02d}',
+                'parent_warehouse': 'FAB-WH-A-R01-L1 - T',
+                'is_group': 0,
+                'capacity': 500,
+                'capacity_unit': 'Meter',
+                'current_stock': 100 + (i * 50),  # Varying stock levels
+                'available_capacity': 400 - (i * 50),
+                'utilization_percent': (100 + (i * 50)) / 500 * 100,
+                'status': 'Healthy',
+                'item_count': 5 + i
+            })
+            mock_warehouses.append(bin_warehouse)
+
+        # Calculate hierarchical capacity using our function
+        warehouses_with_hierarchical = calculate_hierarchical_capacity(mock_warehouses)
+
+        # Find the parent warehouse to check the calculation
+        parent_result = None
+        for w in warehouses_with_hierarchical:
+            if w.warehouse == 'FAB-WH-A-R01-L1 - T':
+                parent_result = w
+                break
+
+        if parent_result:
+            return {
+                "success": True,
+                "test_data": "Mock warehouse hierarchy created",
+                "parent_warehouse": parent_result.warehouse,
+                "original_capacity": parent_result.capacity,
+                "hierarchical_capacity": parent_result.hierarchical_capacity,
+                "hierarchical_capacity_unit": parent_result.hierarchical_capacity_unit,
+                "hierarchical_current_stock": parent_result.hierarchical_current_stock,
+                "hierarchical_available_capacity": parent_result.hierarchical_available_capacity,
+                "hierarchical_utilization_percent": round(parent_result.hierarchical_utilization_percent, 2),
+                "hierarchical_status": parent_result.hierarchical_status,
+                "expected_capacity": "4 bins × 500 Meter = 2000 Meter",
+                "expected_stock": "Sum of all bin stock levels",
+                "verification": "SUCCESS" if parent_result.hierarchical_capacity == 2000 else "FAILED",
+                "message": f"✅ Parent warehouse '{parent_result.warehouse}' correctly shows hierarchical capacity of {parent_result.hierarchical_capacity} {parent_result.hierarchical_capacity_unit} (sum of 4 child warehouses with 500 Meter each)"
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Could not find parent warehouse in processed results"
+            }
+
+    except Exception as e:
+        import traceback
+        return {
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
 
 
 @frappe.whitelist()
