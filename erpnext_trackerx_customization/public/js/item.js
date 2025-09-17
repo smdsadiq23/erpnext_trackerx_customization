@@ -9,9 +9,6 @@ frappe.ui.form.on('Item', {
 
     refresh: function(frm) {
 
-
-        console.log("Item form refreshed.");
-
         // Always remove stray dropdowns first
         $('#custom-master-type-select').remove();
 
@@ -28,6 +25,39 @@ frappe.ui.form.on('Item', {
             $('#custom-master-type-select').remove();
         }
 
+        // Add "Copy from Style Master" button to custom_bom_operations grid
+        if (frm.fields_dict.custom_bom_operations) {
+            if (!frm.custom_bom_operations_button_added) {
+                const grid = frm.fields_dict.custom_bom_operations.grid;
+                if (grid) {
+                    grid.add_custom_button(
+                        __('Copy from Style Master'),
+                        function () {
+                            if (!frm.doc.custom_style_master) {
+                                frappe.msgprint(__('Please select a Style Master first'));
+                                return;
+                            }
+
+                            frappe.confirm(
+                                __('This will clear all existing operations and copy from selected Style Master. Continue?'),
+                                () => {
+                                    // Clear operations
+                                    frm.clear_table('custom_bom_operations');
+                                    frm.refresh_field('custom_bom_operations');
+
+                                    // Copy from Style Master
+                                    copy_operations_from_style_master(frm);
+                                }
+                            );
+                        },
+                        __('Actions')
+                    );
+
+                    frm.custom_bom_operations_button_added = true;
+                }
+            }
+        }     
+           
         setTimeout(function() {
             updateItemLabels(frm);
         }, 300);
@@ -46,8 +76,6 @@ frappe.ui.form.on('Item', {
         setTimeout(function() {
             setItemNameAndItemNumberProps(frm);
         }, 500);
-        
-
 
     },
     custom_select_master: function(frm) {
@@ -433,7 +461,6 @@ function setItemMasterOptions(frm){
     
 }
     
-
 
 function copy_operations_from_style_master(frm) {
     // Clear existing BOM Operations in the BOM
