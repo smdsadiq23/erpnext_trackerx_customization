@@ -67,7 +67,7 @@ frappe.ui.form.on('BOM', {
         frm.set_df_property('items', 'hidden', 1);
         modifyTheBOMItemTableFields(frm);
         fetch_allowed_item_groups(frm);
-        set_item_filter(frm);
+        set_item_filter(frm);  
     },
 
     custom_net_qty(frm, cdt, cdn) {
@@ -78,7 +78,7 @@ frappe.ui.form.on('BOM', {
         calculate_qty_based_on_net_and_wastage(frm, cdt, cdn);
     },
 
-    refresh(frm) {
+    refresh: function(frm) {
         
         maybe_update_costing_size_options(frm);
         set_item_filter(frm);
@@ -88,6 +88,41 @@ frappe.ui.form.on('BOM', {
                 frappe.throw("Please select BOM Type first");
             }
         });
+
+        // Add "Copy from Item" button to operations grid
+        if (frm.fields_dict.operations) {
+            if (!frm.custom_operations_button_added) {
+                const grid = frm.fields_dict.operations.grid;
+                if (grid) {
+                    grid.add_custom_button(
+                        __('Copy from Item'),
+                        function () {
+                            if (!frm.doc.item) {
+                                frappe.msgprint(__('Please select an Item first'));
+                                return;
+                            }
+
+                            frappe.confirm(
+                                __('This will clear all existing operations and copy from selected Item. Continue?'),
+                                () => {
+                                    // Clear all child tables
+                                    frm.clear_table('operations');
+                                    frm.clear_table('custom_operations_summary');
+                                    frm.clear_table('custom_cost_by_order_method');
+                                    frm.refresh_fields(['operations', 'custom_operations_summary', 'custom_cost_by_order_method']);
+
+                                    // Copy operations from Item
+                                    copy_bom_operations_from_item(frm);
+                                }
+                            );
+                        },
+                        __('Actions')
+                    );
+
+                    frm.custom_operations_button_added = true;
+                }
+            }
+        }
     },
 
     custom_costing_formula(frm) {
@@ -186,14 +221,15 @@ frappe.ui.form.on('BOM', {
                 };
             }
 
-            // Prefer explicit operating_cost (company currency); fall back to compute if absent
+            // Prefer explicit operating_cost (company currency); fall back to compute if absent.
             let cost = toNumber(op.operating_cost ?? 0);
-            if (!cost) {
-                const mins   = toNumber(op.time_in_mins ?? op.operation_time ?? 0);
-                const hrRate = toNumber(op.hour_rate ?? 0);
-                const fixed  = toNumber(op.fixed_cost ?? 0);
-                cost = (mins / 60) * hrRate + fixed;
-            }
+            // Fall back calculation disabled for now.
+            // if (!cost) {
+            //     const mins   = toNumber(op.time_in_mins ?? op.operation_time ?? 0);
+            //     const hrRate = toNumber(op.hour_rate ?? 0);
+            //     const fixed  = toNumber(op.fixed_cost ?? 0);
+            //     cost = (mins / 60) * hrRate + fixed;
+            // }
 
             grouped[om].operating_cost += cost;
         });
@@ -539,6 +575,7 @@ function copy_bom_operations_from_item(frm) {
                 frm.refresh_field("operations");
 
                 frm.trigger('calculate_summary');
+                frm.trigger('calculate_order_method_costs');
                 
                 // Show success message
                 frappe.show_alert({

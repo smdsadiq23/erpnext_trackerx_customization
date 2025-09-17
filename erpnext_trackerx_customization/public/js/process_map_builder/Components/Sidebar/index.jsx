@@ -10,26 +10,34 @@ const Sidebar = ({
 }) => {
   return (
     <div className="col-3 border-end bg-light p-3 overflow-auto">
-      <h5>Processes</h5>
-      {operationProcesses.map((op) => (
-        <div
-          key={op.name}
-          className="border rounded p-2 mb-2 bg-white text-center shadow-sm"
-          draggable
-          onDragStart={(e) =>
-            e.dataTransfer.setData(
-              "application/reactflow",
-              JSON.stringify({
-                type: "process",
-                label: op.process_name,
-              })
-            )
-          }
-          style={{ cursor: "grab" }}
-        >
-          {op.process_name}
-        </div>
-      ))}
+      <div
+        style={{
+          maxHeight: "300px",
+          overflowY: "auto",
+        }}
+      >
+        <h5>Processes</h5>
+        {operationProcesses.map((op) => (
+          <div
+            key={op.name}
+            className="border rounded p-2 mb-2 bg-white text-center shadow-sm"
+            draggable
+            onDragStart={(e) =>
+              e.dataTransfer.setData(
+                "application/reactflow",
+                JSON.stringify({
+                  type: "process",
+                  label: op.process_name,
+                })
+              )
+            }
+            style={{ cursor: "grab" }}
+          >
+            {op.process_name}
+          </div>
+        ))}
+      </div>
+
 
       <hr />
       {/* <h5>Process Groups</h5>
