@@ -90,7 +90,39 @@ fixtures = [
                 ]
             ]
         ]
-    }    
+    }, 
+    {
+        "doctype": "Operation Group",
+        "filters": [
+            [
+                "name", "in",["QR/Barcode Cut Bundle Activation"]
+            ]
+        ]
+    },    
+    {
+        "doctype": "Operation",
+        "filters": [
+            [
+                "name", "in",["QR/Barcode Cut Bundle Activation"]
+            ]
+        ]
+    },    
+    {
+        "doctype": "Workstation",
+        "filters": [
+            [
+                "name", "in",["QR/Barcode Cut Bundle Activation"]
+            ]
+        ]
+    },    
+    {
+        "doctype": "Physical Cell",
+        "filters": [
+            [
+                "name", "in",["QR/Barcode Cut Bundle Activation"]
+            ]
+        ]
+    },    
 ]
 
 # AQL data fixtures for import during migration
@@ -299,7 +331,18 @@ doc_events= {
     "Warehouse": {
         "after_insert": "erpnext_trackerx_customization.warehouse_hooks.on_warehouse_create",
         "on_update": "erpnext_trackerx_customization.warehouse_hooks.on_warehouse_update",
-    }
+    },
+    "Operation": {
+        "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.operation.on_trash",
+        "before_save": "erpnext_trackerx_customization.erpnext_doctype_hooks.operation.before_save",
+        "before_rename": "erpnext_trackerx_customization.erpnext_doctype_hooks.operation.before_rename",
+    },
+     "Workstation": {
+        "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.workstation.on_trash",
+        "before_save": "erpnext_trackerx_customization.erpnext_doctype_hooks.workstation.before_save",
+        "before_rename": "erpnext_trackerx_customization.erpnext_doctype_hooks.workstation.before_rename",
+    },
+
 }
 
 # Scheduled Tasks
