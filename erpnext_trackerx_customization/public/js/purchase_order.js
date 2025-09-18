@@ -59,22 +59,22 @@ frappe.ui.form.on('Purchase Order', {
     },
 
     supplier: function(frm) {
-        if (!frm.doc.supplier) {
-            // Clear filter if no supplier selected
-            frm.set_query('item_code', 'items', function() {
-                return {};
-            });
-            return;
-        }
+        // // Clear filter if no supplier selected
+        // if (!frm.doc.supplier) {
+        //     frm.set_query('item_code', 'items', function() {
+        //         return {};
+        //     });
+        //     return;
+        // }
 
-        // Set filter on item_code in child table
-        frm.set_query('item_code', 'items', function() {
-            return {
-                filters: {
-                    custom_preferred_supplier: frm.doc.supplier
-                }
-            };
-        });
+        // // Set filter on item_code in child table
+        // frm.set_query('item_code', 'items', function() {
+        //     return {
+        //         filters: {
+        //             custom_preferred_supplier: frm.doc.supplier
+        //         }
+        //     };
+        // });
 
         frm.doc.items.forEach(row => {
             cur_frm.script_manager.trigger('update_rate_from_bom', 'Purchase Order Item', row.name);
