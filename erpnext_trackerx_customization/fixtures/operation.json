@@ -1,0 +1,19 @@
+[
+ {
+  "batch_size": 1,
+  "create_job_card_based_on_batch_size": 0,
+  "custom_defect_list": [],
+  "custom_operation_group": "QR/Barcode Cut Bundle Activation",
+  "custom_operation_type": "Activation",
+  "description": "QR/Barcode Cut Bundle Activation",
+  "docstatus": 0,
+  "doctype": "Operation",
+  "is_corrective_operation": 0,
+  "modified": "2025-09-18 13:27:15.863559",
+  "name": "QR/Barcode Cut Bundle Activation",
+  "quality_inspection_template": null,
+  "sub_operations": [],
+  "total_operation_time": 0.0,
+  "workstation": null
+ }
+]

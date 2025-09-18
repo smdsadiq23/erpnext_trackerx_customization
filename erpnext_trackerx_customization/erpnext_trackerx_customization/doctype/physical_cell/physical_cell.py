@@ -4,15 +4,36 @@
 import frappe
 from frappe.model.document import Document
 
+DEFAULT_NAME = 'QR/Barcode Cut Bundle Activation'
 
 class PhysicalCell(Document):
+
+	
+
 	def validate(self):
 		self.validate_for_operations_from_supported_operation_group()
 		self.validate_for_physical_cell_timings()
 		self.validate_for_cell_break_timings()
 		self.validate_for_workstation_added_to_diff_cell()
 
+	def on_trash(self):
+		if self.name == DEFAULT_NAME:
+			frappe.throw(
+				f"You cannot delete system cell {DEFAULT_NAME}"
+			)
 
+	def before_save(self):
+		if self.name == DEFAULT_NAME:
+			frappe.throw(
+				f"You cannot update system cell {DEFAULT_NAME}"
+			)
+
+	def before_rename(self, old_name, new_name, merge=False):
+		if self.name == DEFAULT_NAME:
+			frappe.throw(
+				f"You cannot rename system cell {DEFAULT_NAME}"
+			)
+			
 	def validate_for_workstation_added_to_diff_cell(self):
 		for row in self.operation_workstations:
 			existing_cell_with_same_ws = frappe.db.sql("""
