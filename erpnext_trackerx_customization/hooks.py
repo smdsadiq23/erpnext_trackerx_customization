@@ -39,7 +39,7 @@ fixtures = [
         "dt": "Custom Field",
         "filters": [
             [
-                "dt", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
+                "dt", "in", ["Item", "BOM", "BOM Item", 'BOM Operation', "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
                           "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item", "Purchase Receipt Item", "Operation"
                           ],
             ],
@@ -53,7 +53,7 @@ fixtures = [
         "dt": "Property Setter",
         "filters": [
             [
-                "doc_type", "in", ["Item", "BOM", "BOM Item", "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
+                "doc_type", "in", ["Item", "BOM", "BOM Item", 'BOM Operation', "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
                           "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item", "Purchase Receipt Item", "Operation"
                             ]
             ],
@@ -69,7 +69,60 @@ fixtures = [
             ["parent", "=", "Supplier"],
             ["fieldname", "=", "supplier_type"]
         ]
-    } 
+    },
+    {
+        "doctype": "Role",
+        "filters": [
+            [
+                "name",
+                "in",
+                [
+                "Merchant",
+                "Merchant Manager",
+                "Spare Parts Master",
+                "Packing Materials Master",
+                "Labels Master",
+                "Machine Master",
+                "Accessories Master",
+                "Trims Master",
+                "Fabrics Master",
+                "Finished Goods Master"
+                ]
+            ]
+        ]
+    }, 
+    {
+        "doctype": "Operation Group",
+        "filters": [
+            [
+                "name", "in",["QR/Barcode Cut Bundle Activation"]
+            ]
+        ]
+    },    
+    {
+        "doctype": "Operation",
+        "filters": [
+            [
+                "name", "in",["QR/Barcode Cut Bundle Activation"]
+            ]
+        ]
+    },    
+    {
+        "doctype": "Workstation",
+        "filters": [
+            [
+                "name", "in",["QR/Barcode Cut Bundle Activation"]
+            ]
+        ]
+    },    
+    {
+        "doctype": "Physical Cell",
+        "filters": [
+            [
+                "name", "in",["QR/Barcode Cut Bundle Activation"]
+            ]
+        ]
+    },    
 ]
 
 # AQL data fixtures for import during migration
@@ -278,7 +331,18 @@ doc_events= {
     "Warehouse": {
         "after_insert": "erpnext_trackerx_customization.warehouse_hooks.on_warehouse_create",
         "on_update": "erpnext_trackerx_customization.warehouse_hooks.on_warehouse_update",
-    }
+    },
+    "Operation": {
+        "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.operation.on_trash",
+        "before_save": "erpnext_trackerx_customization.erpnext_doctype_hooks.operation.before_save",
+        "before_rename": "erpnext_trackerx_customization.erpnext_doctype_hooks.operation.before_rename",
+    },
+     "Workstation": {
+        "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.workstation.on_trash",
+        "before_save": "erpnext_trackerx_customization.erpnext_doctype_hooks.workstation.before_save",
+        "before_rename": "erpnext_trackerx_customization.erpnext_doctype_hooks.workstation.before_rename",
+    },
+
 }
 
 # Scheduled Tasks
@@ -314,7 +378,8 @@ doc_events= {
 # 	"frappe.desk.doctype.event.event.get_events": "erpnext_trackerx_customization.event.get_events"
 # }
 override_whitelisted_methods = {
-    "erpnext.manufacturing.doctype.work_order.work_order.create_pick_list": "erpnext_trackerx_customization.api.custom_pick_list.custom_create_pick_list"
+    "erpnext.manufacturing.doctype.work_order.work_order.create_pick_list": "erpnext_trackerx_customization.api.custom_pick_list.custom_create_pick_list",
+    "frappe.desk.search.search_link": "erpnext_trackerx_customization.api.custom_search.custom_search_link"
 }
 #
 # each overriding function accepts a `data` argument;
