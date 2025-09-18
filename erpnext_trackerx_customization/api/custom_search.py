@@ -5,8 +5,7 @@ from .custom_item_query import custom_item_query
 @frappe.whitelist()
 def custom_search_link(doctype, txt, filters=None, as_dict=False):
     if doctype == "Item":
-        # Call your custom query directly.
-        # This will return the tuple with the custom fields.
+        # Call your custom query
         result = custom_item_query(
             doctype,
             txt,
@@ -16,31 +15,30 @@ def custom_search_link(doctype, txt, filters=None, as_dict=False):
             filters=filters
         )
 
-        # Format the result to include the supplier and custom item number in the description
         formatted_result = []
         for row in result:
-            # Assuming row is a tuple like: 
-            # ('Item Code', 'Item Name', 'Item Group', 'Description', 'Supplier', 'Custom Item Number')
             item_code = row[0]
-            item_name = row[1]
-            custom_item_number = row[5] # The new field is at index 5
-            supplier = row[4]
+            item_name = row[1] or ""
+            custom_item_number = (row[5] or "").strip()
+            supplier = (row[4] or "").strip()
 
-            # Create a combined description
-            combined_description = f"{item_name} - {custom_item_number} - {supplier}"
+            # Build parts only if they exist
+            parts = [item_name]
+            if custom_item_number:
+                parts.append(custom_item_number)
+            if supplier:
+                parts.append(supplier)
 
-            # Append the formatted result
+            # Join with " - " only between non-empty parts
+            combined_description = " - ".join(parts)
+
             formatted_result.append({
                 "value": item_code,
                 "description": combined_description
             })
-        
+
         return formatted_result
 
     else:
-        # For all other DocTypes, fall back to the original Frappe search function.
+        # Fallback to original
         return original_search_link(doctype, txt, filters, as_dict)
-    
-
-
-    
