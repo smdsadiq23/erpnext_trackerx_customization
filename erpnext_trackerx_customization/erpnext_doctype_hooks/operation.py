@@ -18,6 +18,9 @@ def on_trash(doc, method):
 
 def before_save(doc, method):
 
+    if frappe.flags.in_migrate or frappe.flags.in_install or frappe.flags.in_fixtures:
+        return
+    
     if doc.name in PROTECTED_OPERATION:
         frappe.throw(_(f"Modification to Operation '{doc.name}' is not allowed as it is a protected system operation."),
                      frappe.PermissionError)
