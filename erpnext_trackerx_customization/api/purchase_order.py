@@ -249,9 +249,6 @@ def get_rate_from_bom_by_order_method(item_code, supplier, order_method):
         "omc_order_method": order_method
     }, "omc_total_cost")
 
-    frappe.msgprint(order_method)
-    frappe.msgprint(str(total_cost))
-
     if total_cost is None:
         frappe.log_error(f"No cost found for order method {order_method} in BOM {bom_name}", "Purchase Order Rate Lookup")
         return None
@@ -261,3 +258,37 @@ def get_rate_from_bom_by_order_method(item_code, supplier, order_method):
         "rate": total_cost,
         "message": f"Rate updated from BOM: ₹{total_cost}"
     }
+
+@frappe.whitelist()
+def get_items_from_sales_order(sales_order):
+    """
+    Get items from Sales Order
+    """
+    if not sales_order:
+        frappe.throw(_("Sales Order is required"))
+    
+    so_doc = frappe.get_doc('Sales Order', sales_order)
+    items = []
+    
+    for so_item in so_doc.items:
+        # Get item details
+        item_doc = frappe.get_doc('Item', so_item.item_code)
+        
+        po_item = {
+            'item_code': so_item.item_code,
+            'item_name': so_item.item_name,
+            'custom_size': so_item.custom_size if hasattr(so_item, 'custom_size') else None,
+            'qty': so_item.custom_order_qty if hasattr(so_item, 'custom_order_qty') else so_item.qty,
+            'uom': so_item.uom,
+            'stock_uom': item_doc.stock_uom,
+            'conversion_factor': 1,
+            'schedule_date': so_doc.delivery_date or frappe.utils.today(),
+            'warehouse': so_item.warehouse if hasattr(so_item, 'warehouse') else None,
+            'sales_order': so_doc.name,
+            'sales_order_item': so_item.name,
+            'project': so_doc.project if hasattr(so_doc, 'project') else None,
+        }
+        
+        items.append(po_item)
+    
+    return items
