@@ -17,6 +17,9 @@ def on_trash(doc, method):
 
 def before_save(doc, method):
 
+    if frappe.flags.in_migrate or frappe.flags.in_install or frappe.flags.in_fixtures:
+        return
+    
     if doc.name in PROTECTED_WS:
         frappe.throw(_(f"Modification to Workstation '{doc.name}' is not allowed as it is a protected system operation."),
                      frappe.PermissionError)

@@ -14,6 +14,8 @@ class OperationGroup(Document):
 			)
 
 	def before_save(self):
+		if frappe.flags.in_migrate or frappe.flags.in_install or frappe.flags.in_fixtures:
+			return
 		if self.name == DEFAULT_NAME:
 			frappe.throw(
 				f"You cannot update system operation group {DEFAULT_NAME}"
