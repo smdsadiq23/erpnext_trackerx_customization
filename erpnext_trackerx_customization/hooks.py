@@ -335,7 +335,8 @@ doc_events= {
 # 	"frappe.desk.doctype.event.event.get_events": "erpnext_trackerx_customization.event.get_events"
 # }
 override_whitelisted_methods = {
-    "erpnext.manufacturing.doctype.work_order.work_order.create_pick_list": "erpnext_trackerx_customization.api.custom_pick_list.custom_create_pick_list"
+    "erpnext.manufacturing.doctype.work_order.work_order.create_pick_list": "erpnext_trackerx_customization.api.custom_pick_list.custom_create_pick_list",
+    "frappe.desk.search.search_link": "erpnext_trackerx_customization.api.custom_search.custom_search_link"
 }
 #
 # each overriding function accepts a `data` argument;
