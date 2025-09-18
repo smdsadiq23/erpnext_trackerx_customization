@@ -69,7 +69,28 @@ fixtures = [
             ["parent", "=", "Supplier"],
             ["fieldname", "=", "supplier_type"]
         ]
-    } 
+    },
+    {
+        "doctype": "Role",
+        "filters": [
+            [
+                "name",
+                "in",
+                [
+                "Merchant",
+                "Merchant Manager",
+                "Spare Parts Master",
+                "Packing Materials Master",
+                "Labels Master",
+                "Machine Master",
+                "Accessories Master",
+                "Trims Master",
+                "Fabrics Master",
+                "Finished Goods Master"
+                ]
+            ]
+        ]
+    }    
 ]
 
 # AQL data fixtures for import during migration
