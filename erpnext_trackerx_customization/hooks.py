@@ -78,7 +78,15 @@ fixtures = [
                 "in",
                 [
                 "Merchant",
-                "Merchant Manager"
+                "Merchant Manager",
+                "Spare Parts Master",
+                "Packing Materials Master",
+                "Labels Master",
+                "Machine Master",
+                "Accessories Master",
+                "Trims Master",
+                "Fabrics Master",
+                "Finished Goods Master"
                 ]
             ]
         ]
