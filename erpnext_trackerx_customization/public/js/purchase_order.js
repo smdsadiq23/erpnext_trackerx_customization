@@ -2,12 +2,49 @@
 // File: erpnext_trackerx_customization/public/js/purchase_order.js
 
 frappe.ui.form.on("Purchase Order", {
-  onload: function (frm) {
+  refresh: function (frm) {
     // Remove existing Material Request get_items button
     setInterval(function () {
       frm.remove_custom_button("Material Request", "Get Items From");
-    }, 300);
+    }, 300);    
     frm.remove_custom_button("Material Request", "Get Items From");
+
+    // Add "Sales Order" option
+    frm.add_custom_button(
+        "Sales Order",
+        function () {
+            let dialog = new frappe.ui.Dialog({
+                title: "Select Sales Order",
+                fields: [
+                    {
+                        fieldname: "sales_order",
+                        fieldtype: "Link",
+                        label: "Sales Order",
+                        options: "Sales Order",
+                        reqd: 1,
+                        get_query: function () {
+                            return {
+                                filters: {
+                                    docstatus: 1, // Only submitted documents
+                                    status: ["!=", "Closed"]
+                                }
+                            };
+                        }
+                    }
+                ],
+                primary_action_label: "Get Items",
+                primary_action: function () {
+                    let values = dialog.get_values();
+                    if (values) {
+                        get_items_from_sales_order(frm, values);
+                        dialog.hide();
+                    }
+                }
+            });
+            dialog.show();
+        },
+        "Get Items From"
+    );
 
     // Add custom get items button for Material Requirement Plan
     frm.add_custom_button(
@@ -47,17 +84,15 @@ frappe.ui.form.on("Purchase Order", {
       "Get Items From"
     );
 
-    // Add custom button to create Goods Receipt Note
-    frm.add_custom_button(
-      "Goods Receipt Note",
-      function () {
-        create_goods_receipt_note(frm);
-      },
-      "Create"
-    );
-  },
-
-  refresh: function (frm) {
+    // // Add custom button to create Goods Receipt Note
+    // frm.add_custom_button(
+    //   "Goods Receipt Note",
+    //   function () {
+    //     create_goods_receipt_note(frm);
+    //   },
+    //   "Create"
+    // );    
+    
     // Add button only if PO is submitted and not fully received
     if (frm.doc.docstatus === 1 && frm.doc.per_received < 100) {
       frm.add_custom_button(
@@ -318,4 +353,42 @@ function create_goods_receipt_note_alternative(frm) {
       }
     },
   });
+}
+
+function get_items_from_sales_order(frm, values) {
+    frappe.call({
+        method: 'erpnext_trackerx_customization.api.purchase_order.get_items_from_sales_order',
+        args: {
+            sales_order: values.sales_order
+        },
+        callback: function(r) {
+            if (r.message) {
+                frm.clear_table('items');
+                                
+                r.message.forEach(function(item) {
+                    let row = frm.add_child('items');
+                    Object.assign(row, item);
+                    
+                    // Trigger item_code handler to populate custom_sfg_code
+                    setTimeout(() => {
+                        cur_frm.script_manager.trigger(
+                            'item_code', 
+                            'Purchase Order Item', 
+                            row.name
+                        );
+                        
+                        // Also trigger rate update
+                        cur_frm.script_manager.trigger(
+                            'update_rate_from_bom', 
+                            'Purchase Order Item', 
+                            row.name
+                        );
+                    }, 100);
+                });
+                                
+                frm.refresh_field('items');
+                frappe.msgprint('Items added successfully from Sales Order');
+            }
+        }
+    });
 }
