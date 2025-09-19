@@ -189,6 +189,7 @@ def get_fg_components_by_item(item_code):
     """
     Returns list of component_name from Item's custom_fg_components child table.
     Safe for client-side use — no permission checks on child table.
+    Adds "All" as first option.
     """
     if not item_code:
         return []
@@ -205,8 +206,13 @@ def get_fg_components_by_item(item_code):
         order_by="idx"
     )
 
-    # Return list of names
-    return [c.name for c in components]
+    # Get list of names
+    options = [c.name for c in components if c.name]
+    
+    # Add "All" as first option
+    options.insert(0, "All")
+    
+    return options
 
 
 @frappe.whitelist()
