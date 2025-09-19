@@ -42,6 +42,7 @@ class WhMaterialPicking(Document):
 				mr = frappe.new_doc("Material Request")
 				mr.material_request_type = "Material Transfer"
 				mr.transaction_date = frappe.utils.today()
+				mr.schedule_date = frappe.utils.add_days(frappe.utils.today(), 1)  # Required by date
 				mr.company = frappe.defaults.get_user_default("Company")
 				mr.set_from_warehouse = row.location  # From warehouse (current location)
 				mr.remarks = f"Material Transfer for Wh Material Picking: {self.name}, Roll: {row.roll_number}"
@@ -49,10 +50,31 @@ class WhMaterialPicking(Document):
 				# Get item code from fabricmaterial_details or use a default
 				item_code = self.fabricmaterial_details if hasattr(self, 'fabricmaterial_details') and self.fabricmaterial_details else "FABRIC-ROLL"
 
+				# Get item details for UOM information
+				item_doc = None
+				try:
+					if frappe.db.exists("Item", item_code):
+						item_doc = frappe.get_doc("Item", item_code)
+				except:
+					pass
+
+				# Set UOM and conversion factor
+				if item_doc:
+					uom = item_doc.stock_uom
+					stock_uom = item_doc.stock_uom
+					conversion_factor = 1.0  # Default conversion factor for same UOM
+				else:
+					uom = "Meter"  # Default UOM for fabric rolls
+					stock_uom = "Meter"
+					conversion_factor = 1.0
+
 				# Add item to Material Request
 				mr.append("items", {
 					"item_code": item_code,
 					"qty": float(row.picked_quantity),
+					"uom": uom,
+					"stock_uom": stock_uom,
+					"conversion_factor": conversion_factor,
 					"warehouse": row.location,  # From warehouse
 					"target_warehouse": row.target_warehouse,  # To warehouse
 					"description": f"Roll {row.roll_number} - {row.shade} - Batch {row.batch_number}",
