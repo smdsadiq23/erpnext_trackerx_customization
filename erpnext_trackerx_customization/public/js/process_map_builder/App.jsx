@@ -103,38 +103,38 @@ export function App() {
   // }, []);
 
   useEffect(() => {
-  const loadItems = async () => {
-    const itemList = await fetchDocTypeItem("Item", [
-      ["custom_select_master", "=", "Finished Goods"],
-    ]);
-    setItems(itemList);
-  };
-  loadItems();
-}, []);
+    const loadItems = async () => {
+      const itemList = await fetchDocTypeItem("Item", [
+        ["custom_select_master", "=", "Finished Goods"],
+      ]);
+      setItems(itemList);
+    };
+    loadItems();
+  }, []);
 
 
-const fetchDocTypeItem = async (doctypeName, filters = []) => {
-  try {
-    const url = new URL(`${BASE_URL}/api/resource/${doctypeName}`);
-    url.searchParams.append("fields", JSON.stringify(["*"]));
+  const fetchDocTypeItem = async (doctypeName, filters = []) => {
+    try {
+      const url = new URL(`${BASE_URL}/api/resource/${doctypeName}`);
+      url.searchParams.append("fields", JSON.stringify(["*"]));
 
-    if (filters.length > 0) {
-      url.searchParams.append("filters", JSON.stringify(filters));
+      if (filters.length > 0) {
+        url.searchParams.append("filters", JSON.stringify(filters));
+      }
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+
+      const result = await response.json();
+      return result.data || [];
+    } catch (error) {
+      console.error(`Error fetching ${doctypeName}:`, error);
+      return [];
     }
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-
-    const result = await response.json();
-    return result.data || [];
-  } catch (error) {
-    console.error(`Error fetching ${doctypeName}:`, error);
-    return [];
-  }
-};
+  };
 
 
   // Case 2 → URL has processMapId → fetch directly
@@ -184,6 +184,7 @@ const fetchDocTypeItem = async (doctypeName, filters = []) => {
           ]);
 
         let operationDataProcessed = operationData?.map((row) => ({
+          ...row,
           process_name: row.name,
         }));
         setOperationProcesses(operationDataProcessed);
@@ -220,6 +221,7 @@ const fetchDocTypeItem = async (doctypeName, filters = []) => {
       ]);
 
     let operationDataProcessed = operationData?.map((row) => ({
+      ...row,
       process_name: row.name,
     }));
     setOperationProcesses(operationDataProcessed);
@@ -300,14 +302,26 @@ const fetchDocTypeItem = async (doctypeName, filters = []) => {
               <label className="form-label fw-semibold">FG Item</label>
               <div>
                 <select
-                  className="form-select"
+                 className="form-select"
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    padding: ".375rem 2.25rem .375rem .75rem",
+                    MozPaddingStart: "calc(0.75rem - 3px)",
+                    lineHeight: 1,
+                    backgroundColor: "#F3F3F3",
+                    border: "1px solid #ced4da",
+                    borderRadius: ".25rem",
+                    MozAppearance: "none"
+                  }}
+                 
                   value={selectedItem || ""}
                   onChange={(e) => setSelectedItem(e.target.value)}
                 >
                   <option value="">-- Select Item --</option>
                   {items.map((item) => (
                     <option key={item.name} value={item.name}>
-                      {item.item_name || item.name}
+                      {item.item_code || item_code}
                     </option>
                   ))}
                 </select>
