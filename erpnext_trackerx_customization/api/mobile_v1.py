@@ -4,147 +4,6 @@ from frappe.utils import flt, cint
 import json
 
 
-@frappe.whitelist()
-def create_sample_test_data():
-    """Create sample data for testing mobile APIs"""
-    try:
-        print("Creating sample data for mobile API testing...")
-
-        # Step 1: Create Master Checklist items
-        master_items = [
-            {
-                "material_type": "Fabrics",
-                "test_parameter": "GSM Check",
-                "standard_requirement": "150-160",
-                "test_method": "ASTM D3776",
-                "test_category": "Physical",
-                "is_mandatory": 1,
-                "display_order": 1,
-                "unit_of_measurement": "gsm",
-                "tolerance": "±5",
-                "description": "Fabric weight per square meter",
-                "is_active": 1
-            },
-            {
-                "material_type": "Fabrics",
-                "test_parameter": "Fabric Width",
-                "standard_requirement": "58-60 inches",
-                "test_method": "Manual Measurement",
-                "test_category": "Dimensional",
-                "is_mandatory": 1,
-                "display_order": 2,
-                "unit_of_measurement": "inches",
-                "tolerance": "±1",
-                "description": "Fabric width measurement",
-                "is_active": 1
-            },
-            {
-                "material_type": "Fabrics",
-                "test_parameter": "Color Fastness",
-                "standard_requirement": "Grade 4-5",
-                "test_method": "AATCC 61",
-                "test_category": "Color",
-                "is_mandatory": 1,
-                "display_order": 3,
-                "unit_of_measurement": "Grade",
-                "tolerance": "±0.5",
-                "description": "Color fastness to laundering",
-                "is_active": 1
-            }
-        ]
-
-        created_master = 0
-        existing_master = frappe.db.count('Master Checklist', {'material_type': 'Fabrics'})
-
-        if existing_master == 0:
-            for item in master_items:
-                try:
-                    doc = frappe.get_doc({
-                        "doctype": "Master Checklist",
-                        **item
-                    })
-                    doc.insert()
-                    created_master += 1
-                except Exception as e:
-                    print(f"Error creating Master Checklist: {str(e)}")
-
-        # Step 2: Create Fabric Inspections
-        sample_inspections = [
-            {
-                "material_type": "Fabrics",
-                "inspection_status": "Draft",
-                "lot_number": "LOT-2024-001",
-                "supplier": "ABC Textiles",
-                "fabric_type": "Cotton Twill",
-                "color": "Navy Blue"
-            },
-            {
-                "material_type": "Fabrics",
-                "inspection_status": "In Progress",
-                "lot_number": "LOT-2024-002",
-                "supplier": "XYZ Fabrics",
-                "fabric_type": "Polyester Blend",
-                "color": "Black"
-            },
-            {
-                "material_type": "Fabrics",
-                "inspection_status": "Completed",
-                "lot_number": "LOT-2024-003",
-                "supplier": "DEF Textiles",
-                "fabric_type": "Denim",
-                "color": "Indigo"
-            },
-            {
-                "material_type": "Fabrics",
-                "inspection_status": "On Hold",
-                "lot_number": "LOT-2024-004",
-                "supplier": "GHI Fabrics",
-                "fabric_type": "Silk Blend",
-                "color": "White"
-            }
-        ]
-
-        created_inspections = 0
-        existing_inspections = frappe.db.count('Fabric Inspection')
-
-        if existing_inspections == 0:
-            for inspection in sample_inspections:
-                try:
-                    doc = frappe.get_doc({
-                        "doctype": "Fabric Inspection",
-                        **inspection,
-                        "inspection_date": frappe.utils.today(),
-                        "inspection_type": "AQL Based",
-                        "aql_level": "II",
-                        "aql_value": "2.5",
-                        "inspection_regime": "Normal"
-                    })
-                    doc.insert()
-                    created_inspections += 1
-                except Exception as e:
-                    print(f"Error creating Fabric Inspection: {str(e)}")
-
-        frappe.db.commit()
-
-        return {
-            "success": True,
-            "message": "Sample data created successfully",
-            "data": {
-                "master_checklist_created": created_master,
-                "existing_master": existing_master,
-                "inspections_created": created_inspections,
-                "existing_inspections": existing_inspections,
-                "total_master": frappe.db.count('Master Checklist', {'is_active': 1}),
-                "total_inspections": frappe.db.count('Fabric Inspection')
-            }
-        }
-
-    except Exception as e:
-        frappe.log_error(f"Error creating sample data: {str(e)}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
 
 # ===========================
 # HOME PAGE APIs
@@ -259,6 +118,13 @@ def get_inspection_details(inspection_id):
         # Check permissions
         if not inspection.has_permission("read"):
             frappe.throw(_("You do not have permission to view this inspection"))
+
+        # Force reload child tables to ensure defects are loaded for all rolls
+        for roll in inspection.fabric_rolls_tab or []:
+            if hasattr(roll, 'defects'):
+                # Force reload defects for each roll
+                roll_doc = frappe.get_doc("Fabric Roll Inspection Item", roll.name)
+                roll.defects = roll_doc.defects
 
         # Build response data
         response_data = {
@@ -731,3 +597,418 @@ def calculate_summary_counts(inspection):
         "na": na,
         "pending": pending
     }
+
+# ===========================
+# ROLL DETAILS APIs
+# ===========================
+
+@frappe.whitelist()
+def get_roll_details(inspection_id, roll_id=None):
+    """Get roll details for fabric inspection including all roll information fields"""
+    try:
+        inspection = frappe.get_doc("Fabric Inspection", inspection_id)
+
+        # Check permissions
+        if not inspection.has_permission("read"):
+            frappe.throw(_("You do not have permission to view this inspection"))
+
+        # Force load child table data from database
+        for roll in inspection.fabric_rolls_tab or []:
+            if hasattr(roll, 'defects'):
+                # Get fresh defect data from database
+                defects_data = frappe.get_all(
+                    "Fabric Roll Inspection Defect",
+                    filters={"parent": roll.name},
+                    fields=["name", "defect", "category", "defect_type", "size", "points_auto"]
+                )
+                # Convert to proper objects
+                roll.defects = [frappe._dict(d) for d in defects_data]
+
+        # Get specific roll or all rolls
+        if roll_id:
+            # Find specific roll
+            roll_data = None
+            available_rolls = []
+
+            for roll in inspection.fabric_rolls_tab or []:
+                available_rolls.append({
+                    'name': roll.name,
+                    'roll_number': getattr(roll, 'roll_number', 'N/A')
+                })
+
+                # Try matching by both name and roll_number
+                if roll.name == roll_id or getattr(roll, 'roll_number', '') == roll_id:
+                    roll_data = build_detailed_roll_info(roll)
+                    break
+
+            if not roll_data:
+                error_msg = f"Roll not found. Looking for: '{roll_id}'. Available rolls: {available_rolls}"
+                frappe.log_error(error_msg)
+                frappe.throw(_(f"Roll not found. Roll ID '{roll_id}' does not exist in inspection '{inspection_id}'. Available rolls: {len(available_rolls)}"))
+
+            return {
+                "success": True,
+                "data": roll_data
+            }
+        else:
+            # Get all rolls with summary info
+            rolls = []
+            for roll in inspection.fabric_rolls_tab or []:
+                rolls.append(build_roll_summary(roll))
+
+            return {
+                "success": True,
+                "data": {
+                    "inspection_id": inspection_id,
+                    "total_rolls": len(rolls),
+                    "rolls": rolls
+                }
+            }
+
+    except Exception as e:
+        frappe.log_error(f"Error getting roll details: {str(e)}")
+        frappe.throw(_("Error loading roll details: {0}").format(str(e)))
+
+@frappe.whitelist()
+def save_roll_details(inspection_id, roll_id, roll_data):
+    """
+    Save roll details including roll information and defects
+    Uses in-memory child table appending to avoid data loss from parent.save() overwrites
+    """
+    try:
+        # Parse form data
+        if not inspection_id or not roll_id:
+            frappe.throw(_("inspection_id and roll_id are required"), frappe.ValidationError)
+
+        # Normalize roll_data to dict
+        if isinstance(roll_data, str):
+            try:
+                roll_data = json.loads(roll_data)
+            except Exception:
+                frappe.throw(_("Invalid roll_data JSON"), frappe.ValidationError)
+
+        # Load inspection doc
+        inspection = frappe.get_doc("Fabric Inspection", inspection_id)
+
+        # Check permissions
+        if not inspection.has_permission("write"):
+            frappe.throw(_("You do not have permission to modify this inspection"))
+
+        # Find the roll item in the parent's child table
+        roll_item = None
+        for roll in inspection.fabric_rolls_tab or []:
+            if roll.name == roll_id or getattr(roll, 'roll_number', '') == roll_id:
+                roll_item = roll
+                break
+
+        if not roll_item:
+            frappe.throw(_("Roll not found: {0}").format(roll_id), frappe.ValidationError)
+
+        # Update scalar fields on the roll_item (only if present in payload)
+        scalar_fields = [
+            "diameter_inches", "compact_roll_no", "inspected_gsm", "actual_gsm",
+            "inspected_length_m", "actual_length_m", "inspected_width_m", "actual_width_m",
+            "inspected_shade", "actual_shade", "roll_length", "roll_width", "gsm"
+        ]
+        for field in scalar_fields:
+            if field in roll_data:
+                setattr(roll_item, field, roll_data.get(field))
+
+        # Robust deterministic defect handling with proper CRUD semantics
+        defects_payload = roll_data.get("defects") or []
+
+        # Helper functions for deterministic master data handling
+        def get_or_create_defect_master(defect_name, defect_type="Major"):
+            """Get existing defect master or create deterministically"""
+            if not defect_name:
+                return None
+
+            # Normalize defect name for consistent lookup
+            normalized_name = defect_name.strip()
+
+            # Case-insensitive lookup by defect_name
+            existing = frappe.db.get_value(
+                "Defect Master",
+                {"defect_name": normalized_name},
+                "name"
+            )
+            if existing:
+                return existing
+
+            # Create with deterministic slug as defect_code
+            import re
+            defect_code = re.sub(r'[^a-zA-Z0-9]', '_', normalized_name.upper())
+            defect_code = re.sub(r'_+', '_', defect_code).strip('_')
+
+            # Ensure uniqueness with minimal counter if needed
+            base_code = defect_code
+            counter = 1
+            while frappe.db.exists("Defect Master", defect_code):
+                defect_code = f"{base_code}_{counter}"
+                counter += 1
+
+            dm = frappe.new_doc("Defect Master")
+            dm.defect_code = defect_code
+            dm.defect_name = normalized_name
+            dm.defect_type = defect_type
+            dm.inspection_type = "Fabric Inspection"
+            dm.point_1_criteria = "≤ 3\""
+            dm.point_2_criteria = "3\" to 6\""
+            dm.point_3_criteria = "6\" to 9\""
+            dm.point_4_criteria = "> 9\""
+            dm.insert(ignore_permissions=True)
+            return dm.name
+
+        def get_or_create_defect_category(category_name):
+            """Get existing defect category or create deterministically"""
+            if not category_name:
+                return None
+
+            # Normalize category name
+            normalized_name = category_name.strip()
+
+            # Lookup by category_name + material_type
+            existing = frappe.db.get_value(
+                "Defect Category",
+                {
+                    "category_name": normalized_name,
+                    "material_type": "Fabrics"
+                },
+                "name"
+            )
+            if existing:
+                return existing
+
+            # Create with deterministic slug
+            import re
+            category_code = re.sub(r'[^a-zA-Z0-9]', '_', normalized_name.upper())
+            category_code = re.sub(r'_+', '_', category_code).strip('_')
+
+            base_code = category_code
+            counter = 1
+            while frappe.db.exists("Defect Category", category_code):
+                category_code = f"{base_code}_{counter}"
+                counter += 1
+
+            dc = frappe.new_doc("Defect Category")
+            dc.category_code = category_code
+            dc.category_name = normalized_name
+            dc.material_type = "Fabrics"
+            dc.insert(ignore_permissions=True)
+            return dc.name
+
+        # Build new defects list with proper create/update/delete semantics
+        new_defects_list = []
+
+        for d in defects_payload:
+            # Normalize incoming data
+            defect_name = (d.get("defect") or "").strip()
+            category_name = (d.get("category") or "").strip()
+            defect_type = (d.get("defect_type") or "Major").strip()
+            size = round(flt(d.get("size", 0.0)), 2)  # Round to 2 decimal places for consistency
+            points_auto = flt(d.get("points_auto", 0.0))
+
+            # Ensure master data exists
+            get_or_create_defect_master(defect_name, defect_type)
+            get_or_create_defect_category(category_name)
+
+            # Build defect dict for child table
+            defect_dict = {
+                "defect": defect_name,
+                "category": category_name,
+                "defect_type": defect_type,
+                "size": size,
+                "points_auto": points_auto
+            }
+
+            # If client provides existing child row name, include it for update
+            if d.get("name"):
+                defect_dict["name"] = d["name"]
+
+            new_defects_list.append(defect_dict)
+
+        # Alternative approach: Direct child record management
+        # 1. Delete existing defects from database
+        frappe.db.delete("Fabric Roll Inspection Defect", {"parent": roll_item.name})
+
+        # 2. Create new defect records directly
+        for defect_dict in new_defects_list:
+            defect_doc = frappe.new_doc("Fabric Roll Inspection Defect")
+            defect_doc.parent = roll_item.name
+            defect_doc.parenttype = "Fabric Roll Inspection Item"
+            defect_doc.parentfield = "defects"
+            defect_doc.defect = defect_dict["defect"]
+            defect_doc.category = defect_dict["category"]
+            defect_doc.defect_type = defect_dict["defect_type"]
+            defect_doc.size = defect_dict["size"]
+            defect_doc.points_auto = defect_dict["points_auto"]
+            defect_doc.insert(ignore_permissions=True)
+
+        # Mark inspected and save parent without triggering child updates
+        if not roll_item.inspected:
+            roll_item.inspected = 1
+
+        # Update parent document fields only
+        inspection._preserve_mobile_defects = True
+        inspection.save(ignore_permissions=True)
+        frappe.db.commit()
+
+        # Reload defects from database for response
+        fresh_defects = frappe.get_all(
+            "Fabric Roll Inspection Defect",
+            filters={"parent": roll_item.name},
+            fields=["name", "defect", "category", "defect_type", "size", "points_auto"]
+        )
+        # Set fresh defects on roll item for response building
+        roll_item.defects = [frappe._dict(d) for d in fresh_defects]
+
+        # Build response from the updated roll item
+        reloaded_roll = roll_item
+
+        return {
+            "success": True,
+            "message": "Roll details saved successfully",
+            "data": build_detailed_roll_info(reloaded_roll)
+        }
+
+    except Exception as e:
+        error_msg = f"Error saving roll details: {str(e)}"
+        frappe.log_error(error_msg)
+        frappe.throw(_(error_msg))
+
+@frappe.whitelist()
+def get_defect_categories(material_type="Fabrics"):
+    """Get defect categories filtered by material type"""
+    try:
+        categories = frappe.get_all(
+            'Defect Category',
+            filters={
+                'material_type': material_type,
+                'is_active': 1
+            },
+            fields=['category_code as value', 'category_name as label', 'description'],
+            order_by='sort_order, category_name'
+        )
+
+        return {
+            "success": True,
+            "data": categories
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error getting defect categories: {str(e)}")
+        frappe.throw(_("Error loading defect categories: {0}").format(str(e)))
+
+@frappe.whitelist()
+def get_defects_by_category(category_code=None, material_type="Fabrics"):
+    """Get defects filtered by category and material type"""
+    try:
+        filters = {'material_type': material_type, 'is_active': 1}
+        if category_code:
+            filters['defect_category'] = category_code
+
+        defects = frappe.get_all(
+            'Defect Master',
+            filters=filters,
+            fields=['name as value', 'defect_name as label', 'defect_category as category', 'defect_description as description', 'defect_type'],
+            order_by='defect_category, defect_name'
+        )
+
+        return {
+            "success": True,
+            "data": defects
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error getting defects: {str(e)}")
+        frappe.throw(_("Error loading defects: {0}").format(str(e)))
+
+@frappe.whitelist()
+def get_roll_defect_dropdown_data(material_type="Fabrics"):
+    """Get all defect dropdown data in one call for roll details screen"""
+    try:
+        return {
+            'success': True,
+            'data': {
+                'categories': get_defect_categories(material_type)['data'],
+                'defects': get_defects_by_category(material_type=material_type)['data']
+            },
+            'cache_ttl': 3600  # Cache for 1 hour
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error getting roll defect dropdown data: {str(e)}")
+        frappe.throw(_("Error loading defect dropdown data: {0}").format(str(e)))
+
+# ===========================
+# ROLL HELPER FUNCTIONS
+# ===========================
+
+def build_detailed_roll_info(roll):
+    """Build detailed roll information for API response"""
+    return {
+        "roll_id": roll.name,
+        "roll_number": roll.roll_number,
+        "compact_roll_no": roll.compact_roll_no or "",
+        "shade_code": roll.shade_code or "",
+        "lot_number": roll.lot_number or "",
+
+        # Basic measurements
+        "roll_length": flt(roll.roll_length or 0),
+        "roll_width": flt(roll.roll_width or 0),
+        "gsm": flt(roll.gsm or 0),
+
+        # Roll information fields
+        "diameter_inches": flt(roll.diameter_inches or 0),
+        "inspected_gsm": flt(roll.inspected_gsm or 0),
+        "actual_gsm": flt(roll.actual_gsm or 0),
+        "inspected_length_m": flt(roll.inspected_length_m or 0),
+        "actual_length_m": flt(roll.actual_length_m or 0),
+        "inspected_width_m": flt(roll.inspected_width_m or 0),
+        "actual_width_m": flt(roll.actual_width_m or 0),
+        "inspected_shade": roll.inspected_shade or "",
+        "actual_shade": roll.actual_shade or "",
+
+        # Calculated fields
+        "total_size_inches": flt(roll.total_size_inches or 0),
+        "total_points_auto": flt(roll.total_points_auto or 0),
+        "points_per_100_sqm": flt(roll.points_per_100_sqm or 0),
+
+        # Status and results
+        "inspected": bool(roll.inspected),
+        "roll_result": roll.roll_result or "Pending",
+        "roll_grade": roll.roll_grade or "",
+
+        # Defects
+        "defects": build_roll_defects(roll),
+
+        # Remarks
+        "roll_remarks": roll.roll_remarks or ""
+    }
+
+def build_roll_summary(roll):
+    """Build roll summary for listing"""
+    return {
+        "roll_id": roll.name,
+        "roll_number": roll.roll_number,
+        "length": flt(roll.roll_length or 0),
+        "width": flt(roll.roll_width or 0),
+        "gsm": flt(roll.gsm or 0),
+        "total_points": flt(roll.total_points_auto or 0),
+        "points_per_100_sqm": flt(roll.points_per_100_sqm or 0),
+        "status": "Inspected" if roll.inspected else "Pending",
+        "result": roll.roll_result or "Pending"
+    }
+
+def build_roll_defects(roll):
+    """Build defects array for roll"""
+    defects = []
+    for defect_row in roll.defects or []:
+        defects.append({
+            "defect": defect_row.defect or "",
+            "category": defect_row.category or "",
+            "defect_type": getattr(defect_row, 'defect_type', '') or "",
+            "size": flt(defect_row.size or 0),
+            "points_auto": flt(defect_row.points_auto or 0)
+        })
+    return defects

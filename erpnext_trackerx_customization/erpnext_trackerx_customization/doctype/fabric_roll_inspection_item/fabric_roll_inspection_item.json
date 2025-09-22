@@ -6,7 +6,7 @@
  "field_order": [
   "roll_number",
   "compact_roll_no",
-  "shade_code", 
+  "shade_code",
   "lot_number",
   "roll_length",
   "roll_width",
@@ -16,14 +16,29 @@
   "inspection_method",
   "inspection_percentage",
   "inspected",
+  "section_break_roll_info",
+  "diameter_inches",
+  "inspected_gsm",
+  "actual_gsm",
+  "inspected_length_m",
+  "actual_length_m",
+  "column_break_roll_info",
+  "inspected_width_m",
+  "actual_width_m",
+  "inspected_shade",
+  "actual_shade",
   "section_break_calculations",
-  "total_defect_points",
+  "total_size_inches",
+  "total_points_auto",
   "points_per_100_sqm",
+  "total_defect_points",
   "defect_density",
-  "column_break_2", 
+  "column_break_2",
   "roll_grade",
   "roll_result",
   "accept_reject_reason",
+  "section_break_defects",
+  "defects",
   "section_break_summary",
   "defect_summary_by_group",
   "roll_remarks"
@@ -75,7 +90,7 @@
   {
    "fieldname": "gsm",
    "fieldtype": "Float",
-   "label": "Actual GSM",
+   "label": "GSM",
    "precision": "2",
    "permlevel": 0
   },
@@ -116,10 +131,99 @@
    "permlevel": 0
   },
   {
+   "fieldname": "section_break_roll_info",
+   "fieldtype": "Section Break",
+   "label": "Roll Information",
+   "collapsible": 1,
+   "permlevel": 0
+  },
+  {
+   "fieldname": "diameter_inches",
+   "fieldtype": "Float",
+   "label": "Diameter (inches)",
+   "precision": "2",
+   "permlevel": 0
+  },
+  {
+   "fieldname": "inspected_gsm",
+   "fieldtype": "Float",
+   "label": "Inspected GSM",
+   "precision": "2",
+   "permlevel": 0
+  },
+  {
+   "fieldname": "actual_gsm",
+   "fieldtype": "Float",
+   "label": "Actual GSM",
+   "precision": "2",
+   "permlevel": 0
+  },
+  {
+   "fieldname": "inspected_length_m",
+   "fieldtype": "Float",
+   "label": "Inspected Length (m)",
+   "precision": "2",
+   "permlevel": 0
+  },
+  {
+   "fieldname": "actual_length_m",
+   "fieldtype": "Float",
+   "label": "Actual Length (m)",
+   "precision": "2",
+   "permlevel": 0
+  },
+  {
+   "fieldname": "column_break_roll_info",
+   "fieldtype": "Column Break",
+   "permlevel": 0
+  },
+  {
+   "fieldname": "inspected_width_m",
+   "fieldtype": "Float",
+   "label": "Inspected Width (m)",
+   "precision": "2",
+   "permlevel": 0
+  },
+  {
+   "fieldname": "actual_width_m",
+   "fieldtype": "Float",
+   "label": "Actual Width (m)",
+   "precision": "2",
+   "permlevel": 0
+  },
+  {
+   "fieldname": "inspected_shade",
+   "fieldtype": "Data",
+   "label": "Inspected Shade",
+   "permlevel": 0
+  },
+  {
+   "fieldname": "actual_shade",
+   "fieldtype": "Data",
+   "label": "Actual Shade",
+   "permlevel": 0
+  },
+  {
    "fieldname": "section_break_calculations",
    "fieldtype": "Section Break",
    "label": "Inspection Results & Calculations",
    "collapsible": 1,
+   "permlevel": 0
+  },
+  {
+   "fieldname": "total_size_inches",
+   "fieldtype": "Float",
+   "label": "Total Size (inches)",
+   "precision": "2",
+   "read_only": 1,
+   "permlevel": 0
+  },
+  {
+   "fieldname": "total_points_auto",
+   "fieldtype": "Float",
+   "label": "Total Points (auto)",
+   "precision": "2",
+   "read_only": 1,
    "permlevel": 0
   },
   {
@@ -174,6 +278,20 @@
    "fieldtype": "Small Text",
    "label": "Accept/Reject Reason",
    "depends_on": "eval:doc.roll_result && doc.roll_result != 'Pending'",
+   "permlevel": 0
+  },
+  {
+   "fieldname": "section_break_defects",
+   "fieldtype": "Section Break",
+   "label": "Defects",
+   "collapsible": 1,
+   "permlevel": 0
+  },
+  {
+   "fieldname": "defects",
+   "fieldtype": "Table",
+   "label": "Defects",
+   "options": "Fabric Roll Inspection Defect",
    "permlevel": 0
   },
   {
