@@ -389,22 +389,24 @@ class FabricInspection(Document):
                     fabric_roll.inspection_remarks = roll.roll_remarks
                     
                     # Copy defects if the Fabric Roll has a defects table
-                    roll_defects = [d for d in (self.all_defects or []) if d.roll_reference == roll.roll_number]
-                    if hasattr(fabric_roll, 'defects') and roll_defects:
-                        fabric_roll.defects = []  # Clear existing
-                        for defect in roll_defects:
-                            fabric_roll.append('defects', {
-                                'defect_code': defect.defect_code,
-                                'defect_name': defect.defect_name,
-                                'defect_category': defect.defect_category,
-                                'location_yard': defect.location_yard,
-                                'location_position': defect.location_position,
-                                'defect_size': defect.defect_size,
-                                'defect_points': defect.defect_points,
-                                'severity': defect.severity,
-                                'defect_image': defect.defect_image,
-                                'remarks': defect.remarks
-                            })
+                    # Check if we should preserve mobile API defects
+                    if not (hasattr(self, '_preserve_mobile_defects') and self._preserve_mobile_defects):
+                        roll_defects = [d for d in (self.all_defects or []) if d.roll_reference == roll.roll_number]
+                        if hasattr(fabric_roll, 'defects') and roll_defects:
+                            fabric_roll.defects = []  # Clear existing
+                            for defect in roll_defects:
+                                fabric_roll.append('defects', {
+                                    'defect_code': defect.defect_code,
+                                    'defect_name': defect.defect_name,
+                                    'defect_category': defect.defect_category,
+                                    'location_yard': defect.location_yard,
+                                    'location_position': defect.location_position,
+                                    'defect_size': defect.defect_size,
+                                    'defect_points': defect.defect_points,
+                                    'severity': defect.severity,
+                                    'defect_image': defect.defect_image,
+                                    'remarks': defect.remarks
+                                })
                     
                     fabric_roll.save()
                     
