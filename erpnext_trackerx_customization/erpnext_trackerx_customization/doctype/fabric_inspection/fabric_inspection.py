@@ -99,6 +99,11 @@ class FabricInspection(Document):
         """Calculate results for each inspected roll"""
         if not self.fabric_rolls_tab:
             return
+
+        # Check if we should preserve mobile API defects
+        if hasattr(self, '_preserve_mobile_defects') and self._preserve_mobile_defects:
+            # Skip overwriting defects when called from mobile API
+            return
         
         for roll in self.fabric_rolls_tab:
             if not roll.inspected:
@@ -225,9 +230,9 @@ class FabricInspection(Document):
                 inspected_rolls += 1
                 total_points += flt(roll.total_defect_points or 0)
                 
-                roll_defects = [d for d in (self.all_defects or []) if d.roll_reference == roll.roll_number]
-                if roll_defects:
-                    total_defects += len(roll_defects)
+                # Count defects from the roll's defects table
+                if hasattr(roll, 'defects') and roll.defects:
+                    total_defects += len(roll.defects)
                 
                 # Count results
                 if roll.roll_result in ['First Quality', 'Accepted']:
