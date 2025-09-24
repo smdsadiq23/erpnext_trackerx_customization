@@ -1,0 +1,23 @@
+{
+ "content": null,
+ "creation": "2025-09-24 20:59:04.156145",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2025-09-24 20:59:04.156145",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "operator_attendance",
+ "owner": "Administrator",
+ "page_name": "operator_attendance",
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Operator Attendance"
+}
