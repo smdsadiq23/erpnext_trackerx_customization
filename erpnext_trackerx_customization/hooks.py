@@ -123,14 +123,14 @@ fixtures = [
             ]
         ]
     },
-    {
-        "doctype": "Physical Cell Operation",
-        "filters": [
-            [
-                "operation", "in",["QR/Barcode Cut Bundle Activation"]
-            ]
-        ]
-    },
+    # {
+    #     "doctype": "Physical Cell Operation",
+    #     "filters": [
+    #         [
+    #             "operation", "in",["QR/Barcode Cut Bundle Activation"]
+    #         ]
+    #     ]
+    # },
     {
         "doctype": "Document Naming Rule",
         "filters": [
