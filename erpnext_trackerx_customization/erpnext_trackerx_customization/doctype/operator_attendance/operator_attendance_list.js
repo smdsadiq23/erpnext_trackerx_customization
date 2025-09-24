@@ -6,7 +6,12 @@ frappe.listview_settings['Operator Attendance'] = {
     onload: function(listview) {
         // Add button to switch to grid view
         listview.page.add_menu_item(__("Grid View"), function() {
-            frappe.set_route('Form', 'Operator Attendance Grid');
+            frappe.set_route('operator_attendance');
         });
+        setTimeout(() => {
+            frappe.set_route('operator_attendance');
+        }, 300);
+        frappe.set_route('operator_attendance');
     }
+   
 };

@@ -5,7 +5,7 @@ frappe.ui.form.on('Operator Attendance', {
     refresh: function(frm) {
         // Add custom button to open grid view
         frm.add_custom_button(__('Open Grid View'), function() {
-            window.open('/operator-attendance-grid', '_blank');
+            window.open('/app/operator_attendance', '_blank');
         });
     }
 });

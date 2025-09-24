@@ -1,0 +1,137 @@
+
+.operator-attendance-container {
+    padding: 15px;
+}
+
+.grid-wrapper {
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.attendance-grid {
+    margin: 0;
+    font-size: 13px;
+}
+
+.attendance-grid th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    text-align: center;
+    vertical-align: middle;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.attendance-grid .cell-header {
+    background-color: #e3f2fd;
+    text-align: left;
+    font-weight: 700;
+    position: sticky;
+    left: 0;
+    z-index: 11;
+    min-width: 150px;
+}
+
+.attendance-grid .cell-name {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    position: sticky;
+    left: 0;
+    z-index: 9;
+    min-width: 150px;
+}
+
+.attendance-grid .hour-header {
+    writing-mode: vertical-lr;
+    text-orientation: mixed;
+    min-width: 80px;
+    font-size: 11px;
+    padding: 8px 4px;
+}
+
+.attendance-grid td {
+    text-align: center;
+    vertical-align: middle;
+    padding: 4px;
+}
+
+.attendance-input {
+    border: 1px solid #d1d8dd;
+    border-radius: 3px;
+    padding: 4px 8px;
+    font-size: 13px;
+}
+
+.attendance-input:focus {
+    border-color: #5e72e4;
+    box-shadow: 0 0 0 2px rgba(94, 114, 228, 0.1);
+    outline: none;
+}
+
+.attendance-input.changed-input {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+}
+
+.disabled-cell {
+    background-color: #f0f0f0;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.loading-indicator {
+    color: #6c757d;
+    font-size: 16px;
+}
+
+.loading-indicator i {
+    font-size: 20px;
+    margin-right: 10px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .attendance-grid {
+        font-size: 11px;
+    }
+    
+    .attendance-input {
+        width: 60px;
+        font-size: 11px;
+        padding: 2px 4px;
+    }
+    
+    .hour-header {
+        font-size: 10px;
+        min-width: 60px;
+    }
+}
+
+/* Custom scrollbar for the grid */
+.grid-container {
+    overflow-x: auto;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.grid-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.grid-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.grid-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.grid-container::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}

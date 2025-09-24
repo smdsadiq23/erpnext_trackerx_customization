@@ -10,6 +10,9 @@ def get_operator_attendance_grid(date):
     try:
         # Get all physical cells
         physical_cells = frappe.get_all("Physical Cell", 
+            filters={
+                "name": ["!=", "QR/Barcode Cut Bundle Activation"]
+            },
             fields=["name", "cell_name", "start_time", "end_time", "operator_count"])
         
         if not physical_cells:
