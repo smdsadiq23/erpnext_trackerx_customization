@@ -10,6 +10,23 @@ class FabricInspection(Document):
     def before_insert(self):
         """Set default values before inserting new document"""
         self.populate_aql_fields_from_grn()
+
+    def after_insert(self):
+        """Auto-populate checklist items from master checklist after document creation"""
+        # Always try to populate checklist if no items exist
+        if not self.fabric_checklist_items:
+            # Set default material_type if not set
+            if not self.material_type:
+                self.material_type = "Fabrics"  # Default material type
+
+            try:
+                self.populate_checklist_from_master()
+                if self.fabric_checklist_items:  # Only save if items were added
+                    self.save()
+                    frappe.logger().info(f"Auto-populated {len(self.fabric_checklist_items)} checklist items for {self.name}")
+            except Exception as e:
+                frappe.logger().error(f"Error auto-populating checklist for {self.name}: {str(e)}")
+                # Don't fail the document creation, just log the error
     
     def validate(self):
         """Validate fabric inspection before saving"""
@@ -81,6 +98,11 @@ class FabricInspection(Document):
     def calculate_roll_results(self):
         """Calculate results for each inspected roll"""
         if not self.fabric_rolls_tab:
+            return
+
+        # Check if we should preserve mobile API defects
+        if hasattr(self, '_preserve_mobile_defects') and self._preserve_mobile_defects:
+            # Skip overwriting defects when called from mobile API
             return
         
         for roll in self.fabric_rolls_tab:
@@ -208,9 +230,9 @@ class FabricInspection(Document):
                 inspected_rolls += 1
                 total_points += flt(roll.total_defect_points or 0)
                 
-                roll_defects = [d for d in (self.all_defects or []) if d.roll_reference == roll.roll_number]
-                if roll_defects:
-                    total_defects += len(roll_defects)
+                # Count defects from the roll's defects table
+                if hasattr(roll, 'defects') and roll.defects:
+                    total_defects += len(roll.defects)
                 
                 # Count results
                 if roll.roll_result in ['First Quality', 'Accepted']:
@@ -367,22 +389,24 @@ class FabricInspection(Document):
                     fabric_roll.inspection_remarks = roll.roll_remarks
                     
                     # Copy defects if the Fabric Roll has a defects table
-                    roll_defects = [d for d in (self.all_defects or []) if d.roll_reference == roll.roll_number]
-                    if hasattr(fabric_roll, 'defects') and roll_defects:
-                        fabric_roll.defects = []  # Clear existing
-                        for defect in roll_defects:
-                            fabric_roll.append('defects', {
-                                'defect_code': defect.defect_code,
-                                'defect_name': defect.defect_name,
-                                'defect_category': defect.defect_category,
-                                'location_yard': defect.location_yard,
-                                'location_position': defect.location_position,
-                                'defect_size': defect.defect_size,
-                                'defect_points': defect.defect_points,
-                                'severity': defect.severity,
-                                'defect_image': defect.defect_image,
-                                'remarks': defect.remarks
-                            })
+                    # Check if we should preserve mobile API defects
+                    if not (hasattr(self, '_preserve_mobile_defects') and self._preserve_mobile_defects):
+                        roll_defects = [d for d in (self.all_defects or []) if d.roll_reference == roll.roll_number]
+                        if hasattr(fabric_roll, 'defects') and roll_defects:
+                            fabric_roll.defects = []  # Clear existing
+                            for defect in roll_defects:
+                                fabric_roll.append('defects', {
+                                    'defect_code': defect.defect_code,
+                                    'defect_name': defect.defect_name,
+                                    'defect_category': defect.defect_category,
+                                    'location_yard': defect.location_yard,
+                                    'location_position': defect.location_position,
+                                    'defect_size': defect.defect_size,
+                                    'defect_points': defect.defect_points,
+                                    'severity': defect.severity,
+                                    'defect_image': defect.defect_image,
+                                    'remarks': defect.remarks
+                                })
                     
                     fabric_roll.save()
                     
@@ -708,3 +732,206 @@ class FabricInspection(Document):
                 {'code': 'OIL_STAIN', 'name': 'Oil Stain', 'points': 3}
             ]
         }
+
+    def populate_checklist_from_master(self):
+        """Populate checklist items from Master Checklist based on material type"""
+        if not self.material_type:
+            # Set default material_type
+            self.material_type = "Fabrics"
+            frappe.logger().info(f"Set default material_type to 'Fabrics' for inspection {self.name}")
+
+        try:
+            # First check if Master Checklist doctype exists
+            if not frappe.db.exists("DocType", "Master Checklist"):
+                frappe.logger().warning("Master Checklist doctype does not exist")
+                return
+
+            # Get master checklist items for this material type
+            master_items = frappe.get_all(
+                'Master Checklist',
+                filters={
+                    'material_type': self.material_type,
+                    'is_active': 1
+                },
+                fields=[
+                    'test_parameter', 'standard_requirement', 'test_method',
+                    'test_category', 'is_mandatory', 'display_order',
+                    'unit_of_measurement', 'tolerance', 'description'
+                ],
+                order_by='display_order, test_parameter'
+            )
+
+            if not master_items:
+                # Try to create default checklist items if none exist
+                frappe.logger().info(f"No master checklist items found for material_type: {self.material_type}")
+                self.create_default_checklist_items()
+                return
+
+            # Clear existing checklist items (if any)
+            self.set('fabric_checklist_items', [])
+
+            # Add master checklist items to fabric inspection
+            for item in master_items:
+                self.append('fabric_checklist_items', {
+                    'test_parameter': item.test_parameter,
+                    'standard_requirement': item.standard_requirement,
+                    'test_method': item.test_method or '',
+                    'test_category': item.test_category or '',
+                    'is_mandatory': item.is_mandatory or 0,
+                    'unit_of_measurement': item.unit_of_measurement or '',
+                    'tolerance': item.tolerance or '',
+                    'description': item.description or '',
+                    'display_order': item.display_order or 999,
+                    'status': '',  # To be filled during inspection
+                    'actual_result': '',
+                    'remarks': ''
+                })
+
+            frappe.logger().info(f"Populated {len(master_items)} checklist items for material_type: {self.material_type}")
+
+        except Exception as e:
+            frappe.logger().error(f"Error populating checklist from master for {self.name}: {str(e)}")
+            frappe.log_error(f"Error populating checklist from master: {str(e)}")
+
+    def create_default_checklist_items(self):
+        """Create default checklist items if no Master Checklist exists"""
+        try:
+            default_items = [
+                {
+                    'test_parameter': 'GSM Check',
+                    'standard_requirement': '150-160',
+                    'test_method': 'ASTM D3776',
+                    'test_category': 'Physical',
+                    'is_mandatory': 1,
+                    'unit_of_measurement': 'gsm',
+                    'tolerance': '±5',
+                    'description': 'Fabric weight per square meter',
+                    'display_order': 1
+                },
+                {
+                    'test_parameter': 'Fabric Width',
+                    'standard_requirement': '58-60 inches',
+                    'test_method': 'Manual Measurement',
+                    'test_category': 'Dimensional',
+                    'is_mandatory': 1,
+                    'unit_of_measurement': 'inches',
+                    'tolerance': '±1',
+                    'description': 'Fabric width measurement',
+                    'display_order': 2
+                },
+                {
+                    'test_parameter': 'Color Fastness',
+                    'standard_requirement': 'Grade 4-5',
+                    'test_method': 'AATCC 61',
+                    'test_category': 'Color',
+                    'is_mandatory': 1,
+                    'unit_of_measurement': 'Grade',
+                    'tolerance': '±0.5',
+                    'description': 'Color fastness to laundering',
+                    'display_order': 3
+                }
+            ]
+
+            # Clear existing checklist items
+            self.set('fabric_checklist_items', [])
+
+            # Add default items
+            for item in default_items:
+                self.append('fabric_checklist_items', {
+                    'test_parameter': item['test_parameter'],
+                    'standard_requirement': item['standard_requirement'],
+                    'test_method': item['test_method'],
+                    'test_category': item['test_category'],
+                    'is_mandatory': item['is_mandatory'],
+                    'unit_of_measurement': item['unit_of_measurement'],
+                    'tolerance': item['tolerance'],
+                    'description': item['description'],
+                    'display_order': item['display_order'],
+                    'status': '',
+                    'actual_result': '',
+                    'remarks': ''
+                })
+
+            frappe.logger().info(f"Created {len(default_items)} default checklist items for {self.name}")
+
+        except Exception as e:
+            frappe.logger().error(f"Error creating default checklist items: {str(e)}")
+
+    @frappe.whitelist()
+    def refresh_checklist_from_master(self):
+        """Refresh checklist items from Master Checklist (preserving existing results)"""
+        if not self.material_type:
+            frappe.throw(_("Material Type is required to refresh checklist"))
+
+        try:
+            # Store existing results
+            existing_results = {}
+            for item in self.fabric_checklist_items:
+                key = item.test_parameter
+                existing_results[key] = {
+                    'status': item.status,
+                    'actual_result': item.actual_result,
+                    'remarks': item.remarks
+                }
+
+            # Get fresh master checklist items
+            master_items = frappe.get_all(
+                'Master Checklist',
+                filters={
+                    'material_type': self.material_type,
+                    'is_active': 1
+                },
+                fields=[
+                    'test_parameter', 'standard_requirement', 'test_method',
+                    'test_category', 'is_mandatory', 'display_order',
+                    'unit_of_measurement', 'tolerance', 'description'
+                ],
+                order_by='display_order, test_parameter'
+            )
+
+            if not master_items:
+                frappe.throw(_("No active master checklist items found for material type: {0}").format(self.material_type))
+
+            # Clear and repopulate checklist
+            self.set('fabric_checklist_items', [])
+            added_items = 0
+            preserved_results = 0
+
+            for item in master_items:
+                # Check if we have existing results for this test parameter
+                existing_result = existing_results.get(item.test_parameter, {})
+
+                if existing_result.get('status'):
+                    preserved_results += 1
+
+                self.append('fabric_checklist_items', {
+                    'test_parameter': item.test_parameter,
+                    'standard_requirement': item.standard_requirement,
+                    'test_method': item.test_method or '',
+                    'test_category': item.test_category or '',
+                    'is_mandatory': item.is_mandatory or 0,
+                    'unit_of_measurement': item.unit_of_measurement or '',
+                    'tolerance': item.tolerance or '',
+                    'description': item.description or '',
+                    'display_order': item.display_order or 999,
+                    'status': existing_result.get('status', ''),
+                    'actual_result': existing_result.get('actual_result', ''),
+                    'remarks': existing_result.get('remarks', '')
+                })
+                added_items += 1
+
+            self.save()
+
+            return {
+                'success': True,
+                'message': f'Checklist refreshed from master. Added {added_items} items, preserved {preserved_results} existing results.',
+                'data': {
+                    'added_items': added_items,
+                    'preserved_results': preserved_results,
+                    'total_items': len(self.fabric_checklist_items)
+                }
+            }
+
+        except Exception as e:
+            frappe.log_error(f"Error refreshing checklist from master: {str(e)}")
+            frappe.throw(_("Error refreshing checklist: {0}").format(str(e)))

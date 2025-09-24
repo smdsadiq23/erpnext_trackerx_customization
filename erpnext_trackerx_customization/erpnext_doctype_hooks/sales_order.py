@@ -1,14 +1,33 @@
 
 import frappe
+from frappe import _
+
 def validate(doc, method):
+    validate_sales_order_no(doc)
     validate_unique_item_combinations(doc)
     copy_qty_pending_qty(doc, method)
-
 
 
 def on_submit(doc, method):
     pass
 
+
+def validate_sales_order_no(doc):
+    if doc.custom_sales_order_no:
+        existing = frappe.db.exists(
+            "Sales Order",
+            {
+                "custom_sales_order_no": doc.custom_sales_order_no,
+                "name": ("!=", doc.name)
+            }
+        )
+        if existing:
+            frappe.throw(
+                _("Sales Order with Number '{0}' already exists.").format(
+                    doc.custom_sales_order_no, existing
+                ),
+                title=_("Duplicate Sales Order No")
+            )
 
 
 def validate_unique_item_combinations(doc):

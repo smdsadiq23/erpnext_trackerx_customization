@@ -122,7 +122,14 @@ fixtures = [
                 "name", "in",["QR/Barcode Cut Bundle Activation"]
             ]
         ]
-    },    
+    }, 
+    {
+        "doctype": "Document Naming Rule",
+        "filters": [
+            ["document_type", "in", ["Purchase Order", "Sales Order", "Work Order", "Goods Receipt Note", "Purchase Receipt"]],
+            ["disabled", "=", 0]
+        ]     
+    }  
 ]
 
 # AQL data fixtures for import during migration
@@ -313,6 +320,12 @@ doc_events= {
         "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.before_save_bom",
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.on_submit"
     },
+    "Purchase Order": {
+        "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.purchase_order.validate"
+    },   
+    "Purchase Receipt": {
+        "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.purchase_receipt.validate"
+    },       
     "Sales Order": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.validate",
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.on_submit"
@@ -378,7 +391,8 @@ doc_events= {
 # 	"frappe.desk.doctype.event.event.get_events": "erpnext_trackerx_customization.event.get_events"
 # }
 override_whitelisted_methods = {
-    "erpnext.manufacturing.doctype.work_order.work_order.create_pick_list": "erpnext_trackerx_customization.api.custom_pick_list.custom_create_pick_list"
+    "erpnext.manufacturing.doctype.work_order.work_order.create_pick_list": "erpnext_trackerx_customization.api.custom_pick_list.custom_create_pick_list",
+    "frappe.desk.search.search_link": "erpnext_trackerx_customization.api.custom_search.custom_search_link"
 }
 #
 # each overriding function accepts a `data` argument;
