@@ -122,7 +122,14 @@ fixtures = [
                 "name", "in",["QR/Barcode Cut Bundle Activation"]
             ]
         ]
-    },    
+    }, 
+    {
+        "doctype": "Document Naming Rule",
+        "filters": [
+            ["document_type", "=", "Purchase Order"],
+            ["disabled", "=", 0]  # only active rules
+        ]     
+    }  
 ]
 
 # AQL data fixtures for import during migration
