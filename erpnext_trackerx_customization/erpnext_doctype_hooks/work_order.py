@@ -1,7 +1,9 @@
 import frappe
+from frappe import _
 from frappe.utils import flt
 
 def validate(doc, method):
+    validate_work_order_no(doc)
     calculate_total_qty(doc)
     validate_and_update_sales_order_items(doc)
 
@@ -17,6 +19,22 @@ def on_submit(doc, method):
 def on_trash(doc, method):
     manage_work_order_delete(doc, method)
 
+def validate_work_order_no(doc):
+    if doc.custom_work_order_no:
+        existing = frappe.db.exists(
+            "Work Order",
+            {
+                "custom_work_order_no": doc.custom_work_order_no,
+                "name": ("!=", doc.name)
+            }
+        )
+        if existing:
+            frappe.throw(
+                _("Work Order with Number '{0}' already exists.").format(
+                    doc.custom_work_order_no, existing
+                ),
+                title=_("Duplicate Work Order No")
+            )    
 
 def manage_work_order_delete(doc, method):
     update_sales_order_pending_qty_by_work_order(doc)

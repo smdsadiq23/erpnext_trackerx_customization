@@ -1,0 +1,343 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-09-17 20:30:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_gxoj",
+  "cut_docket",
+  "column_break_evly",
+  "column_break_qduz",
+  "barcode",
+  "section_break_afon",
+  "column_break_wvzx",
+  "barcode_image",
+  "column_break_nbft",
+  "qr_code_image",
+  "section_break_nutg",
+  "naming_series",
+  "style",
+  "style_no",
+  "color",
+  "brand",
+  "bom_no",
+  "panel_type",
+  "panel_code",
+  "season",
+  "garment_way",
+  "plant_code",
+  "work_center",
+  "section",
+  "column_break_vksb",
+  "cut_start_date",
+  "marker_length_meters",
+  "marker_width_meters",
+  "no_of_plies",
+  "marker_efficiency",
+  "marker_image",
+  "fabricmaterial_details",
+  "raw_material_composition",
+  "fabric_requirement_against_bom",
+  "fabric_requirement_against_marker",
+  "status",
+  "lay_cut_inspection",
+  "section_break_akmr",
+  "work_order_details",
+  "table_size_ratio_qty",
+  "section_break_vifx",
+  "table_roll_details",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "cut_docket",
+   "fieldtype": "Link",
+   "label": "Cut Docket Reference",
+   "options": "Cut Docket",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "default": ".WMP.YYYY.MM.DD.-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Naming Series",
+   "options": ".WMP.YYYY.MM.DD.-.#####",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "panel_code",
+   "fieldtype": "Data",
+   "label": "Panel Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "panel_type",
+   "fieldtype": "Select",
+   "label": "Panel Type"
+  },
+  {
+   "fieldname": "column_break_vksb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "season",
+   "fieldtype": "Data",
+   "label": "Season",
+   "read_only": 1
+  },
+  {
+   "fieldname": "garment_way",
+   "fieldtype": "Data",
+   "label": "Garment Way",
+   "read_only": 1
+  },
+  {
+   "fieldname": "plant_code",
+   "fieldtype": "Link",
+   "label": "Plant Code",
+   "options": "Company"
+  },
+  {
+   "fieldname": "work_center",
+   "fieldtype": "Data",
+   "label": "Work Center"
+  },
+  {
+   "fieldname": "fabricmaterial_details",
+   "fieldtype": "Data",
+   "label": "Fabric/Material Details",
+   "read_only": 1
+  },
+  {
+   "fieldname": "raw_material_composition",
+   "fieldtype": "Data",
+   "label": "Raw Material Composition",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section",
+   "fieldtype": "Data",
+   "label": "Section"
+  },
+  {
+   "fieldname": "cut_start_date",
+   "fieldtype": "Date",
+   "label": "Cut Start Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "table_size_ratio_qty",
+   "fieldtype": "Table",
+   "label": "Size Ratio Quantity",
+   "options": "Wh Material Picking Item"
+  },
+  {
+   "fieldname": "fabric_requirement_against_bom",
+   "fieldtype": "Float",
+   "label": "Fabric Requirement against BOM",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "fabric_requirement_against_marker",
+   "fieldtype": "Float",
+   "label": "Fabric Requirement against Marker",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "marker_length_meters",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Marker Length (meters)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "marker_width_meters",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Marker Width (meters)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "no_of_plies",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "No of Plies",
+   "reqd": 1
+  },
+  {
+   "fieldname": "marker_efficiency",
+   "fieldtype": "Percent",
+   "label": "Marker Efficiency",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "marker_image",
+   "fieldtype": "Attach Image",
+   "label": "Marker image"
+  },
+  {
+   "fieldname": "section_break_akmr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "work_order_details",
+   "fieldtype": "Table",
+   "label": "Work Order Details",
+   "options": "Wh Material Picking Work Order"
+  },
+  {
+   "fieldname": "section_break_vifx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "bom_no",
+   "fieldtype": "Data",
+   "label": "BOM",
+   "read_only": 1
+  },
+  {
+   "fieldname": "brand",
+   "fieldtype": "Data",
+   "label": "Brand",
+   "read_only": 1
+  },
+  {
+   "fieldname": "style",
+   "fieldtype": "Link",
+   "label": "FG Code",
+   "link_filters": "[[\"Item\",\"custom_select_master\",\"=\",\"Finished Goods\"]]",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Wh Material Picking",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "style_no",
+   "fieldtype": "Data",
+   "label": "Style",
+   "read_only": 1
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nIn Progress\nCompleted\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "barcode_image",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Barcode image",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "qr_code_image",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "QR Code Image",
+   "print_hide": 1
+  },
+  {
+   "fieldname": "barcode",
+   "fieldtype": "Barcode",
+   "read_only": 1,
+   "width": "200"
+  },
+  {
+   "fieldname": "column_break_wvzx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_nbft",
+   "fieldtype": "Column Break",
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_nutg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_evly",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_afon",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_gxoj",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_qduz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "color",
+   "fieldtype": "Data",
+   "label": "Colour",
+   "read_only": 1
+  },
+  {
+   "fieldname": "table_roll_details",
+   "fieldtype": "Table",
+   "label": "Roll Details",
+   "options": "Wh Material Picking Roll Allocation"
+  },
+  {
+   "default": "0",
+   "fieldname": "lay_cut_inspection",
+   "fieldtype": "Check",
+   "label": "Lay Cut inspection"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-09-17 20:30:00.000000",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Wh Material Picking",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

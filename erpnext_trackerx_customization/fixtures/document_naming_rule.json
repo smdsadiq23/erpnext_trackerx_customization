@@ -1,0 +1,67 @@
+[
+ {
+  "conditions": [],
+  "counter": 2,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Document Naming Rule",
+  "document_type": "Purchase Order",
+  "modified": "2025-09-24 10:26:30.873585",
+  "name": "fpnkurpha9",
+  "prefix": "{custom_purchase_order_no}",
+  "prefix_digits": 0,
+  "priority": 0
+ },
+ {
+  "conditions": [],
+  "counter": 2,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Document Naming Rule",
+  "document_type": "Sales Order",
+  "modified": "2025-09-24 11:09:37.026964",
+  "name": "7lgk2h7mg5",
+  "prefix": "{custom_sales_order_no}",
+  "prefix_digits": 0,
+  "priority": 0
+ },
+ {
+  "conditions": [],
+  "counter": 2,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Document Naming Rule",
+  "document_type": "Work Order",
+  "modified": "2025-09-24 11:22:52.838992",
+  "name": "f44b83rteu",
+  "prefix": "{custom_work_order_no}",
+  "prefix_digits": 0,
+  "priority": 0
+ },
+ {
+  "conditions": [],
+  "counter": 1,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Document Naming Rule",
+  "document_type": "Goods Receipt Note",
+  "modified": "2025-09-24 11:45:37.193509",
+  "name": "uh8t9lu7og",
+  "prefix": "{goods_receipt_note_no}",
+  "prefix_digits": 0,
+  "priority": 0
+ },
+ {
+  "conditions": [],
+  "counter": 5,
+  "disabled": 0,
+  "docstatus": 0,
+  "doctype": "Document Naming Rule",
+  "document_type": "Purchase Receipt",
+  "modified": "2025-09-24 12:07:12.277658",
+  "name": "8vidd3bad4",
+  "prefix": "{custom_purchase_receipt_no}",
+  "prefix_digits": 0,
+  "priority": 0
+ }
+]

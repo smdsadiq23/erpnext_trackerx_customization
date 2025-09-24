@@ -173,6 +173,8 @@ const FlowCanvas = ({
     (event) => {
       event.preventDefault();
       const payload = JSON.parse(event.dataTransfer.getData("application/reactflow"));
+      console.log("payload", payload);
+      
       const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
 
       const newNodeId = getId("process");
