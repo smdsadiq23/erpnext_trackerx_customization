@@ -126,8 +126,8 @@ fixtures = [
     {
         "doctype": "Document Naming Rule",
         "filters": [
-            ["document_type", "=", "Purchase Order"],
-            ["disabled", "=", 0]  # only active rules
+            ["document_type", "in", ["Purchase Order", "Sales Order", "Work Order", "Goods Receipt Note", "Purchase Receipt"]],
+            ["disabled", "=", 0]
         ]     
     }  
 ]
@@ -320,6 +320,12 @@ doc_events= {
         "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.before_save_bom",
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.on_submit"
     },
+    "Purchase Order": {
+        "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.purchase_order.validate"
+    },   
+    "Purchase Receipt": {
+        "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.purchase_receipt.validate"
+    },       
     "Sales Order": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.validate",
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.on_submit"

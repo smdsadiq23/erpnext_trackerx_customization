@@ -268,12 +268,33 @@ class GoodsReceiptNote(Document):
         """Additional validation for Goods Receipt Note"""
         # Don't call super().validate() as Document doesn't have validate method
         
+        self.validate_goods_receipt_note_no()
+
         # ALWAYS validate warehouse capacities (universal check)
         self.validate_all_warehouse_capacities()
         
         # Validate putaway rule application if enabled
         if self.apply_putaway_rule and self.get("items"):
             self.validate_putaway_rule_items()
+
+
+    def validate_goods_receipt_note_no(self):
+        if self.goods_receipt_note_no:
+            existing = frappe.db.exists(
+                "Goods Receipt Note",  # ✅ Correct doctype
+                {
+                    "goods_receipt_note_no": self.goods_receipt_note_no,
+                    "name": ("!=", self.name)
+                }
+            )
+            if existing:
+                frappe.throw(
+                    _("Goods Receipt Note with Number '{0}' already exists.").format(
+                        self.goods_receipt_note_no
+                    ),
+                    title=_("Duplicate Goods Receipt Note No")
+                )
+
     
     def validate_putaway_rule_items(self):
         """Validate items after putaway rule application"""
