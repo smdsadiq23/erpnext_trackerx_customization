@@ -2,6 +2,20 @@
 
 import frappe
 from frappe import _
+from frappe.model.naming import set_name_by_naming_series
+
+def autoname(doc, method):
+    """
+    Set document name:
+    - If custom_purchase_receipt_no is provided, use it as the doc name.
+    - Otherwise, use the standard naming series.
+    """
+    if doc.custom_purchase_receipt_no:
+        doc.name = doc.custom_purchase_receipt_no
+    else:
+        # Use naming series defined in Purchase Receipt doctype
+        set_name_by_naming_series(doc)
+
 
 def validate(doc, method):
     if doc.custom_purchase_receipt_no:
