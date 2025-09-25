@@ -161,10 +161,10 @@
 }
 
 .attendance-grid .hour-header {
-    writing-mode: vertical-lr;
+    /* writing-mode: vertical-lr; */
     text-orientation: mixed;
-    min-width: 80px;
-    max-width: 80px;
+    min-width: 90px;
+    max-width: 90px;
     font-size: 11px;
     padding: 8px 4px;
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
@@ -201,15 +201,15 @@
     box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.1);
 }
 
-.attendance-input.first-cell {
+/* .attendance-input.first-cell {
     border-left: 3px solid #28a745;
     background: linear-gradient(90deg, #f0fff4 0%, white 10%);
-}
+} */
 
-.attendance-input.first-cell.changed-input {
+/* .attendance-input.first-cell.changed-input {
     border-left: 3px solid #ffc107;
     background: linear-gradient(90deg, #fff8db 0%, #fff3cd 10%);
-}
+} */
 
 .disabled-cell {
     background-color: #f8f9fa;
