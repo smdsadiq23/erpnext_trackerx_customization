@@ -5,7 +5,16 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-class GoodsReceiptNote(Document):
+class GoodsReceiptNote(Document):    
+    def autoname(self):
+        """Set document name based on goods_receipt_note_no or naming_series"""
+        if self.goods_receipt_note_no:
+            self.name = self.goods_receipt_note_no
+        else:
+            # Use naming_series field (must exist in DocType)
+            from frappe.model.naming import set_name_by_naming_series
+            set_name_by_naming_series(self)
+
     def before_validate(self):
         """Apply putaway rules if checkbox is enabled"""
         if self.get("items") and self.apply_putaway_rule and not self.get("is_return"):
