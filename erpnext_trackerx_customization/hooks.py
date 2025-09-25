@@ -123,13 +123,13 @@ fixtures = [
             ]
         ]
     }, 
-    {
-        "doctype": "Document Naming Rule",
-        "filters": [
-            ["document_type", "in", ["Purchase Order", "Sales Order", "Work Order", "Goods Receipt Note", "Purchase Receipt"]],
-            ["disabled", "=", 0]
-        ]     
-    }  
+    # {
+    #     "doctype": "Document Naming Rule",
+    #     "filters": [
+    #         ["document_type", "in", ["Purchase Order", "Sales Order", "Work Order", "Goods Receipt Note", "Purchase Receipt"]],
+    #         ["disabled", "=", 0]
+    #     ]     
+    # }  
 ]
 
 # AQL data fixtures for import during migration
@@ -321,16 +321,20 @@ doc_events= {
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.on_submit"
     },
     "Purchase Order": {
+        "autoname": "erpnext_trackerx_customization.erpnext_doctype_hooks.purchase_order.autoname",
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.purchase_order.validate"
-    },   
+    },
     "Purchase Receipt": {
+        "autoname": "erpnext_trackerx_customization.erpnext_doctype_hooks.purchase_receipt.autoname",
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.purchase_receipt.validate"
-    },       
+    },
     "Sales Order": {
+        "autoname": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.autoname",
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.validate",
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.on_submit"
     },
      "Work Order": {
+         "autoname": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.autoname",
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.validate",
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_submit",
         "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_trash"

@@ -1,6 +1,20 @@
 import frappe
 from frappe import _
 from frappe.utils import flt
+from frappe.model.naming import set_name_by_naming_series
+
+def autoname(doc, method):
+    """
+    Set document name:
+    - If custom_work_order_no is provided, use it as the doc name.
+    - Otherwise, use the standard naming series.
+    """
+    if doc.custom_work_order_no:
+        doc.name = doc.custom_work_order_no
+    else:
+        # Use naming series defined in Work Order doctype
+        set_name_by_naming_series(doc)
+
 
 def validate(doc, method):
     validate_work_order_no(doc)

@@ -5,12 +5,12 @@
   "cell_number": "QR/Barcode Cut Bundle Activation",
   "docstatus": 0,
   "doctype": "Physical Cell",
-  "end_time": "23:59:59",
+  "end_time": "18:00:00",
   "modified": "2025-09-18 13:10:53.981417",
   "name": "QR/Barcode Cut Bundle Activation",
   "operation_workstations": [],
   "operator_count": 1,
-  "start_time": "0:00:00",
+  "start_time": "9:00:00",
   "supported_operation_group": "QR/Barcode Cut Bundle Activation"
  }
 ]
