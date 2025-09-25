@@ -15,5 +15,12 @@ frappe.ui.form.on("Process Map", {
         // Redirect to the builder page
         window.open(url, "_blank"); // open in new tab
         // OR: window.location.href = url; // open in same tab
+    },
+    onload: function(frm)
+    {
+        if(frm.is_new())
+        {
+            frappe.set_route("process-map-builder");
+        }
     }
 });

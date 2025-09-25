@@ -166,19 +166,6 @@ app_include_js = [
 ]
 
 
-website_route_rules = [
-    {"from_route": "/operator-attendance-grid", "to_route": "operator-attendance-grid"},
-]
-
-web_routes = {
-    "operator-attendance-grid": {
-        "title": "Operator Attendance Grid",
-        "module": "erpnext_trackerx_customization.erpnext_trackerx_customization",
-        "py": "erpnext_trackerx_customization.operator-attendance-grid.py",
-        "template": "erpnext_trackerx_customization/operator-attendance-grid.html"
-    }
-}
-
 # include js, css files in header of web template
 # web_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
 # web_include_js = "/assets/erpnext_trackerx_customization/js/erpnext_trackerx_customization.js"
