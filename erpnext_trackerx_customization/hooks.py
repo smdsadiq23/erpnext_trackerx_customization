@@ -131,13 +131,6 @@ fixtures = [
     #         ]
     #     ]
     # },
-    {
-        "doctype": "Document Naming Rule",
-        "filters": [
-            ["document_type", "in", ["Purchase Order", "Sales Order", "Work Order", "Goods Receipt Note", "Purchase Receipt"]],
-            ["disabled", "=", 0]
-        ]
-    }
 ]
 
 # AQL data fixtures for import during migration
