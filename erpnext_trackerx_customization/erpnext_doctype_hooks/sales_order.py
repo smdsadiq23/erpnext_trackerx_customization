@@ -51,10 +51,10 @@ def validate_unique_item_combinations(doc):
     """
 
     item_codes = list(set(i.item_code for i in doc.items if i.item_code))
-    if len(item_codes) > 1:
-        frappe.throw(
-                "Sales Order cannot have multiple Finished Good"
-            )
+    # if len(item_codes) > 1:
+    #     frappe.throw(
+    #             "Sales Order cannot have multiple Finished Good"
+    #         )
 
     
     seen_combinations = set()
