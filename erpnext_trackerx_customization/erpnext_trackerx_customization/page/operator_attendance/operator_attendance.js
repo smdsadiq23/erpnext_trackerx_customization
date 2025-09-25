@@ -23,24 +23,21 @@ class OperatorAttendanceGrid {
     }
 
     make() {
-        // Fix 2: Create the field container first and then add fields
-        this.page.set_secondary_action('Refresh', () => this.loadData(), 'fa fa-refresh');
-        
-        // Create a custom field area in the page
+        // Create a better styled field area in the page
         let field_area = $(`
-            <div class="page-form" style="margin: 15px; padding: 15px; background: white; border-radius: 6px;">
-                <div class="row">
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            <label class="control-label">Date</label>
-                            <input type="date" class="form-control" id="selected_date" value="${frappe.datetime.get_today()}" />
-                        </div>
+            <div class="page-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Select Date</label>
+                        <input type="date" class="form-control date-input" id="selected_date" value="${frappe.datetime.get_today()}" />
                     </div>
-                    <div class="col-md-3">
-                        <div class="form-group" style="margin-top: 24px;">
-                            <button class="btn btn-primary btn-sm" id="load_data_btn">Load Data</button>
-                            <button class="btn btn-success btn-sm" id="save_changes_btn">Save Changes</button>
-                        </div>
+                    <div class="form-actions">
+                        <button class="btn btn-primary" id="load_data_btn">
+                            <i class="fa fa-refresh"></i> Load Data
+                        </button>
+                        <button class="btn btn-success" id="save_changes_btn">
+                            <i class="fa fa-save"></i> Save Changes
+                        </button>
                     </div>
                 </div>
             </div>
@@ -112,23 +109,27 @@ class OperatorAttendanceGrid {
         html += '</tr></thead><tbody>';
         
         // Create rows for each cell
-        cells.forEach(cell => {
-            html += `<tr><td class="cell-name">${cell.cell_name}</td>`;
-            hours.forEach(hour => {
+        cells.forEach((cell, cellIndex) => {
+            html += `<tr data-cell="${cell.name}"><td class="cell-name">${cell.cell_name}</td>`;
+            hours.forEach((hour, hourIndex) => {
                 const cellStartHour = parseInt(cell.start_time.split(':')[0]);
                 const cellEndHour = parseInt(cell.end_time.split(':')[0]);
                 
                 if (hour >= cellStartHour && hour < cellEndHour) {
                     const key = `${cell.name}-${selectedDate}-${hour}`;
                     const value = this.currentData[key] || 0;
+                    const isFirstCell = (hour === cellStartHour);
+                    
                     html += `<td>
                         <input type="number" 
-                               class="form-control attendance-input" 
+                               class="form-control attendance-input ${isFirstCell ? 'first-cell' : ''}" 
                                data-cell="${cell.name}" 
                                data-hour="${hour}" 
+                               data-is-first="${isFirstCell}"
+                               data-row-index="${cellIndex}"
+                               data-col-index="${hourIndex}"
                                value="${value}" 
-                               min="0" 
-                               style="width: 80px; text-align: center;" />
+                               min="0" />
                     </td>`;
                 } else {
                     html += '<td class="disabled-cell">-</td>';
@@ -145,20 +146,67 @@ class OperatorAttendanceGrid {
     handleInputChange(input) {
         const cell = input.dataset.cell;
         const hour = input.dataset.hour;
+        const isFirstCell = input.dataset.isFirst === 'true';
         const selectedDate = this.getSelectedDate();
         const key = `${cell}###${selectedDate}###${hour}`;
+        const newValue = parseInt(input.value) || 0;
+        const oldValue = this.currentData[key] || 0;
         
-        this.currentData[key] = parseInt(input.value) || 0;
+        // Update the current data
+        this.currentData[key] = newValue;
         this.changedCells.add(key);
         
         // Visual feedback for changed cells
         $(input).addClass('changed-input');
         
+        // Enhancement 1: Auto-update other cells in the same row if this is the first cell
+        if (isFirstCell && oldValue !== newValue) {
+            this.autoUpdateRowCells(cell, selectedDate, oldValue, newValue, input);
+        }
+        
         // Update page title to show unsaved changes
         this.updatePageTitle();
     }
 
-    // Fix 3: Helper method to get selected date consistently
+    autoUpdateRowCells(cellName, selectedDate, oldValue, newValue, firstInput) {
+        // Find all inputs in the same row (same cell name)
+        const rowInputs = this.page.main.find(`input[data-cell="${cellName}"]`);
+        
+        rowInputs.each((index, element) => {
+            const $input = $(element);
+            const isFirst = $input.data('is-first');
+            
+            // Skip the first cell (the one that was just changed)
+            if (isFirst) return;
+            
+            const hour = $input.data('hour');
+            const key = `${cellName}###${selectedDate}###${hour}`;
+            const currentValue = this.currentData[key] || 0;
+            
+            // Only update if the current value matches the old value from first cell
+            if (currentValue === oldValue) {
+                // Update the value
+                this.currentData[key] = newValue;
+                $input.val(newValue);
+                
+                // Add to changed cells
+                this.changedCells.add(key);
+                
+                // Add visual feedback
+                $input.addClass('changed-input');
+            }
+        });
+        
+        // Show notification about auto-update
+        if (oldValue !== newValue) {
+            frappe.show_alert({
+                message: __(`Auto-updated other cells in ${cellName} row from ${oldValue} to ${newValue}`),
+                indicator: 'blue'
+            }, 3);
+        }
+    }
+
+    // Helper method to get selected date consistently
     getSelectedDate() {
         return this.page.main.find('#selected_date').val() || frappe.datetime.get_today();
     }
@@ -196,6 +244,11 @@ class OperatorAttendanceGrid {
                 // Clear changed indicators
                 this.changedCells.clear();
                 this.updatePageTitle();
+                
+                frappe.show_alert({
+                    message: __('Data loaded successfully'),
+                    indicator: 'green'
+                }, 2);
             } else {
                 frappe.msgprint({
                     title: __('Error'),
@@ -221,13 +274,16 @@ class OperatorAttendanceGrid {
             return;
         }
         
+        // Disable save button during save
+        const saveBtn = this.page.main.find('#save_changes_btn');
+        const originalText = saveBtn.html();
+        saveBtn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Saving...');
+        
         const selectedDate = this.getSelectedDate();
         const changes = [];
         
         this.changedCells.forEach(key => {
-			console.log(key)
             const [cell, date, hour] = key.split('###');
-            // Fix 4: Properly format the datetime string
             const formattedHour = `${date} ${hour.padStart(2, '0')}:00:00`;
             changes.push({
                 physical_cell: cell,
@@ -236,7 +292,7 @@ class OperatorAttendanceGrid {
             });
         });
         
-        console.log('Saving changes:', changes); // Debug log
+        console.log('Saving changes:', changes);
         
         try {
             const response = await frappe.call({
@@ -251,7 +307,7 @@ class OperatorAttendanceGrid {
                 this.updatePageTitle();
                 
                 frappe.show_alert({
-                    message: __('Changes saved successfully!'),
+                    message: __(`Successfully saved ${changes.length} records!`),
                     indicator: 'green'
                 });
             } else {
@@ -268,6 +324,9 @@ class OperatorAttendanceGrid {
                 message: __('Error saving changes: ') + error.message,
                 indicator: 'red'
             });
+        } finally {
+            // Re-enable save button
+            saveBtn.prop('disabled', false).html(originalText);
         }
     }
 }
