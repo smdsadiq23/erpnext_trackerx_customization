@@ -122,7 +122,7 @@ class OperatorAttendanceGrid {
                     
                     html += `<td>
                         <input type="number" 
-                               class="form-control attendance-input ${isFirstCell ? 'first-cell' : ''}" 
+							   class="form-control attendance-input ${isFirstCell ? 'first-cell' : ''}" 
                                data-cell="${cell.name}" 
                                data-hour="${hour}" 
                                data-is-first="${isFirstCell}"
@@ -160,7 +160,8 @@ class OperatorAttendanceGrid {
         $(input).addClass('changed-input');
         
         // Enhancement 1: Auto-update other cells in the same row if this is the first cell
-        if (isFirstCell && oldValue !== newValue) {
+        // if (isFirstCell && oldValue !== newValue) {
+		if (oldValue !== newValue) {
             this.autoUpdateRowCells(cell, selectedDate, oldValue, newValue, input);
         }
         
@@ -168,23 +169,29 @@ class OperatorAttendanceGrid {
         this.updatePageTitle();
     }
 
-    autoUpdateRowCells(cellName, selectedDate, oldValue, newValue, firstInput) {
+    autoUpdateRowCells(cellName, selectedDate, oldValue, newValue, inputCell) {
         // Find all inputs in the same row (same cell name)
         const rowInputs = this.page.main.find(`input[data-cell="${cellName}"]`);
-        
+
+        const changedHour = inputCell.dataset.hour;
         rowInputs.each((index, element) => {
             const $input = $(element);
             const isFirst = $input.data('is-first');
             
             // Skip the first cell (the one that was just changed)
             if (isFirst) return;
-            
+
             const hour = $input.data('hour');
+			if(hour < changedHour){
+				return;
+			}
             const key = `${cellName}###${selectedDate}###${hour}`;
             const currentValue = this.currentData[key] || 0;
             
             // Only update if the current value matches the old value from first cell
-            if (currentValue === oldValue) {
+
+            // if (currentValue === oldValue) {
+			if(true) {
                 // Update the value
                 this.currentData[key] = newValue;
                 $input.val(newValue);
