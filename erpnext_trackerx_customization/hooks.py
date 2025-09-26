@@ -487,5 +487,10 @@ scheduler_events = {
     ],
     "weekly": [
         "erpnext_trackerx_customization.warehouse_hooks.weekly_capacity_report"
-    ]
+    ],
+    "cron": {
+        "30 23 * * *": [
+            "erpnext_trackerx_customization.erpnext_trackerx_customization.jobs.daily_jobs.copy_operator_attendance_for_next_day"
+        ]
+    }
 }
