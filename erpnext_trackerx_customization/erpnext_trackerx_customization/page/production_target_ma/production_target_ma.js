@@ -307,7 +307,7 @@ class ProductionTargetManager {
                         <th>Operators</th>
                         <th>Efficiency %</th>
                         <th>Target/Hr</th>
-                        <th>Actions</th>
+                        <th>History</th>
                     </tr>
                 </thead>
                 <tbody>
