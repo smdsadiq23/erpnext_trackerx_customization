@@ -17,7 +17,7 @@ def get_production_data():
         # Get Styles (Items with custom_select_master == "Finished Goods")
         styles = frappe.get_all('Item',
             filters={'custom_select_master': 'Finished Goods'},
-            fields=['name', 'item_name'],
+            fields=['name', 'item_code'],
             order_by='name'
         )
         
