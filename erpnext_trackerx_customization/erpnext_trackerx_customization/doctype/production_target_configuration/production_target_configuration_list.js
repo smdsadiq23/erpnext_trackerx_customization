@@ -4,12 +4,12 @@ frappe.listview_settings['Production Target Configuration'] = {
     onload: function(listview) {
         // Add button to switch to grid view
         listview.page.add_menu_item(__("Goto Target Config Manager"), function() {
-            frappe.set_route('production-target-ma');
+            frappe.set_route('production_target_2');
         });
         setTimeout(() => {
-            frappe.set_route('production-target-ma');
+            frappe.set_route('production_target_2');
         }, 300);
-        frappe.set_route('production-target-ma');
+        frappe.set_route('production_target_2');
     }
    
 };
