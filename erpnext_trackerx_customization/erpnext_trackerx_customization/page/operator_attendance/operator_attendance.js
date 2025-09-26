@@ -107,11 +107,22 @@ class OperatorAttendanceGrid {
             html += `<th class="hour-header">${this.getHourRange(hour)}</th>`;
         });
         html += '</tr></thead><tbody>';
-        
+        const now = new Date();
+
         // Create rows for each cell
         cells.forEach((cell, cellIndex) => {
             html += `<tr data-cell="${cell.name}"><td class="cell-name">${cell.cell_name}</td>`;
             hours.forEach((hour, hourIndex) => {
+                let is_editable = true;
+                let cellDate = new Date(selectedDate);
+                cellDate = new Date(cellDate.setHours(hour-1));
+            
+                console.log("cellDate: ", cellDate, " now: ", now)
+
+                if(cellDate < now)
+                {
+                    is_editable = false;
+                }
                 const cellStartHour = parseInt(cell.start_time.split(':')[0]);
                 const cellEndHour = parseInt(cell.end_time.split(':')[0]);
                 
@@ -129,7 +140,7 @@ class OperatorAttendanceGrid {
                                data-row-index="${cellIndex}"
                                data-col-index="${hourIndex}"
                                value="${value}" 
-                               min="0" />
+                               min="0" ${is_editable ? '' : 'disabled'}/>
                     </td>`;
                 } else {
                     html += '<td class="disabled-cell">-</td>';
