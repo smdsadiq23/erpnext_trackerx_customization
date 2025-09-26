@@ -537,7 +537,7 @@ class ProductionTargetManager {
 
     calculateTargetFromEfficiency(efficiency, operator, sam) {
         if (sam === 0) return 0;
-        return Math.round((efficiency * 60 * operator) / sam * 100) / 100;
+        return Math.round((efficiency/100 * 60 * operator) / sam * 100) / 100;
     }
 
     calculateEfficiencyFromTarget(target, operator, sam) {
