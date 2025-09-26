@@ -3,6 +3,7 @@ import frappe
 from frappe import _
 from frappe.utils import now
 import json
+import math
 
 @frappe.whitelist()
 def get_production_data():
@@ -13,6 +14,26 @@ def get_production_data():
             fields=['name', 'operator_count', 'supported_operation_group'],
             order_by='name'
         )
+
+        result = frappe.db.sql(
+            """
+            SELECT
+                physical_cell,
+                AVG(value) AS average_value
+            FROM
+                `tabOperator Attendance`
+            WHERE
+                DATE(hour) = DATE(NOW())
+            GROUP BY
+                physical_cell;
+            """,
+            as_dict=True  # Returns a list of dictionaries
+        )
+
+        for physical_cell in physical_cells:
+            for res in result:
+                if res["physical_cell"] == physical_cell["name"]:
+                    physical_cell["operator_count"] = int(math.ceil(res["average_value"]))
         
         # Get Styles (Items with custom_select_master == "Finished Goods")
         styles = frappe.get_all('Item',
@@ -32,7 +53,7 @@ def get_production_data():
 
         for cell in physical_cells:
             for style in styles:
-                sam = calculate_sam(cell, style)
+                sam = calculate_sam(cell.name, style.name)
                 sams[f"{cell.name}###{style.name}"] = sam
                 
         

@@ -169,7 +169,7 @@ class SimpleProductionTargetManager {
                                             <th width="15%">Operators</th>
                                             <th width="15%">Efficiency %</th>
                                             <th width="15%">Target/Hr</th>
-                                            <th width="15%">Actions</th>
+                                            <th width="15%">History</th>
                                         </tr>
                                     </thead>
                                     <tbody id="styles-table-body">
@@ -493,7 +493,7 @@ class SimpleProductionTargetManager {
             const operator = parseFloat($row.find('.operator-input').val()) || 1;
             
             if (sam > 0) {
-                const target = Math.round((efficiency * 60 * operator) / sam * 100) / 100;
+                const target = Math.round((efficiency/100 * 60 * operator) / sam * 100) / 100;
                 $row.find('.target-input').val(target);
             }
         } else if ($input.hasClass('target-input')) {
