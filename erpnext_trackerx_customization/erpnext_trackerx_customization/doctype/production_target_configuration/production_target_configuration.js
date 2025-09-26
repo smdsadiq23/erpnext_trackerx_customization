@@ -9,7 +9,7 @@ frappe.ui.form.on("Production Target Configuration", {
     {
         if(frm.is_new())
         {
-            frappe.set_route("production-target-ma");
+            frappe.set_route("production_target_2");
         }
     }
 });
