@@ -11,9 +11,10 @@
  "field_order": [
   "supplier_section",
   "column_break0",
+  "naming_series",
+  "goods_receipt_note_no",
   "purchase_order",
   "title",
-  "naming_series",
   "supplier",
   "supplier_name",
   "supplier_delivery_note",
@@ -154,10 +155,10 @@
   "column_break_131",
   "remarks",
   "range",
-  "amended_from",
   "is_old_subcontracting_flow",
   "other_details",
-  "connections_tab"
+  "connections_tab",
+  "amended_from"
  ],
  "fields": [
   {
@@ -1327,13 +1328,19 @@
    "fieldname": "document_checklist",
    "fieldtype": "Table",
    "options": "Goods Receipt Document Checklist"
+  },
+  {
+   "fieldname": "goods_receipt_note_no",
+   "fieldtype": "Data",
+   "label": "Goods Receipt Note No",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "icon": "fa fa-truck",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-24 19:51:23.073990",
+ "modified": "2025-09-25 11:37:35.738252",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Note",
@@ -1392,6 +1399,20 @@
    "read": 1,
    "role": "Stock Manager",
    "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Quality Inspector"
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Quality Manager"
   }
  ],
  "row_format": "Dynamic",

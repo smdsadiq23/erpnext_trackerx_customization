@@ -122,7 +122,15 @@ fixtures = [
                 "name", "in",["QR/Barcode Cut Bundle Activation"]
             ]
         ]
-    },    
+    },
+    # {
+    #     "doctype": "Physical Cell Operation",
+    #     "filters": [
+    #         [
+    #             "operation", "in",["QR/Barcode Cut Bundle Activation"]
+    #         ]
+    #     ]
+    # },
 ]
 
 # AQL data fixtures for import during migration
@@ -313,11 +321,21 @@ doc_events= {
         "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.before_save_bom",
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.on_submit"
     },
+    "Purchase Order": {
+        "autoname": "erpnext_trackerx_customization.erpnext_doctype_hooks.purchase_order.autoname",
+        "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.purchase_order.validate"
+    },
+    "Purchase Receipt": {
+        "autoname": "erpnext_trackerx_customization.erpnext_doctype_hooks.purchase_receipt.autoname",
+        "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.purchase_receipt.validate"
+    },
     "Sales Order": {
+        "autoname": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.autoname",
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.validate",
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.on_submit"
     },
      "Work Order": {
+         "autoname": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.autoname",
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.validate",
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_submit",
         "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_trash"
@@ -379,7 +397,7 @@ doc_events= {
 # }
 override_whitelisted_methods = {
     "erpnext.manufacturing.doctype.work_order.work_order.create_pick_list": "erpnext_trackerx_customization.api.custom_pick_list.custom_create_pick_list",
-    #"frappe.desk.search.search_link": "erpnext_trackerx_customization.api.custom_search.custom_search_link"
+    "frappe.desk.search.search_link": "erpnext_trackerx_customization.api.custom_search.custom_search_link"
 }
 #
 # each overriding function accepts a `data` argument;
@@ -469,5 +487,10 @@ scheduler_events = {
     ],
     "weekly": [
         "erpnext_trackerx_customization.warehouse_hooks.weekly_capacity_report"
-    ]
+    ],
+    "cron": {
+        "30 23 * * *": [
+            "erpnext_trackerx_customization.erpnext_trackerx_customization.jobs.daily_jobs.copy_operator_attendance_for_next_day"
+        ]
+    }
 }

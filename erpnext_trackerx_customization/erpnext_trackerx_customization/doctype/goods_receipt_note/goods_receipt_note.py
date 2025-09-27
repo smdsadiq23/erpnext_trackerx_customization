@@ -5,7 +5,16 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-class GoodsReceiptNote(Document):
+class GoodsReceiptNote(Document):    
+    def autoname(self):
+        """Set document name based on goods_receipt_note_no or naming_series"""
+        if self.goods_receipt_note_no:
+            self.name = self.goods_receipt_note_no
+        else:
+            # Use naming_series field (must exist in DocType)
+            from frappe.model.naming import set_name_by_naming_series
+            set_name_by_naming_series(self)
+
     def before_validate(self):
         """Apply putaway rules if checkbox is enabled"""
         if self.get("items") and self.apply_putaway_rule and not self.get("is_return"):
@@ -267,9 +276,14 @@ class GoodsReceiptNote(Document):
     def validate(self):
         """Additional validation for Goods Receipt Note"""
         # Don't call super().validate() as Document doesn't have validate method
+<<<<<<< HEAD
 
         # Validate roll_no and no_of_boxespacks for all items
         self.validate_items_roll_and_boxes()
+=======
+        
+        self.validate_goods_receipt_note_no()
+>>>>>>> 3c0b7c6863099c206f912b6b3f2111a74d105907
 
         # ALWAYS validate warehouse capacities (universal check)
         self.validate_all_warehouse_capacities()
@@ -277,6 +291,25 @@ class GoodsReceiptNote(Document):
         # Validate putaway rule application if enabled
         if self.apply_putaway_rule and self.get("items"):
             self.validate_putaway_rule_items()
+
+
+    def validate_goods_receipt_note_no(self):
+        if self.goods_receipt_note_no:
+            existing = frappe.db.exists(
+                "Goods Receipt Note",  # ✅ Correct doctype
+                {
+                    "goods_receipt_note_no": self.goods_receipt_note_no,
+                    "name": ("!=", self.name)
+                }
+            )
+            if existing:
+                frappe.throw(
+                    _("Goods Receipt Note with Number '{0}' already exists.").format(
+                        self.goods_receipt_note_no
+                    ),
+                    title=_("Duplicate Goods Receipt Note No")
+                )
+
     
     def validate_putaway_rule_items(self):
         """Validate items after putaway rule application"""

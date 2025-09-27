@@ -6,6 +6,7 @@ const OperationProcessNode = ({ data }) => {
     const value = e.target.value;
     data.onValueChange && data.onValueChange(value);
   };
+  console.log("data111111111", data);
 
   return (
     <div
@@ -17,8 +18,8 @@ const OperationProcessNode = ({ data }) => {
       }}
     >
       <strong>{data.label}</strong>
-      <input
-        type="number"
+      {/* <input
+        // type="number"
         value={data.quantity || ""}
         onChange={handleChange}
         style={{
@@ -27,7 +28,22 @@ const OperationProcessNode = ({ data }) => {
           fontSize: "12px",
           padding: "2px",
         }}
-      />
+      /> */}
+      {data?.addData?.item_code === "Unlink Link" ? (
+        <input
+          // type="number"
+          value={data.quantity || ""}
+          onChange={handleChange}
+          style={{
+            width: "50px",
+            marginLeft: "8px",
+            fontSize: "12px",
+            padding: "2px",
+          }}
+        />
+      )
+        :
+        ""}
       <Handle type="target" position={Position.Top} />
       <Handle type="source" position={Position.Bottom} />
     </div>

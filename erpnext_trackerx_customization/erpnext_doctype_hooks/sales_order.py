@@ -1,14 +1,47 @@
 
 import frappe
+from frappe import _
+from frappe.model.naming import set_name_by_naming_series
+
+def autoname(doc, method):
+    """
+    Set document name:
+    - If custom_sales_order_no is provided, use it as the doc name.
+    - Otherwise, use the standard naming series.
+    """
+    if doc.custom_sales_order_no:
+        doc.name = doc.custom_sales_order_no
+    else:
+        # Use naming series defined in Sales Order doctype
+        set_name_by_naming_series(doc)
+
+
 def validate(doc, method):
+    validate_sales_order_no(doc)
     validate_unique_item_combinations(doc)
     copy_qty_pending_qty(doc, method)
-
 
 
 def on_submit(doc, method):
     pass
 
+
+def validate_sales_order_no(doc):
+    if doc.custom_sales_order_no:
+        existing = frappe.db.exists(
+            "Sales Order",
+            {
+                "custom_sales_order_no": doc.custom_sales_order_no,
+                "name": ("!=", doc.name)
+            }
+        )
+        if existing:
+            frappe.throw(
+                _("Sales Order with Number '{0}' already exists.").format(
+                    doc.custom_sales_order_no, existing
+                ),
+                title=_("Duplicate Sales Order No")
+            )
 
 
 def validate_unique_item_combinations(doc):
@@ -18,10 +51,10 @@ def validate_unique_item_combinations(doc):
     """
 
     item_codes = list(set(i.item_code for i in doc.items if i.item_code))
-    if len(item_codes) > 1:
-        frappe.throw(
-                "Sales Order cannot have multiple Finished Good"
-            )
+    # if len(item_codes) > 1:
+    #     frappe.throw(
+    #             "Sales Order cannot have multiple Finished Good"
+    #         )
 
     
     seen_combinations = set()
