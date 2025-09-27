@@ -57,28 +57,76 @@ def get_inspection_list(status=None, search=None, page=1, limit=20, sort_by="cre
         if status and status != "All":
             filters.append(['inspection_status', '=', status])
 
-        # Search filter - search across multiple fields
+        # Search filter - search across multiple fields using SQL
         if search:
             search_term = f'%{search}%'
-            # For now, search only in main fields to avoid complex OR conditions
-            filters.append(['name', 'like', search_term])
 
-        # Get inspections
-        inspections = frappe.get_list(
-            'Fabric Inspection',
-            filters=filters,
-            fields=[
-                'name', 'inspection_status', 'purchase_order_reference',
-                'grn_reference', 'supplier', 'inspector', 'inspection_date',
-                'total_rolls', 'item_code', 'item_name', 'creation'
-            ],
-            limit=limit,
-            start=start,
-            order_by=f"{sort_by} {sort_order}"
-        )
+            # Build base WHERE conditions for filters
+            where_conditions = ["docstatus != 2"]
+            values = []
 
-        # Get total count for pagination
-        total_count = frappe.db.count('Fabric Inspection', filters)
+            # Add status filter if provided
+            if status and status != "All":
+                where_conditions.append("inspection_status = %s")
+                values.append(status)
+
+            # Add search conditions for multiple fields
+            search_conditions = [
+                "name LIKE %s",
+                "purchase_order_reference LIKE %s",
+                "grn_reference LIKE %s",
+                "supplier LIKE %s",
+                "item_code LIKE %s",
+                "item_name LIKE %s"
+            ]
+
+            # Combine search conditions with OR
+            search_where = f"({' OR '.join(search_conditions)})"
+            where_conditions.append(search_where)
+
+            # Add search term for each search field
+            for _ in search_conditions:
+                values.append(search_term)
+
+            # Build complete WHERE clause
+            where_clause = " AND ".join(where_conditions)
+
+            # Get inspections using SQL query
+            inspections = frappe.db.sql(f"""
+                SELECT
+                    name, inspection_status, purchase_order_reference,
+                    grn_reference, supplier, inspector, inspection_date,
+                    total_rolls, item_code, item_name, creation
+                FROM `tabFabric Inspection`
+                WHERE {where_clause}
+                ORDER BY {sort_by} {sort_order}
+                LIMIT {start}, {limit}
+            """, values, as_dict=True)
+
+            # Get total count for pagination with search
+            total_count = frappe.db.sql(f"""
+                SELECT COUNT(*)
+                FROM `tabFabric Inspection`
+                WHERE {where_clause}
+            """, values)[0][0]
+
+        else:
+            # No search - use regular get_list for better performance
+            inspections = frappe.get_list(
+                'Fabric Inspection',
+                filters=filters,
+                fields=[
+                    'name', 'inspection_status', 'purchase_order_reference',
+                    'grn_reference', 'supplier', 'inspector', 'inspection_date',
+                    'total_rolls', 'item_code', 'item_name', 'creation'
+                ],
+                limit=limit,
+                start=start,
+                order_by=f"{sort_by} {sort_order}"
+            )
+
+            # Get total count for pagination
+            total_count = frappe.db.count('Fabric Inspection', filters)
 
         # Calculate pagination info
         total_pages = (total_count + limit - 1) // limit
@@ -553,6 +601,7 @@ def build_roll_details(inspection):
     rolls = []
     for roll in inspection.fabric_rolls_tab or []:
         rolls.append({
+            "roll_id": roll.name,
             "roll_number": roll.roll_number,
             "length": flt(roll.roll_length or 0),
             "width": flt(roll.roll_width or 0),
@@ -953,6 +1002,635 @@ def get_roll_defect_dropdown_data(material_type="Fabrics"):
     except Exception as e:
         frappe.log_error(f"Error getting roll defect dropdown data: {str(e)}")
         frappe.throw(_("Error loading defect dropdown data: {0}").format(str(e)))
+
+# ===========================
+# AUTHENTICATION APIs
+# ===========================
+
+@frappe.whitelist(allow_guest=True)
+def mobile_login(usr, pwd):
+    """Enhanced login API that includes user roles and permissions"""
+    try:
+        # Attempt login using Frappe's standard authentication
+        frappe.local.login_manager.authenticate(user=usr, pwd=pwd)
+        frappe.local.login_manager.post_login()
+
+        # Get user document
+        user_doc = frappe.get_doc("User", frappe.session.user)
+
+        # Get user roles
+        user_roles = frappe.get_roles(frappe.session.user)
+
+        # Get user permissions relevant to fabric inspection
+        permissions = {
+            "can_create_inspection": "Quality Inspector" in user_roles or "Administrator" in user_roles,
+            "can_submit_inspection": "Quality Inspector" in user_roles or "Administrator" in user_roles,
+            "can_override_rejection": "Quality Manager" in user_roles or "Administrator" in user_roles,
+            "can_approve_hold": "Quality Manager" in user_roles or "Administrator" in user_roles,
+            "is_administrator": "Administrator" in user_roles
+        }
+
+        # Get user profile information
+        user_profile = {
+            "full_name": user_doc.full_name or user_doc.name,
+            "email": user_doc.email,
+            "user_image": user_doc.user_image,
+            "mobile_no": user_doc.mobile_no,
+            "enabled": user_doc.enabled
+        }
+
+        # Build response
+        response = {
+            "success": True,
+            "message": "Login successful",
+            "data": {
+                "user": {
+                    "name": frappe.session.user,
+                    "profile": user_profile,
+                    "roles": user_roles,
+                    "permissions": permissions
+                },
+                "session": {
+                    "sid": frappe.session.sid,
+                    "session_expiry": frappe.utils.add_days(frappe.utils.now(), 7).isoformat(),
+                    "csrf_token": frappe.sessions.get_csrf_token() if hasattr(frappe.sessions, 'get_csrf_token') else None
+                },
+                "app_config": {
+                    "base_url": frappe.utils.get_url(),
+                    "api_version": "mobile_v1",
+                    "server_time": frappe.utils.now()
+                }
+            }
+        }
+
+        return response
+
+    except frappe.exceptions.AuthenticationError:
+        return {
+            "success": False,
+            "message": "Invalid username or password",
+            "error_type": "authentication_failed"
+        }
+    except Exception as e:
+        frappe.log_error(f"Mobile login error: {str(e)}", title="Mobile Login Error")
+        return {
+            "success": False,
+            "message": "Login failed due to server error",
+            "error_type": "server_error",
+            "error_details": str(e) if frappe.conf.get("developer_mode") else None
+        }
+
+@frappe.whitelist()
+def get_user_info():
+    """Get current user information including roles and permissions"""
+    try:
+        # Get user document
+        user_doc = frappe.get_doc("User", frappe.session.user)
+
+        # Get user roles
+        user_roles = frappe.get_roles(frappe.session.user)
+
+        # Get user permissions relevant to fabric inspection
+        permissions = {
+            "can_create_inspection": "Quality Inspector" in user_roles or "Administrator" in user_roles,
+            "can_submit_inspection": "Quality Inspector" in user_roles or "Administrator" in user_roles,
+            "can_override_rejection": "Quality Manager" in user_roles or "Administrator" in user_roles,
+            "can_approve_hold": "Quality Manager" in user_roles or "Administrator" in user_roles,
+            "is_administrator": "Administrator" in user_roles
+        }
+
+        # Get user profile information
+        user_profile = {
+            "full_name": user_doc.full_name or user_doc.name,
+            "email": user_doc.email,
+            "user_image": user_doc.user_image,
+            "mobile_no": user_doc.mobile_no,
+            "enabled": user_doc.enabled
+        }
+
+        return {
+            "success": True,
+            "data": {
+                "user": {
+                    "name": frappe.session.user,
+                    "profile": user_profile,
+                    "roles": user_roles,
+                    "permissions": permissions
+                },
+                "session": {
+                    "sid": frappe.session.sid,
+                    "server_time": frappe.utils.now()
+                }
+            }
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Get user info error: {str(e)}", title="User Info Error")
+        return {
+            "success": False,
+            "message": "Failed to get user information",
+            "error_details": str(e)
+        }
+
+@frappe.whitelist()
+def refresh_user_session():
+    """Refresh user session and get updated information"""
+    try:
+        # Validate current session
+        if frappe.session.user == "Guest":
+            return {
+                "success": False,
+                "message": "No active session found",
+                "error_type": "session_expired"
+            }
+
+        # Get fresh user information
+        return get_user_info()
+
+    except Exception as e:
+        frappe.log_error(f"Session refresh error: {str(e)}", title="Session Refresh Error")
+        return {
+            "success": False,
+            "message": "Failed to refresh session",
+            "error_details": str(e)
+        }
+
+# ===========================
+# QUALITY INSPECTOR & MANAGER SUBMIT APIs
+# ===========================
+
+@frappe.whitelist()
+def quality_inspector_submit(inspection_id, final_remarks=None):
+    """Quality Inspector Submit API - handles both Accepted and Rejected inspections"""
+    try:
+        # Get inspection document
+        inspection = frappe.get_doc("Fabric Inspection", inspection_id)
+
+        # Check permissions
+        if not inspection.has_permission("write"):
+            frappe.throw(_("You do not have permission to submit this inspection"))
+
+        # Check if already submitted
+        if inspection.docstatus == 1:
+            return {
+                "success": False,
+                "message": "Inspection is already submitted",
+                "data": {
+                    "inspection_status": inspection.inspection_status,
+                    "docstatus": inspection.docstatus
+                }
+            }
+
+        # Perform pre-submission validation
+        validation_result = inspection.validate_inspection_completion_inline()
+
+        if not validation_result.get('valid', False):
+            errors = validation_result.get('errors', [])
+            return {
+                "success": False,
+                "message": "Inspection validation failed",
+                "errors": errors,
+                "data": {
+                    "inspection_status": inspection.inspection_status,
+                    "validation_errors": errors
+                }
+            }
+
+        # Add final remarks if provided
+        if final_remarks:
+            existing_remarks = inspection.remarks or ''
+            timestamp = frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M:%S")
+            new_remark = f"[{timestamp}] Quality Inspector Final Remarks: {final_remarks}"
+
+            if existing_remarks:
+                inspection.remarks = f"{existing_remarks}\n{new_remark}"
+            else:
+                inspection.remarks = new_remark
+
+        # Check inspection result and handle accordingly
+        inspection_result = inspection.inspection_result
+
+        if inspection_result == 'Accepted':
+            # Case 1: Accepted - Submit and create Purchase Receipt
+            inspection.inspection_status = 'Submitted'
+            inspection.submitted_by = frappe.session.user
+            inspection.submitted_date = frappe.utils.now()
+
+            # Save and submit the document
+            inspection.save()
+            inspection.submit()
+
+            # Create Purchase Receipt
+            try:
+                purchase_receipt_result = create_purchase_receipt_from_inspection_mobile(inspection)
+
+                return {
+                    "success": True,
+                    "message": "Inspection submitted successfully and Purchase Receipt created",
+                    "data": {
+                        "inspection_id": inspection.name,
+                        "inspection_status": inspection.inspection_status,
+                        "docstatus": inspection.docstatus,
+                        "inspection_result": inspection.inspection_result,
+                        "purchase_receipt_created": True,
+                        "purchase_receipt_name": purchase_receipt_result['name'],
+                        "purchase_receipt_url": f"/app/purchase-receipt/{purchase_receipt_result['name']}"
+                    }
+                }
+            except Exception as pr_error:
+                frappe.log_error(f"Error creating Purchase Receipt: {str(pr_error)}")
+                return {
+                    "success": True,
+                    "message": "Inspection submitted successfully but Purchase Receipt creation failed",
+                    "data": {
+                        "inspection_id": inspection.name,
+                        "inspection_status": inspection.inspection_status,
+                        "docstatus": inspection.docstatus,
+                        "inspection_result": inspection.inspection_result,
+                        "purchase_receipt_created": False,
+                        "error": str(pr_error)
+                    }
+                }
+
+        elif inspection_result == 'Rejected':
+            # Case 2: Rejected - Change status to Rejected (no submission)
+            inspection.inspection_status = 'Rejected'
+            # Add rejection info to remarks instead of non-existent fields
+            timestamp = frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M:%S")
+            rejection_note = f"[{timestamp}] Inspection rejected by Quality Inspector: {frappe.session.user}"
+
+            existing_remarks = inspection.remarks or ''
+            if existing_remarks:
+                inspection.remarks = f"{existing_remarks}\n{rejection_note}"
+            else:
+                inspection.remarks = rejection_note
+
+            # Save without submitting
+            inspection.save()
+
+            return {
+                "success": True,
+                "message": "Inspection marked as rejected",
+                "data": {
+                    "inspection_id": inspection.name,
+                    "inspection_status": inspection.inspection_status,
+                    "docstatus": inspection.docstatus,
+                    "inspection_result": inspection.inspection_result,
+                    "purchase_receipt_created": False,
+                    "requires_manager_review": True
+                }
+            }
+
+        else:
+            # Case 3: Other statuses - not ready for submission
+            return {
+                "success": False,
+                "message": f"Cannot submit inspection with result: {inspection_result}",
+                "data": {
+                    "inspection_id": inspection.name,
+                    "inspection_status": inspection.inspection_status,
+                    "inspection_result": inspection_result,
+                    "error": "Inspection result must be 'Accepted' or 'Rejected' for Quality Inspector submission"
+                }
+            }
+
+    except Exception as e:
+        # Create shorter error message for logging to avoid length issues
+        short_error = str(e)[:100] + "..." if len(str(e)) > 100 else str(e)
+        error_msg = f"Quality Inspector submit failed: {short_error}"
+
+        try:
+            frappe.log_error(error_msg, title="Quality Inspector Submit Error")
+        except Exception:
+            # If logging fails, continue without logging
+            pass
+
+        return {
+            "success": False,
+            "message": f"Error in Quality Inspector submit: {str(e)}",
+            "data": {
+                "inspection_id": inspection_id,
+                "error_details": str(e)
+            }
+        }
+
+@frappe.whitelist()
+def quality_manager_submit(inspection_id, manager_reason):
+    """Quality Manager Submit API - handles Rejected inspections with conditional acceptance"""
+    try:
+        # Validate required parameters
+        if not manager_reason or not manager_reason.strip():
+            return {
+                "success": False,
+                "message": "Manager reason is required for Quality Manager submission",
+                "data": {"inspection_id": inspection_id}
+            }
+
+        # Get inspection document
+        inspection = frappe.get_doc("Fabric Inspection", inspection_id)
+
+        # Check permissions
+        if not inspection.has_permission("write"):
+            frappe.throw(_("You do not have permission to submit this inspection"))
+
+        # Verify user has Quality Manager role
+        user_roles = frappe.get_roles(frappe.session.user)
+        if "Quality Manager" not in user_roles and "Administrator" not in user_roles:
+            return {
+                "success": False,
+                "message": "Only Quality Managers can perform this action",
+                "data": {"inspection_id": inspection_id}
+            }
+
+        # Check if inspection is in the correct state for manager override
+        if inspection.inspection_result != 'Rejected' or inspection.inspection_status != 'Rejected':
+            return {
+                "success": False,
+                "message": "Quality Manager can only submit inspections that are in 'Rejected' status",
+                "data": {
+                    "inspection_id": inspection_id,
+                    "current_result": inspection.inspection_result,
+                    "current_status": inspection.inspection_status,
+                    "error": "Inspection must be rejected by Quality Inspector first"
+                }
+            }
+
+        # Check if already submitted
+        if inspection.docstatus == 1:
+            return {
+                "success": False,
+                "message": "Inspection is already submitted",
+                "data": {
+                    "inspection_status": inspection.inspection_status,
+                    "docstatus": inspection.docstatus
+                }
+            }
+
+        # Add manager override reason
+        timestamp = frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M:%S")
+        manager_override_note = f"[{timestamp}] Quality Manager Override by {frappe.session.user}: {manager_reason}"
+
+        existing_remarks = inspection.manager_remarks or ''
+        if existing_remarks:
+            inspection.manager_remarks = f"{existing_remarks}\n{manager_override_note}"
+        else:
+            inspection.manager_remarks = manager_override_note
+
+        # Change inspection result to Conditional Accept
+        inspection.inspection_result = 'Conditional Accept'
+        inspection.inspection_status = 'Conditional Accept'
+
+        # Set manager approval fields
+        inspection.approval_timestamp = frappe.utils.now()
+        inspection.submitted_by = frappe.session.user
+        inspection.submitted_date = frappe.utils.now()
+
+        # Save and submit the document
+        inspection.save()
+        inspection.submit()
+
+        # Create Purchase Receipt
+        try:
+            purchase_receipt_result = create_purchase_receipt_from_inspection_mobile(inspection)
+
+            return {
+                "success": True,
+                "message": "Inspection conditionally accepted by Quality Manager and Purchase Receipt created",
+                "data": {
+                    "inspection_id": inspection.name,
+                    "inspection_status": inspection.inspection_status,
+                    "docstatus": inspection.docstatus,
+                    "inspection_result": inspection.inspection_result,
+                    "manager_reason": manager_reason,
+                    "purchase_receipt_created": True,
+                    "purchase_receipt_name": purchase_receipt_result['name'],
+                    "purchase_receipt_url": f"/app/purchase-receipt/{purchase_receipt_result['name']}"
+                }
+            }
+        except Exception as pr_error:
+            frappe.log_error(f"Error creating Purchase Receipt for manager submission: {str(pr_error)}")
+            return {
+                "success": True,
+                "message": "Inspection conditionally accepted but Purchase Receipt creation failed",
+                "data": {
+                    "inspection_id": inspection.name,
+                    "inspection_status": inspection.inspection_status,
+                    "docstatus": inspection.docstatus,
+                    "inspection_result": inspection.inspection_result,
+                    "manager_reason": manager_reason,
+                    "purchase_receipt_created": False,
+                    "error": str(pr_error)
+                }
+            }
+
+    except Exception as e:
+        # Create shorter error message for logging to avoid length issues
+        short_error = str(e)[:100] + "..." if len(str(e)) > 100 else str(e)
+        error_msg = f"Quality Manager submit failed: {short_error}"
+
+        try:
+            frappe.log_error(error_msg, title="Quality Manager Submit Error")
+        except Exception:
+            # If logging fails, continue without logging
+            pass
+
+        return {
+            "success": False,
+            "message": f"Error in Quality Manager submit: {str(e)}",
+            "data": {
+                "inspection_id": inspection_id,
+                "error_details": str(e)
+            }
+        }
+
+def create_purchase_receipt_from_inspection_mobile(inspection_doc):
+    """Create Purchase Receipt from fabric inspection for mobile API"""
+    # Use our own self-contained implementation
+    return create_purchase_receipt_mobile(inspection_doc)
+
+def create_purchase_receipt_mobile(inspection_doc):
+    """Create Purchase Receipt from fabric inspection - self-contained implementation"""
+    try:
+        # Get the linked GRN
+        if not inspection_doc.grn_reference:
+            frappe.throw(_("No GRN reference found in inspection"))
+
+        grn_doc = frappe.get_doc("Goods Receipt Note", inspection_doc.grn_reference)
+
+        # Create new Purchase Receipt
+        purchase_receipt = frappe.new_doc("Purchase Receipt")
+
+        # Set basic details from GRN and inspection
+        purchase_receipt.supplier = grn_doc.supplier
+        purchase_receipt.supplier_name = getattr(grn_doc, 'supplier_name', grn_doc.supplier)
+        purchase_receipt.company = getattr(grn_doc, 'company', frappe.defaults.get_user_default("Company"))
+        purchase_receipt.set_warehouse = getattr(grn_doc, 'set_warehouse', None)
+        purchase_receipt.posting_date = frappe.utils.getdate()
+        purchase_receipt.posting_time = frappe.utils.nowtime()
+        purchase_receipt.set_posting_time = 1
+
+        # Add currency and price list from GRN if available
+        if hasattr(grn_doc, 'currency'):
+            purchase_receipt.currency = grn_doc.currency
+        if hasattr(grn_doc, 'buying_price_list'):
+            purchase_receipt.buying_price_list = grn_doc.buying_price_list
+
+        # Add reference fields
+        purchase_receipt.fabric_inspection_reference = inspection_doc.name
+        purchase_receipt.grn_reference = inspection_doc.grn_reference
+
+        # Add inspection summary in remarks
+        inspection_summary = f"Created from Fabric Inspection: {inspection_doc.name} | " \
+                           f"Result: {inspection_doc.inspection_result} | " \
+                           f"Grade: {inspection_doc.quality_grade or 'N/A'} | " \
+                           f"Inspector: {inspection_doc.inspector or 'N/A'}"
+        purchase_receipt.remarks = inspection_summary
+
+        # Process fabric rolls and create PR items
+        fabric_rolls = inspection_doc.get('fabric_rolls_tab', [])
+        total_accepted_qty = 0
+        total_accepted_amount = 0
+        pr_items_created = 0
+
+        # Get accepted/conditional rolls for processing
+        accepted_results = ['First Quality', 'Accepted', 'Conditional Accept']
+
+        for roll in fabric_rolls:
+            roll_result = getattr(roll, 'roll_result', '')
+            roll_number = getattr(roll, 'roll_number', 'N/A')
+
+            if roll_result in accepted_results:
+                # Find corresponding item in GRN
+                grn_item = None
+                for grn_item_row in grn_doc.get('items', []):
+                    if grn_item_row.item_code == inspection_doc.item_code:
+                        grn_item = grn_item_row
+                        break
+
+                if grn_item:
+                    # Get item details from Item master since GRN item has limited fields
+                    item_doc = frappe.get_doc("Item", grn_item.item_code)
+
+                    # Calculate quantities - use roll length as quantity
+                    received_qty = flt(getattr(roll, 'roll_length', 1)) or 1
+                    # For now use a default rate since GRN item doesn't have rate
+                    rate = 0  # Will be filled manually in PR
+                    amount = received_qty * rate
+
+                    # Create detailed inspection remarks for this roll
+                    roll_remarks = f"Roll {roll_number}: Grade {getattr(roll, 'roll_grade', 'N/A')}, " \
+                                 f"Defect Points: {flt(getattr(roll, 'total_defect_points', 0))}, " \
+                                 f"Points/100sqm: {flt(getattr(roll, 'points_per_100_sqm', 0)):.2f}, " \
+                                 f"Result: {roll_result}"
+
+                    # Append item to Purchase Receipt
+                    pr_item = purchase_receipt.append('items', {
+                        'item_code': grn_item.item_code,
+                        'item_name': item_doc.item_name,
+                        'description': item_doc.description or item_doc.item_name,
+                        'qty': received_qty,
+                        'uom': item_doc.stock_uom,
+                        'rate': rate,
+                        'amount': amount,
+                        'warehouse': getattr(grn_item, 'selected_warehouse', purchase_receipt.set_warehouse),
+                        'project': None,  # GRN doesn't have project field
+                        'cost_center': None  # GRN doesn't have cost_center field
+                    })
+
+                    # Add custom fields if they exist in the Purchase Receipt Item doctype
+                    if hasattr(pr_item, 'inspection_remarks'):
+                        pr_item.inspection_remarks = roll_remarks
+                    if hasattr(pr_item, 'roll_number'):
+                        pr_item.roll_number = roll_number
+                    if hasattr(pr_item, 'fabric_grade'):
+                        pr_item.fabric_grade = getattr(roll, 'roll_grade', '')
+                    if hasattr(pr_item, 'inspection_result'):
+                        pr_item.inspection_result = roll_result
+
+                    total_accepted_qty += received_qty
+                    total_accepted_amount += amount
+                    pr_items_created += 1
+
+                    frappe.logger().info(f"Added roll {roll_number} to Purchase Receipt: qty={received_qty}, amount={amount}")
+
+        # If no specific rolls were accepted, create a consolidated item
+        if pr_items_created == 0:
+            # Get the first matching GRN item as template
+            grn_item = None
+            for grn_item_row in grn_doc.get('items', []):
+                if grn_item_row.item_code == inspection_doc.item_code:
+                    grn_item = grn_item_row
+                    break
+
+            if grn_item:
+                # Get item details from Item master
+                item_doc = frappe.get_doc("Item", grn_item.item_code)
+
+                # Use total quantity from inspection or default to 1
+                total_qty = flt(inspection_doc.total_quantity) or 1
+                rate = 0  # Default rate - will be filled manually
+                amount = total_qty * rate
+
+                consolidated_remarks = f"Consolidated item from Inspection {inspection_doc.name}: " \
+                                     f"Result {inspection_doc.inspection_result}, " \
+                                     f"Total Rolls: {len(fabric_rolls)}"
+
+                pr_item = purchase_receipt.append('items', {
+                    'item_code': inspection_doc.item_code,
+                    'item_name': item_doc.item_name,
+                    'description': f"Fabric from inspection {inspection_doc.name}",
+                    'qty': total_qty,
+                    'uom': item_doc.stock_uom,
+                    'rate': rate,
+                    'amount': amount,
+                    'warehouse': purchase_receipt.set_warehouse,
+                    'project': None,  # GRN doesn't have project field
+                    'cost_center': None  # GRN doesn't have cost_center field
+                })
+
+                # Add custom fields
+                if hasattr(pr_item, 'inspection_remarks'):
+                    pr_item.inspection_remarks = consolidated_remarks
+                if hasattr(pr_item, 'inspection_result'):
+                    pr_item.inspection_result = inspection_doc.inspection_result
+
+                total_accepted_qty = total_qty
+                total_accepted_amount = amount
+                pr_items_created = 1
+
+        # Validate that we have at least one item
+        if not purchase_receipt.items:
+            frappe.throw(_("No items could be created for Purchase Receipt. Please check the inspection data."))
+
+        # Save Purchase Receipt in draft status
+        purchase_receipt.save()
+
+        # Log success
+        frappe.logger().info(f"Successfully created Purchase Receipt {purchase_receipt.name} from inspection {inspection_doc.name}: "
+                           f"{pr_items_created} items, total qty: {total_accepted_qty}")
+
+        return {
+            'name': purchase_receipt.name,
+            'status': 'Draft',
+            'total_qty': total_accepted_qty,
+            'total_amount': total_accepted_amount,
+            'items_count': pr_items_created,
+            'docstatus': purchase_receipt.docstatus
+        }
+
+    except Exception as e:
+        # Create shorter error message for logging to avoid length issues
+        short_error = str(e)[:50] + "..." if len(str(e)) > 50 else str(e)
+        error_msg = f"PR creation failed for {inspection_doc.name}: {short_error}"
+
+        try:
+            frappe.log_error(error_msg, title="Purchase Receipt Creation Error")
+        except Exception:
+            # If logging fails, continue without logging
+            pass
+
+        # Raise a shorter exception message
+        raise Exception(f"Error creating Purchase Receipt: {str(e)}")
 
 # ===========================
 # ROLL HELPER FUNCTIONS
