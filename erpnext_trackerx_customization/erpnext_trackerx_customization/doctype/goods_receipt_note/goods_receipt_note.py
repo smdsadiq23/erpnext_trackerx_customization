@@ -267,10 +267,13 @@ class GoodsReceiptNote(Document):
     def validate(self):
         """Additional validation for Goods Receipt Note"""
         # Don't call super().validate() as Document doesn't have validate method
-        
+
+        # Validate roll_no and no_of_boxespacks for all items
+        self.validate_items_roll_and_boxes()
+
         # ALWAYS validate warehouse capacities (universal check)
         self.validate_all_warehouse_capacities()
-        
+
         # Validate putaway rule application if enabled
         if self.apply_putaway_rule and self.get("items"):
             self.validate_putaway_rule_items()
@@ -294,7 +297,57 @@ class GoodsReceiptNote(Document):
                     
         except Exception as e:
             frappe.log_error(f"Error validating putaway rule items: {str(e)}")
-    
+
+    def validate_items_roll_and_boxes(self):
+        """Validate roll_no and no_of_boxespacks interaction for all GRN items"""
+        if not self.get("items"):
+            return
+
+        validation_errors = []
+        for item in self.items:
+            roll_no = getattr(item, 'roll_no', None)
+            no_of_boxes = getattr(item, 'no_of_boxespacks', None)
+
+            # Convert to appropriate types for comparison
+            try:
+                no_of_boxes = float(no_of_boxes) if no_of_boxes else None
+            except (ValueError, TypeError):
+                no_of_boxes = None
+
+            # Validate the logic - throw error if both are present and boxes > 1
+            if roll_no and no_of_boxes and no_of_boxes > 1:
+                validation_errors.append({
+                    'item_code': item.item_code,
+                    'roll_no': roll_no,
+                    'no_of_boxes': int(no_of_boxes)
+                })
+            elif roll_no and not no_of_boxes:
+                # Auto-set no_of_boxespacks to 1 when roll_no is present (this is allowed)
+                item.no_of_boxespacks = 1
+
+        # Throw validation error if conflicts found
+        if validation_errors:
+            error_message = _("❌ <strong>Invalid Roll/Box Configuration</strong><br><br>")
+            error_message += _("You cannot specify both a Roll/Box Number AND multiple boxes for the same item.<br><br>")
+            error_message += _("<strong>Conflicting Items:</strong><br>")
+
+            for error in validation_errors:
+                error_message += _("• <strong>Item {0}:</strong> Roll/Box No = '{1}', No of Boxes/Rolls = {2}<br>").format(
+                    error['item_code'],
+                    error['roll_no'],
+                    error['no_of_boxes']
+                )
+
+            error_message += _("<br><strong>💡 Solution:</strong><br>")
+            error_message += _("• For single roll/box: Enter Roll/Box Number, leave No of Boxes/Rolls empty (will auto-set to 1)<br>")
+            error_message += _("• For multiple boxes: Clear Roll/Box Number, enter No of Boxes/Rolls only")
+
+            frappe.throw(
+                error_message,
+                title=_("Roll/Box Validation Error"),
+                exc=frappe.ValidationError
+            )
+
     def validate_all_warehouse_capacities(self):
         """Universal warehouse capacity validation for ALL GRN saves (regardless of putaway rules)"""
         if not self.get("items"):

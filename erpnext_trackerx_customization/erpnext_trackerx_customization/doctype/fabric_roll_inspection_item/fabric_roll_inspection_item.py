@@ -17,23 +17,48 @@ class FabricRollInspectionItem(Document):
 		self.calculate_points_per_100_sqm()
 
 	def calculate_total_size(self):
-		"""Calculate total size in inches from actual length and width"""
-		if self.actual_length_m and self.actual_width_m:
-			# Convert meters to inches (1 meter = 39.3701 inches)
-			length_inches = float(self.actual_length_m) * 39.3701
-			width_inches = float(self.actual_width_m) * 39.3701
-			# Calculate total size in square inches
-			self.total_size_inches = length_inches * width_inches
+		"""Calculate total size by summing all defect sizes"""
+		total_size = 0.0
+
+		# Force reload defects from database to handle mobile API timing issues
+		if self.name:
+			defects = frappe.get_all(
+				"Fabric Roll Inspection Defect",
+				filters={"parent": self.name},
+				fields=["size"]
+			)
+			for defect in defects:
+				if defect.size:
+					total_size += float(defect.size)
 		else:
-			self.total_size_inches = 0.0
+			# Fallback to child table for new documents
+			if hasattr(self, 'defects') and self.defects:
+				for defect_row in self.defects:
+					if defect_row.size:
+						total_size += float(defect_row.size)
+
+		self.total_size_inches = total_size
 
 	def calculate_total_points(self):
 		"""Calculate total points from defects table"""
 		total_points = 0.0
-		if hasattr(self, 'defects') and self.defects:
-			for defect_row in self.defects:
-				if defect_row.points_auto:
-					total_points += float(defect_row.points_auto)
+
+		# Force reload defects from database to handle mobile API timing issues
+		if self.name:
+			defects = frappe.get_all(
+				"Fabric Roll Inspection Defect",
+				filters={"parent": self.name},
+				fields=["points_auto"]
+			)
+			for defect in defects:
+				if defect.points_auto:
+					total_points += float(defect.points_auto)
+		else:
+			# Fallback to child table for new documents
+			if hasattr(self, 'defects') and self.defects:
+				for defect_row in self.defects:
+					if defect_row.points_auto:
+						total_points += float(defect_row.points_auto)
 
 		self.total_points_auto = total_points
 		self.total_defect_points = total_points
@@ -53,5 +78,6 @@ class FabricRollInspectionItem(Document):
 
 	def on_update(self):
 		"""Trigger calculations when defects are updated"""
+		self.calculate_total_size()
 		self.calculate_total_points()
 		self.calculate_points_per_100_sqm()

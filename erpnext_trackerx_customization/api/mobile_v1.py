@@ -708,7 +708,7 @@ def save_roll_details(inspection_id, roll_id, roll_data):
         scalar_fields = [
             "diameter_inches", "compact_roll_no", "inspected_gsm", "actual_gsm",
             "inspected_length_m", "actual_length_m", "inspected_width_m", "actual_width_m",
-            "inspected_shade", "actual_shade", "roll_length", "roll_width", "gsm"
+            "inspected_shade", "actual_shade", "roll_length", "roll_width", "gsm", "roll_remarks"
         ]
         for field in scalar_fields:
             if field in roll_data:
@@ -847,6 +847,20 @@ def save_roll_details(inspection_id, roll_id, roll_data):
         # Mark inspected and save parent without triggering child updates
         if not roll_item.inspected:
             roll_item.inspected = 1
+
+        # Trigger calculations after defects are inserted
+        roll_item.calculate_total_points()
+        roll_item.calculate_total_size()
+        roll_item.calculate_points_per_100_sqm()
+
+        # Save the calculated values and roll_remarks to the database
+        frappe.db.set_value("Fabric Roll Inspection Item", roll_item.name, {
+            "total_points_auto": roll_item.total_points_auto,
+            "total_defect_points": roll_item.total_defect_points,
+            "total_size_inches": roll_item.total_size_inches,
+            "points_per_100_sqm": roll_item.points_per_100_sqm,
+            "roll_remarks": roll_item.roll_remarks
+        })
 
         # Update parent document fields only
         inspection._preserve_mobile_defects = True

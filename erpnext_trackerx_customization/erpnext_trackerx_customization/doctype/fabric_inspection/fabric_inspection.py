@@ -9,10 +9,18 @@ import json
 class FabricInspection(Document):
     def before_insert(self):
         """Set default values before inserting new document"""
-        self.populate_aql_fields_from_grn()
+        # AQL population moved to after_insert with error handling
+        pass
 
     def after_insert(self):
         """Auto-populate checklist items from master checklist after document creation"""
+        # Try to populate AQL fields first, but don't let it block checklist population
+        try:
+            self.populate_aql_fields_from_grn()
+        except Exception as e:
+            frappe.logger().warning(f"AQL population failed for {self.name}: {str(e)} - Continuing with checklist population")
+            # Continue execution regardless of AQL errors
+
         # Always try to populate checklist if no items exist
         if not self.fabric_checklist_items:
             # Set default material_type if not set

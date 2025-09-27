@@ -128,12 +128,12 @@
   {
    "allow_in_quick_entry": 1,
    "columns": 1,
-   "depends_on": "eval: doc.material_type !='Fabrics'",
    "fieldname": "no_of_boxespacks",
    "fieldtype": "Float",
    "in_list_view": 1,
    "in_preview": 1,
-   "label": "No Of Boxes/Packs"
+   "label": "No Of Boxes/Rolls",
+   "reqd": 1
   },
   {
    "allow_in_quick_entry": 1,
@@ -180,8 +180,7 @@
    "fieldname": "roll_no",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Roll No",
-   "reqd": 1
+   "label": "Roll/Box No"
   },
   {
    "allow_in_quick_entry": 1,
