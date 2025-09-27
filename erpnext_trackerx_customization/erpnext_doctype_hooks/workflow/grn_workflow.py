@@ -367,9 +367,15 @@ def create_inspection_for_material_type(grn_doc, material_type, items):
         
         # Add material-specific fields based on inspection type
         if doctype_name == 'Fabric Inspection':
-            # Fabric inspection - point-based system
+            # Fabric inspection - point-based system with updated roll counting
             total_quantity = sum(float(item.received_quantity or 0) for item in items)
-            total_rolls = len(items)  # Each item record represents one roll for fabrics
+            # Calculate total rolls based on new logic: roll_no=1, no_of_boxespacks=count
+            total_rolls = 0
+            for item in items:
+                if getattr(item, 'roll_no', None):
+                    total_rolls += 1  # Single roll for items with roll_no
+                else:
+                    total_rolls += int(getattr(item, 'no_of_boxespacks', 1) or 1)  # Multiple rolls/boxes
             
             inspection_data.update({
                 "total_quantity": total_quantity,
@@ -380,39 +386,58 @@ def create_inspection_for_material_type(grn_doc, material_type, items):
                 "inspection_regime": "Normal"  # Default
             })
             
-            # Add fabric rolls to the child table
+            # Add fabric rolls to the child table with new logic
             fabric_rolls = []
             for item in items:
-                # Each GRN item represents a roll (based on roll_no field)
-                roll_data = {
-                    "doctype": "Fabric Roll Inspection Item",
-                    "roll_number": getattr(item, 'roll_no', f'Roll-{item.idx}'),
-                    "roll_length": float(item.received_quantity or 0),  # Quantity is in meters
-                    "lot_number": getattr(item, 'lot_no', None),
-                    "shade_code": getattr(item, 'shade', None),
-                    "inspection_method": "4-Point Method",  # Default
-                    "inspected": 0,  # Not yet inspected
-                    "roll_result": "Pending"  # Default
-                }
-                fabric_rolls.append(roll_data)
+                # Determine how many rolls to create and quantity logic
+                if getattr(item, 'roll_no', None):  # Case 1: Specific roll number
+                    rolls_to_create = 1
+                    roll_quantity = float(item.received_quantity or 0)  # Use actual quantity
+                    base_roll_number = item.roll_no
+                else:  # Case 2: Multiple boxes/rolls (no specific roll_no)
+                    rolls_to_create = int(getattr(item, 'no_of_boxespacks', 1) or 1)
+                    roll_quantity = 0  # Set to 0 - users will update during inspection
+                    base_roll_number = f"Box-{item.item_code}"
+
+                # Create multiple rolls based on no_of_boxespacks or single roll for roll_no
+                for i in range(rolls_to_create):
+                    if rolls_to_create == 1 and getattr(item, 'roll_no', None):
+                        roll_number = item.roll_no  # Use actual roll number
+                    else:
+                        roll_number = f"{base_roll_number}-{i+1}"  # Box-ITEM-1, Box-ITEM-2, etc.
+
+                    roll_data = {
+                        "doctype": "Fabric Roll Inspection Item",
+                        "roll_number": roll_number,
+                        "roll_length": roll_quantity,  # Actual qty for roll_no, 0 for multiple
+                        "lot_number": getattr(item, 'lot_no', None),
+                        "shade_code": getattr(item, 'shade', None),
+                        "inspection_method": "4-Point Method",  # Default
+                        "inspected": 0,  # Not yet inspected
+                        "roll_result": "Pending"  # Default
+                    }
+                    fabric_rolls.append(roll_data)
             
             inspection_data["fabric_rolls_tab"] = fabric_rolls
         else:
-            # Trims inspection - count-based system for all non-fabric materials
+            # Trims inspection - count-based system for all non-fabric materials with updated logic
             total_quantity = sum(float(item.received_quantity or 0) for item in items)
-            
-            # Calculate total boxes from GRN items
-            total_boxes = sum(int(getattr(item, 'no_of_boxespacks', 0) or 0) for item in items)
-            if total_boxes == 0:
-                total_boxes = 1  # Default to 1 if no boxes specified
-            
+
+            # Calculate total boxes based on new logic: roll_no=1, no_of_boxespacks=count
+            total_boxes = 0
+            for item in items:
+                if getattr(item, 'roll_no', None):
+                    total_boxes += 1  # Single box for items with roll_no
+                else:
+                    total_boxes += int(getattr(item, 'no_of_boxespacks', 1) or 1)  # Multiple boxes
+
             # Calculate pieces per box (total pieces divided by total boxes)
             pieces_per_box = int(total_quantity / total_boxes) if total_boxes > 0 else int(total_quantity)
-            
+
             inspection_data.update({
                 "total_quantity": total_quantity,
                 "total_pieces": total_quantity,  # Set pieces equal to quantity for trims
-                "total_boxes": total_boxes,  # Map from GRN no_of_boxespacks
+                "total_boxes": total_boxes,  # Updated calculation logic
                 "pieces_per_box": pieces_per_box,  # Calculate pieces per box
                 "required_sample_size": 100,  # Default 100% for trims
                 "required_sample_pieces": total_quantity,  # Sample all pieces initially
@@ -420,33 +445,44 @@ def create_inspection_for_material_type(grn_doc, material_type, items):
                 "aql_value": "2.5",  # Default AQL value
                 "inspection_regime": "Normal"  # Default inspection regime
             })
-            
+
             frappe.logger().info(f"Trims inspection mapping: total_boxes={total_boxes}, pieces_per_box={pieces_per_box}, total_quantity={total_quantity}")
-            
-            # Create items data for Trims Inspection UI
+
+            # Create items data for Trims Inspection UI with updated logic
             items_data = []
             for idx, item in enumerate(items, 1):
-                # Calculate pieces for this specific item
-                item_boxes = int(getattr(item, 'no_of_boxespacks', 0) or 1)
-                item_pieces = int(item.received_quantity or 0)
-                
-                item_data = {
-                    "item_number": f"ITEM-{idx:03d}",
-                    "pieces": item_pieces,
-                    "quantity": item_pieces,
-                    "boxes": item_boxes,
-                    "description": getattr(item, 'description', f'Item from {item.item_code}'),
-                    "status": "Pending",
-                    "item_code": item.item_code,
-                    "grn_item_reference": item.name
-                }
-                items_data.append(item_data)
-            
+                # Determine how many boxes to create and quantity logic
+                if getattr(item, 'roll_no', None):  # Case 1: Specific roll/box number
+                    boxes_to_create = 1
+                    item_quantity = int(item.received_quantity or 0)  # Use actual quantity
+                else:  # Case 2: Multiple boxes (no specific roll_no)
+                    boxes_to_create = int(getattr(item, 'no_of_boxespacks', 1) or 1)
+                    item_quantity = 0  # Set to 0 - users will update during inspection
+
+                # Create multiple box entries
+                for i in range(boxes_to_create):
+                    if boxes_to_create == 1 and getattr(item, 'roll_no', None):
+                        box_identifier = item.roll_no  # Use actual roll/box number
+                    else:
+                        box_identifier = f"Box-{idx}-{i+1}"  # Box-1-1, Box-1-2, etc.
+
+                    item_data = {
+                        "item_number": box_identifier,
+                        "pieces": item_quantity,  # Actual qty for roll_no, 0 for multiple
+                        "quantity": item_quantity,  # Actual qty for roll_no, 0 for multiple
+                        "boxes": 1,  # Each entry represents 1 box
+                        "description": getattr(item, 'description', f'Item from {item.item_code}'),
+                        "status": "Pending",
+                        "item_code": item.item_code,
+                        "grn_item_reference": item.name
+                    }
+                    items_data.append(item_data)
+
             # Store items data as JSON for the UI
             import json
             inspection_data["items_data"] = json.dumps(items_data)
-            
-            frappe.logger().info(f"Created {len(items_data)} items for Trims Inspection UI")
+
+            frappe.logger().info(f"Created {len(items_data)} box entries for Trims Inspection UI")
         
         # Create the document
         inspection_doc = frappe.get_doc(inspection_data)

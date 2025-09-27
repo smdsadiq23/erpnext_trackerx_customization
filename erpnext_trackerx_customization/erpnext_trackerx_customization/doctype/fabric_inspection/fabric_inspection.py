@@ -9,10 +9,18 @@ import json
 class FabricInspection(Document):
     def before_insert(self):
         """Set default values before inserting new document"""
-        self.populate_aql_fields_from_grn()
+        # AQL population moved to after_insert with error handling
+        pass
 
     def after_insert(self):
         """Auto-populate checklist items from master checklist after document creation"""
+        # Try to populate AQL fields first, but don't let it block checklist population
+        try:
+            self.populate_aql_fields_from_grn()
+        except Exception as e:
+            frappe.logger().warning(f"AQL population failed for {self.name}: {str(e)} - Continuing with checklist population")
+            # Continue execution regardless of AQL errors
+
         # Always try to populate checklist if no items exist
         if not self.fabric_checklist_items:
             # Set default material_type if not set
@@ -44,8 +52,9 @@ class FabricInspection(Document):
             errors = validation_result.get('errors', [])
             frappe.throw(_("Cannot submit inspection: {0}").format('; '.join(errors)))
         
-        # Set final status
-        self.inspection_status = 'Completed'
+        # Set final status - use Submitted as per mobile API workflow
+        if self.inspection_status not in ['Submitted', 'Conditional Accept']:
+            self.inspection_status = 'Submitted'
         
         # Update linked GRN if exists
         self.update_grn_inspection_status()
@@ -318,8 +327,8 @@ class FabricInspection(Document):
     
     def update_inspection_status(self):
         """Update inspection status based on progress"""
-        # Don't auto-update status if manually set to Hold, Completed, Accepted, Rejected, Conditional Accept, or In Progress
-        if self.inspection_status in ['Hold', 'Completed', 'Accepted', 'Rejected', 'Conditional Accept', 'In Progress']:
+        # Don't auto-update status if manually set to Hold, Submitted, Accepted, Rejected, Conditional Accept, or In Progress
+        if self.inspection_status in ['Hold', 'Submitted', 'Accepted', 'Rejected', 'Conditional Accept', 'In Progress']:
             return
             
         if not self.fabric_rolls_tab:
@@ -338,7 +347,9 @@ class FabricInspection(Document):
             elif inspected_rolls < total_rolls:
                 self.inspection_status = 'In Progress'
             else:
-                self.inspection_status = 'Completed'
+                # When all rolls are inspected, status should be ready for submission
+                # Use 'In Progress' instead of non-existent 'Completed'
+                self.inspection_status = 'In Progress'
     
     def update_grn_inspection_status(self):
         """Update inspection status in linked GRN"""
