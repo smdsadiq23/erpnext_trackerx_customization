@@ -276,14 +276,11 @@ class GoodsReceiptNote(Document):
     def validate(self):
         """Additional validation for Goods Receipt Note"""
         # Don't call super().validate() as Document doesn't have validate method
-<<<<<<< HEAD
 
         # Validate roll_no and no_of_boxespacks for all items
         self.validate_items_roll_and_boxes()
-=======
         
         self.validate_goods_receipt_note_no()
->>>>>>> 3c0b7c6863099c206f912b6b3f2111a74d105907
 
         # ALWAYS validate warehouse capacities (universal check)
         self.validate_all_warehouse_capacities()
