@@ -8,8 +8,10 @@ from frappe.model.document import Document
 class GoodsReceiptNote(Document):    
     def autoname(self):
         """Set document name based on goods_receipt_note_no or naming_series"""
-        if self.goods_receipt_note_no:
-            self.name = self.goods_receipt_note_no
+        # Safely check if goods_receipt_note_no field exists and has value
+        goods_receipt_note_no = getattr(self, 'goods_receipt_note_no', None)
+        if goods_receipt_note_no:
+            self.name = goods_receipt_note_no
         else:
             # Use naming_series field (must exist in DocType)
             from frappe.model.naming import set_name_by_naming_series
@@ -291,18 +293,20 @@ class GoodsReceiptNote(Document):
 
 
     def validate_goods_receipt_note_no(self):
-        if self.goods_receipt_note_no:
+        # Safely check if goods_receipt_note_no field exists and has value
+        goods_receipt_note_no = getattr(self, 'goods_receipt_note_no', None)
+        if goods_receipt_note_no:
             existing = frappe.db.exists(
                 "Goods Receipt Note",  # ✅ Correct doctype
                 {
-                    "goods_receipt_note_no": self.goods_receipt_note_no,
+                    "goods_receipt_note_no": goods_receipt_note_no,
                     "name": ("!=", self.name)
                 }
             )
             if existing:
                 frappe.throw(
                     _("Goods Receipt Note with Number '{0}' already exists.").format(
-                        self.goods_receipt_note_no
+                        goods_receipt_note_no
                     ),
                     title=_("Duplicate Goods Receipt Note No")
                 )
