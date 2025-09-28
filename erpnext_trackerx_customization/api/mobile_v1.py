@@ -191,7 +191,8 @@ def get_inspection_details(inspection_id):
             },
             "overall_status": {
                 "inspection_status": determine_overall_inspection_status(inspection),
-                "final_decision": inspection.inspection_result or "Pending"
+                "final_decision": inspection.inspection_result or "Pending",
+                **({"hold_reason": inspection.hold_reason, "hold_remarks": inspection.remarks} if inspection.inspection_status == "Hold" else {})
             },
             "aql_configuration": {
                 "inspection_type": inspection.inspection_type or "AQL Based",
@@ -341,6 +342,75 @@ def hold_inspection(inspection_id, hold_reason):
     except Exception as e:
         frappe.log_error(f"Error holding inspection: {str(e)}")
         frappe.throw(_("Error holding inspection: {0}").format(str(e)))
+
+@frappe.whitelist()
+def resume_inspection(inspection_id):
+    """Resume an inspection from hold status"""
+    try:
+        inspection = frappe.get_doc("Fabric Inspection", inspection_id)
+
+        # Check permissions
+        if not inspection.has_permission("write"):
+            frappe.throw(_("You do not have permission to modify this inspection"))
+
+        # Validate current status
+        if inspection.inspection_status != "Hold":
+            return {
+                "success": False,
+                "message": "Cannot resume: Inspection is not on hold",
+                "data": {
+                    "inspection_id": inspection_id,
+                    "current_status": inspection.inspection_status,
+                    "error": "Only inspections with 'Hold' status can be resumed"
+                }
+            }
+
+        # Store previous hold information for response
+        previous_hold_info = {
+            "hold_reason": inspection.hold_reason,
+            "hold_by": inspection.hold_by,
+            "hold_timestamp": inspection.hold_timestamp
+        }
+
+        # Change status to In Progress
+        inspection.inspection_status = "In Progress"
+
+        # Add resume tracking to remarks (internal tracking)
+        timestamp = frappe.utils.now_datetime().strftime("%Y-%m-%d %H:%M:%S")
+        resume_note = f"[{timestamp}] Inspection resumed by {frappe.session.user}"
+
+        existing_remarks = inspection.remarks or ''
+        if existing_remarks:
+            inspection.remarks = f"{existing_remarks}\n{resume_note}"
+        else:
+            inspection.remarks = resume_note
+
+        # Save the inspection
+        inspection.save()
+
+        return {
+            "success": True,
+            "message": "Inspection resumed successfully",
+            "data": {
+                "inspection_id": inspection.name,
+                "inspection_status": inspection.inspection_status,
+                "resumed_by": frappe.session.user,
+                "resumed_timestamp": frappe.utils.now(),
+                "previous_hold_info": previous_hold_info
+            }
+        }
+
+    except Exception as e:
+        error_msg = f"Error resuming inspection: {str(e)}"
+        frappe.log_error(error_msg, title="Resume Inspection Error")
+        return {
+            "success": False,
+            "message": error_msg,
+            "data": {
+                "inspection_id": inspection_id,
+                "error_details": str(e)
+            }
+        }
 
 @frappe.whitelist()
 def save_inspection_progress(inspection_id, section=None, data=None, auto_save=False):
