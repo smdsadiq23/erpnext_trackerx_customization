@@ -39,12 +39,14 @@
   "section_break_3",
   "fabric_rolls_tab",
   "section_break_defects_ui",
-  "defects_data",
   "section_break_checklist",
   "fabric_checklist_items",
   "section_break_4",
   "inspection_summary",
   "total_defect_points",
+  "overall_points_per_100_sqm",
+  "total_inspected_length",
+  "total_defect_size",
   "quality_grade",
   "column_break_4",
   "inspection_result",
@@ -272,12 +274,6 @@
    "collapsible": 0
   },
   {
-   "fieldname": "defects_data",
-   "fieldtype": "JSON",
-   "label": "Defects Data",
-   "hidden": 1
-  },
-  {
    "fieldname": "section_break_checklist",
    "fieldtype": "Section Break",
    "label": "Physical Testing Results",
@@ -307,6 +303,26 @@
    "read_only": 1
   },
   {
+   "fieldname": "overall_points_per_100_sqm",
+   "fieldtype": "Float",
+   "label": "Overall Points per 100 sqm",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_inspected_length",
+   "fieldtype": "Float",
+   "label": "Total Inspected Length (m)",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_defect_size",
+   "fieldtype": "Int",
+   "label": "Total Defect Count",
+   "read_only": 1
+  },
+  {
    "fieldname": "quality_grade",
    "fieldtype": "Data",
    "label": "Quality Grade",
@@ -321,7 +337,7 @@
    "fieldname": "inspection_result",
    "fieldtype": "Select",
    "label": "Inspection Result",
-   "options": "Pending\nAccepted\nRejected\nConditional Accept"
+   "options": "Pending\nAccept\nReject\nAccepted\nRejected\nConditional Accept"
   },
   {
    "fieldname": "remarks",

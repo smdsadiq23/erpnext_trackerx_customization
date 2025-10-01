@@ -8,10 +8,22 @@ def execute():
     """
     
     try:
-        frappe.logger().info("Creating Purchase Receipt Item custom fields for GRN data mapping...")
-        
-        # Define custom fields for Purchase Receipt Item
+        frappe.logger().info("Creating Purchase Receipt and Purchase Receipt Item custom fields for GRN data mapping...")
+
+        # Define custom fields for Purchase Receipt and Purchase Receipt Item
         custom_fields = {
+            "Purchase Receipt": [
+                # Inspection and Quality Control Section
+                {
+                    "fieldname": "linked_inspection",
+                    "label": "Linked Inspection",
+                    "fieldtype": "Link",
+                    "options": "Fabric Inspection",
+                    "insert_after": "linked_grn",
+                    "read_only": 1,
+                    "description": "Reference to associated Fabric Inspection document"
+                }
+            ],
             "Purchase Receipt Item": [
                 # Basic Material Information
                 {
@@ -203,12 +215,17 @@ def execute():
         
         # Create the custom fields
         create_custom_fields(custom_fields, ignore_validate=True)
-        
-        field_count = len(custom_fields["Purchase Receipt Item"])
-        frappe.logger().info(f"Successfully created {field_count} custom fields for Purchase Receipt Item")
-        
+
+        pr_field_count = len(custom_fields["Purchase Receipt"])
+        pri_field_count = len(custom_fields["Purchase Receipt Item"])
+        total_field_count = pr_field_count + pri_field_count
+
+        frappe.logger().info(f"Successfully created {pr_field_count} Purchase Receipt fields and {pri_field_count} Purchase Receipt Item fields")
+
         # Show success message
-        print(f"✅ Purchase Receipt Item: Created {field_count} custom fields for enhanced GRN data mapping")
+        print(f"✅ Purchase Receipt: Created {pr_field_count} custom fields")
+        print(f"✅ Purchase Receipt Item: Created {pri_field_count} custom fields for enhanced GRN data mapping")
+        print(f"📊 Total: {total_field_count} custom fields created")
         
         return True
         

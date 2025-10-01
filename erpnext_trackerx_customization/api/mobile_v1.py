@@ -157,9 +157,21 @@ def get_inspection_list(status=None, search=None, page=1, limit=20, sort_by="cre
 # ===========================
 
 @frappe.whitelist()
-def get_inspection_details(inspection_id):
+def get_inspection_details(inspection_id=None):
     """Get complete inspection details for mobile app"""
     try:
+        # Validate required parameters
+        if not inspection_id:
+            return {
+                "success": False,
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Inspection ID is required",
+                    "details": "Please provide a valid inspection ID"
+                },
+                "timestamp": frappe.utils.now(),
+                "data": None
+            }
         # Get inspection document
         inspection = frappe.get_doc("Fabric Inspection", inspection_id)
 
@@ -221,13 +233,56 @@ def get_inspection_details(inspection_id):
         }
 
     except Exception as e:
-        frappe.log_error(f"Error getting inspection details: {str(e)}")
-        frappe.throw(_("Error loading inspection details: {0}").format(str(e)))
+        # Log technical details
+        short_error = str(e)[:100] + "..." if len(str(e)) > 100 else str(e)
+        error_msg = f"Get inspection details failed: {short_error}"
+
+        try:
+            frappe.log_error(error_msg, title="Get Inspection Details Error")
+        except Exception:
+            pass
+
+        # Determine user-friendly error message
+        if "does not exist" in str(e).lower() or "not found" in str(e).lower():
+            user_message = "The specified inspection was not found"
+            error_code = "INSPECTION_NOT_FOUND"
+        elif "permission" in str(e).lower():
+            user_message = "You do not have permission to view this inspection"
+            error_code = "PERMISSION_DENIED"
+        else:
+            user_message = "An error occurred while loading inspection details"
+            error_code = "DATA_FETCH_ERROR"
+
+        return {
+            "success": False,
+            "error": {
+                "code": error_code,
+                "message": user_message,
+                "details": "Please check your request and try again"
+            },
+            "timestamp": frappe.utils.now(),
+            "data": {
+                "inspection_id": inspection_id,
+                "request_id": frappe.generate_hash(length=8)
+            }
+        }
 
 @frappe.whitelist()
-def update_aql_configuration(inspection_id, inspection_type=None, aql_level=None, aql_value=None, inspection_regime=None):
+def update_aql_configuration(inspection_id=None, inspection_type=None, aql_level=None, aql_value=None, inspection_regime=None):
     """Update AQL configuration for an inspection"""
     try:
+        # Validate required parameters
+        if not inspection_id:
+            return {
+                "success": False,
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Inspection ID is required",
+                    "details": "Please provide a valid inspection ID"
+                },
+                "timestamp": frappe.utils.now(),
+                "data": None
+            }
         inspection = frappe.get_doc("Fabric Inspection", inspection_id)
 
         # Check permissions
@@ -259,13 +314,73 @@ def update_aql_configuration(inspection_id, inspection_type=None, aql_level=None
         }
 
     except Exception as e:
-        frappe.log_error(f"Error updating AQL configuration: {str(e)}")
-        frappe.throw(_("Error updating AQL configuration: {0}").format(str(e)))
+        # Log technical details
+        short_error = str(e)[:100] + "..." if len(str(e)) > 100 else str(e)
+        error_msg = f"AQL configuration update failed: {short_error}"
+
+        try:
+            frappe.log_error(error_msg, title="AQL Configuration Update Error")
+        except Exception:
+            pass
+
+        # Determine user-friendly error message
+        if "does not exist" in str(e).lower() or "not found" in str(e).lower():
+            user_message = "The specified inspection was not found"
+            error_code = "INSPECTION_NOT_FOUND"
+        elif "permission" in str(e).lower():
+            user_message = "You do not have permission to modify this inspection"
+            error_code = "PERMISSION_DENIED"
+        else:
+            user_message = "An error occurred while updating AQL configuration"
+            error_code = "INTERNAL_ERROR"
+
+        return {
+            "success": False,
+            "error": {
+                "code": error_code,
+                "message": user_message,
+                "details": "Please check your request and try again"
+            },
+            "timestamp": frappe.utils.now(),
+            "data": {
+                "inspection_id": inspection_id,
+                "request_id": frappe.generate_hash(length=8)
+            }
+        }
 
 @frappe.whitelist()
-def update_physical_testing(inspection_id, test_results):
+def update_physical_testing(inspection_id=None, test_results=None):
     """Update physical testing results for an inspection"""
     try:
+        # Validate required parameters
+        validation_errors = []
+
+        if not inspection_id:
+            validation_errors.append({
+                "field": "inspection_id",
+                "code": "MISSING_REQUIRED_PARAMETER",
+                "message": "Inspection ID is required"
+            })
+
+        if not test_results:
+            validation_errors.append({
+                "field": "test_results",
+                "code": "MISSING_REQUIRED_PARAMETER",
+                "message": "Test results data is required"
+            })
+
+        if validation_errors:
+            return {
+                "success": False,
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Required parameters are missing",
+                    "details": "Please provide all required parameters for physical testing update",
+                    "validation_errors": validation_errors
+                },
+                "timestamp": frappe.utils.now(),
+                "data": None
+            }
         inspection = frappe.get_doc("Fabric Inspection", inspection_id)
 
         # Check permissions
@@ -308,13 +423,76 @@ def update_physical_testing(inspection_id, test_results):
         }
 
     except Exception as e:
-        frappe.log_error(f"Error updating physical testing: {str(e)}")
-        frappe.throw(_("Error updating physical testing: {0}").format(str(e)))
+        # Log technical details
+        short_error = str(e)[:100] + "..." if len(str(e)) > 100 else str(e)
+        error_msg = f"Physical testing update failed: {short_error}"
+
+        try:
+            frappe.log_error(error_msg, title="Physical Testing Update Error")
+        except Exception:
+            pass
+
+        # Determine user-friendly error message
+        if "does not exist" in str(e).lower() or "not found" in str(e).lower():
+            user_message = "The specified inspection was not found"
+            error_code = "INSPECTION_NOT_FOUND"
+        elif "permission" in str(e).lower():
+            user_message = "You do not have permission to modify this inspection"
+            error_code = "PERMISSION_DENIED"
+        elif "json" in str(e).lower() or "invalid" in str(e).lower():
+            user_message = "The test results data format is invalid"
+            error_code = "INVALID_DATA_FORMAT"
+        else:
+            user_message = "An error occurred while updating physical testing results"
+            error_code = "INTERNAL_ERROR"
+
+        return {
+            "success": False,
+            "error": {
+                "code": error_code,
+                "message": user_message,
+                "details": "Please check your data and try again"
+            },
+            "timestamp": frappe.utils.now(),
+            "data": {
+                "inspection_id": inspection_id,
+                "request_id": frappe.generate_hash(length=8)
+            }
+        }
 
 @frappe.whitelist()
-def hold_inspection(inspection_id, hold_reason):
+def hold_inspection(inspection_id=None, hold_reason=None):
     """Put an inspection on hold"""
     try:
+        # Validate required parameters
+        validation_errors = []
+
+        if not inspection_id:
+            validation_errors.append({
+                "field": "inspection_id",
+                "code": "MISSING_REQUIRED_PARAMETER",
+                "message": "Inspection ID is required"
+            })
+
+        if not hold_reason or not str(hold_reason).strip():
+            validation_errors.append({
+                "field": "hold_reason",
+                "code": "MISSING_REQUIRED_PARAMETER",
+                "message": "Hold reason is required"
+            })
+
+        if validation_errors:
+            return {
+                "success": False,
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Required parameters are missing",
+                    "details": "Please provide all required parameters for holding inspection",
+                    "validation_errors": validation_errors
+                },
+                "timestamp": frappe.utils.now(),
+                "data": None
+            }
         inspection = frappe.get_doc("Fabric Inspection", inspection_id)
 
         # Check permissions
@@ -340,13 +518,56 @@ def hold_inspection(inspection_id, hold_reason):
         }
 
     except Exception as e:
-        frappe.log_error(f"Error holding inspection: {str(e)}")
-        frappe.throw(_("Error holding inspection: {0}").format(str(e)))
+        # Log technical details
+        short_error = str(e)[:100] + "..." if len(str(e)) > 100 else str(e)
+        error_msg = f"Hold inspection failed: {short_error}"
+
+        try:
+            frappe.log_error(error_msg, title="Hold Inspection Error")
+        except Exception:
+            pass
+
+        # Determine user-friendly error message
+        if "does not exist" in str(e).lower() or "not found" in str(e).lower():
+            user_message = "The specified inspection was not found"
+            error_code = "INSPECTION_NOT_FOUND"
+        elif "permission" in str(e).lower():
+            user_message = "You do not have permission to modify this inspection"
+            error_code = "PERMISSION_DENIED"
+        else:
+            user_message = "An error occurred while placing inspection on hold"
+            error_code = "INTERNAL_ERROR"
+
+        return {
+            "success": False,
+            "error": {
+                "code": error_code,
+                "message": user_message,
+                "details": "Please check your request and try again"
+            },
+            "timestamp": frappe.utils.now(),
+            "data": {
+                "inspection_id": inspection_id,
+                "request_id": frappe.generate_hash(length=8)
+            }
+        }
 
 @frappe.whitelist()
-def resume_inspection(inspection_id):
+def resume_inspection(inspection_id=None):
     """Resume an inspection from hold status"""
     try:
+        # Validate required parameters
+        if not inspection_id:
+            return {
+                "success": False,
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Inspection ID is required",
+                    "details": "Please provide a valid inspection ID"
+                },
+                "timestamp": frappe.utils.now(),
+                "data": None
+            }
         inspection = frappe.get_doc("Fabric Inspection", inspection_id)
 
         # Check permissions
@@ -401,14 +622,37 @@ def resume_inspection(inspection_id):
         }
 
     except Exception as e:
-        error_msg = f"Error resuming inspection: {str(e)}"
-        frappe.log_error(error_msg, title="Resume Inspection Error")
+        # Log technical details
+        short_error = str(e)[:100] + "..." if len(str(e)) > 100 else str(e)
+        error_msg = f"Resume inspection failed: {short_error}"
+
+        try:
+            frappe.log_error(error_msg, title="Resume Inspection Error")
+        except Exception:
+            pass
+
+        # Determine user-friendly error message
+        if "does not exist" in str(e).lower() or "not found" in str(e).lower():
+            user_message = "The specified inspection was not found"
+            error_code = "INSPECTION_NOT_FOUND"
+        elif "permission" in str(e).lower():
+            user_message = "You do not have permission to modify this inspection"
+            error_code = "PERMISSION_DENIED"
+        else:
+            user_message = "An error occurred while resuming the inspection"
+            error_code = "INTERNAL_ERROR"
+
         return {
             "success": False,
-            "message": error_msg,
+            "error": {
+                "code": error_code,
+                "message": user_message,
+                "details": "Please check your request and try again"
+            },
+            "timestamp": frappe.utils.now(),
             "data": {
                 "inspection_id": inspection_id,
-                "error_details": str(e)
+                "request_id": frappe.generate_hash(length=8)
             }
         }
 
@@ -616,7 +860,9 @@ def calculate_total_inspected_meters(inspection):
     total = 0
     for roll in inspection.fabric_rolls_tab or []:
         if roll.inspected:
-            total += flt(roll.roll_length or 0)
+            # Use actual_length_m which is set by mobile API, fallback to roll_length
+            length = flt(roll.actual_length_m or roll.roll_length or 0)
+            total += length
     return total
 
 def calculate_average_points_per_100_sqm(inspection):
@@ -627,7 +873,10 @@ def calculate_average_points_per_100_sqm(inspection):
     for roll in inspection.fabric_rolls_tab or []:
         if roll.inspected:
             points = flt(roll.points_per_100_sqm or 0)
-            area = flt(roll.roll_length or 0) * flt(roll.roll_width or 60) * 0.0254 / 100  # Convert to 100 sqm units
+            # Use actual_length_m which is set by mobile API, fallback to roll_length
+            length = flt(roll.actual_length_m or roll.roll_length or 0)
+            width = flt(roll.actual_width_m or roll.roll_width or 1.5)  # Default 1.5m width
+            area = length * width / 100  # Convert to 100 sqm units
             total_points += points * area
             total_area += area
 
@@ -676,7 +925,8 @@ def build_roll_details(inspection):
             "length": flt(roll.roll_length or 0),
             "width": flt(roll.roll_width or 0),
             "gsm": flt(roll.gsm or 0),
-            "status": "Inspected" if roll.inspected else "Pending"
+            "status": "Inspected" if roll.inspected else "Pending",
+            "result": roll.roll_result or "Pending"
         })
     return rolls
 
@@ -789,15 +1039,48 @@ def get_roll_details(inspection_id, roll_id=None):
         frappe.throw(_("Error loading roll details: {0}").format(str(e)))
 
 @frappe.whitelist()
-def save_roll_details(inspection_id, roll_id, roll_data):
+def save_roll_details(inspection_id=None, roll_id=None, roll_data=None):
     """
     Save roll details including roll information and defects
     Uses in-memory child table appending to avoid data loss from parent.save() overwrites
     """
     try:
-        # Parse form data
-        if not inspection_id or not roll_id:
-            frappe.throw(_("inspection_id and roll_id are required"), frappe.ValidationError)
+        # Validate required parameters with industry-standard error responses
+        validation_errors = []
+
+        if not inspection_id:
+            validation_errors.append({
+                "field": "inspection_id",
+                "code": "MISSING_REQUIRED_PARAMETER",
+                "message": "Inspection ID is required"
+            })
+
+        if not roll_id:
+            validation_errors.append({
+                "field": "roll_id",
+                "code": "MISSING_REQUIRED_PARAMETER",
+                "message": "Roll ID is required"
+            })
+
+        if not roll_data:
+            validation_errors.append({
+                "field": "roll_data",
+                "code": "MISSING_REQUIRED_PARAMETER",
+                "message": "Roll data is required"
+            })
+
+        if validation_errors:
+            return {
+                "success": False,
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Required parameters are missing",
+                    "details": "Please provide all required parameters for saving roll details",
+                    "validation_errors": validation_errors
+                },
+                "timestamp": frappe.utils.now(),
+                "data": None
+            }
 
         # Normalize roll_data to dict
         if isinstance(roll_data, str):
@@ -925,7 +1208,6 @@ def save_roll_details(inspection_id, roll_id, roll_data):
             category_name = (d.get("category") or "").strip()
             defect_type = (d.get("defect_type") or "Major").strip()
             size = round(flt(d.get("size", 0.0)), 2)  # Round to 2 decimal places for consistency
-            points_auto = flt(d.get("points_auto", 0.0))
 
             # Ensure master data exists
             get_or_create_defect_master(defect_name, defect_type)
@@ -936,8 +1218,8 @@ def save_roll_details(inspection_id, roll_id, roll_data):
                 "defect": defect_name,
                 "category": category_name,
                 "defect_type": defect_type,
-                "size": size,
-                "points_auto": points_auto
+                "size": size
+                # points_auto will be calculated automatically in fabric_roll_inspection_defect.py
             }
 
             # If client provides existing child row name, include it for update
@@ -960,7 +1242,7 @@ def save_roll_details(inspection_id, roll_id, roll_data):
             defect_doc.category = defect_dict["category"]
             defect_doc.defect_type = defect_dict["defect_type"]
             defect_doc.size = defect_dict["size"]
-            defect_doc.points_auto = defect_dict["points_auto"]
+            # points_auto will be calculated automatically in validate() method
             defect_doc.insert(ignore_permissions=True)
 
         # Mark inspected and save parent without triggering child updates
@@ -984,6 +1266,10 @@ def save_roll_details(inspection_id, roll_id, roll_data):
         # Update parent document fields only
         inspection._preserve_mobile_defects = True
         inspection.save(ignore_permissions=True)
+
+        # Calculate roll grades without overwriting defects
+        inspection.calculate_roll_grades_only()
+
         frappe.db.commit()
 
         # Reload defects from database for response
@@ -1005,9 +1291,44 @@ def save_roll_details(inspection_id, roll_id, roll_data):
         }
 
     except Exception as e:
-        error_msg = f"Error saving roll details: {str(e)}"
-        frappe.log_error(error_msg)
-        frappe.throw(_(error_msg))
+        # Log technical details for internal debugging
+        short_error = str(e)[:100] + "..." if len(str(e)) > 100 else str(e)
+        error_msg = f"Save roll details failed: {short_error}"
+
+        try:
+            frappe.log_error(error_msg, title="Save Roll Details Error")
+        except Exception:
+            # If logging fails, continue without logging
+            pass
+
+        # Determine user-friendly error message based on exception type
+        if "does not exist" in str(e).lower() or "not found" in str(e).lower():
+            user_message = "The specified inspection or roll was not found"
+            error_code = "RESOURCE_NOT_FOUND"
+        elif "permission" in str(e).lower():
+            user_message = "You do not have permission to modify this inspection"
+            error_code = "PERMISSION_DENIED"
+        elif "invalid" in str(e).lower() or "json" in str(e).lower():
+            user_message = "The provided roll data format is invalid"
+            error_code = "INVALID_DATA_FORMAT"
+        else:
+            user_message = "An error occurred while saving roll details"
+            error_code = "INTERNAL_ERROR"
+
+        return {
+            "success": False,
+            "error": {
+                "code": error_code,
+                "message": user_message,
+                "details": "Please check your data and try again, or contact support if the issue persists"
+            },
+            "timestamp": frappe.utils.now(),
+            "data": {
+                "inspection_id": inspection_id,
+                "roll_id": roll_id,
+                "request_id": frappe.generate_hash(length=8)
+            }
+        }
 
 @frappe.whitelist()
 def get_defect_categories(material_type="Fabrics"):
@@ -1029,8 +1350,21 @@ def get_defect_categories(material_type="Fabrics"):
         }
 
     except Exception as e:
-        frappe.log_error(f"Error getting defect categories: {str(e)}")
-        frappe.throw(_("Error loading defect categories: {0}").format(str(e)))
+        try:
+            frappe.log_error(f"Get defect categories failed: {str(e)[:100]}", title="Get Defect Categories Error")
+        except Exception:
+            pass
+
+        return {
+            "success": False,
+            "error": {
+                "code": "DATA_FETCH_ERROR",
+                "message": "Unable to load defect categories",
+                "details": "Please try again or contact support if the issue persists"
+            },
+            "timestamp": frappe.utils.now(),
+            "data": None
+        }
 
 @frappe.whitelist()
 def get_defects_by_category(category_code=None, material_type="Fabrics"):
@@ -1230,9 +1564,31 @@ def refresh_user_session():
 # ===========================
 
 @frappe.whitelist()
-def quality_inspector_submit(inspection_id, final_remarks=None):
+def quality_inspector_submit(inspection_id=None, final_remarks=None):
     """Quality Inspector Submit API - handles both Accepted and Rejected inspections"""
     try:
+        # Validate required parameters with industry-standard error responses
+        validation_errors = []
+
+        if not inspection_id:
+            validation_errors.append({
+                "field": "inspection_id",
+                "code": "MISSING_REQUIRED_PARAMETER",
+                "message": "Inspection ID is required"
+            })
+
+        if validation_errors:
+            return {
+                "success": False,
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Required parameters are missing",
+                    "details": "Please provide all required parameters for Quality Inspector submission",
+                    "validation_errors": validation_errors
+                },
+                "timestamp": frappe.utils.now(),
+                "data": None
+            }
         # Get inspection document
         inspection = frappe.get_doc("Fabric Inspection", inspection_id)
 
@@ -1365,7 +1721,7 @@ def quality_inspector_submit(inspection_id, final_remarks=None):
             }
 
     except Exception as e:
-        # Create shorter error message for logging to avoid length issues
+        # Log technical details for internal debugging
         short_error = str(e)[:100] + "..." if len(str(e)) > 100 else str(e)
         error_msg = f"Quality Inspector submit failed: {short_error}"
 
@@ -1375,25 +1731,66 @@ def quality_inspector_submit(inspection_id, final_remarks=None):
             # If logging fails, continue without logging
             pass
 
+        # Determine user-friendly error message based on exception type
+        if "does not exist" in str(e).lower() or "not found" in str(e).lower():
+            user_message = "The specified inspection was not found"
+            error_code = "INSPECTION_NOT_FOUND"
+        elif "permission" in str(e).lower():
+            user_message = "You do not have permission to perform this action"
+            error_code = "PERMISSION_DENIED"
+        elif "already" in str(e).lower():
+            user_message = "This inspection has already been processed"
+            error_code = "ALREADY_PROCESSED"
+        else:
+            user_message = "An error occurred while processing your request"
+            error_code = "INTERNAL_ERROR"
+
         return {
             "success": False,
-            "message": f"Error in Quality Inspector submit: {str(e)}",
+            "error": {
+                "code": error_code,
+                "message": user_message,
+                "details": "Please check your request and try again, or contact support if the issue persists"
+            },
+            "timestamp": frappe.utils.now(),
             "data": {
                 "inspection_id": inspection_id,
-                "error_details": str(e)
+                "request_id": frappe.generate_hash(length=8)
             }
         }
 
 @frappe.whitelist()
-def quality_manager_submit(inspection_id, manager_reason):
+def quality_manager_submit(inspection_id=None, manager_reason=None):
     """Quality Manager Submit API - handles Rejected inspections with conditional acceptance"""
     try:
-        # Validate required parameters
-        if not manager_reason or not manager_reason.strip():
+        # Validate required parameters with industry-standard error responses
+        validation_errors = []
+
+        if not inspection_id:
+            validation_errors.append({
+                "field": "inspection_id",
+                "code": "MISSING_REQUIRED_PARAMETER",
+                "message": "Inspection ID is required"
+            })
+
+        if not manager_reason or not str(manager_reason).strip():
+            validation_errors.append({
+                "field": "manager_reason",
+                "code": "MISSING_REQUIRED_PARAMETER",
+                "message": "Manager reason is required for quality decisions"
+            })
+
+        if validation_errors:
             return {
                 "success": False,
-                "message": "Manager reason is required for Quality Manager submission",
-                "data": {"inspection_id": inspection_id}
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Required parameters are missing",
+                    "details": "Please provide all required parameters for Quality Manager submission",
+                    "validation_errors": validation_errors
+                },
+                "timestamp": frappe.utils.now(),
+                "data": None
             }
 
         # Get inspection document
@@ -1494,7 +1891,7 @@ def quality_manager_submit(inspection_id, manager_reason):
             }
 
     except Exception as e:
-        # Create shorter error message for logging to avoid length issues
+        # Log technical details for internal debugging
         short_error = str(e)[:100] + "..." if len(str(e)) > 100 else str(e)
         error_msg = f"Quality Manager submit failed: {short_error}"
 
@@ -1504,12 +1901,31 @@ def quality_manager_submit(inspection_id, manager_reason):
             # If logging fails, continue without logging
             pass
 
+        # Determine user-friendly error message based on exception type
+        if "does not exist" in str(e).lower() or "not found" in str(e).lower():
+            user_message = "The specified inspection was not found"
+            error_code = "INSPECTION_NOT_FOUND"
+        elif "permission" in str(e).lower():
+            user_message = "You do not have permission to perform this action"
+            error_code = "PERMISSION_DENIED"
+        elif "already" in str(e).lower():
+            user_message = "This inspection has already been processed"
+            error_code = "ALREADY_PROCESSED"
+        else:
+            user_message = "An error occurred while processing your request"
+            error_code = "INTERNAL_ERROR"
+
         return {
             "success": False,
-            "message": f"Error in Quality Manager submit: {str(e)}",
+            "error": {
+                "code": error_code,
+                "message": user_message,
+                "details": "Please check your request and try again, or contact support if the issue persists"
+            },
+            "timestamp": frappe.utils.now(),
             "data": {
                 "inspection_id": inspection_id,
-                "error_details": str(e)
+                "request_id": frappe.generate_hash(length=8)
             }
         }
 
@@ -1545,9 +1961,9 @@ def create_purchase_receipt_mobile(inspection_doc):
         if hasattr(grn_doc, 'buying_price_list'):
             purchase_receipt.buying_price_list = grn_doc.buying_price_list
 
-        # Add reference fields
-        purchase_receipt.fabric_inspection_reference = inspection_doc.name
-        purchase_receipt.grn_reference = inspection_doc.grn_reference
+        # Add reference fields using correct custom field names
+        purchase_receipt.linked_inspection = inspection_doc.name
+        purchase_receipt.linked_grn = inspection_doc.grn_reference
 
         # Add inspection summary in remarks
         inspection_summary = f"Created from Fabric Inspection: {inspection_doc.name} | " \
