@@ -8,7 +8,7 @@
  "field_order": [
   "supplier",
   "item",
-  "table_sp_fg_bom_opration",
+  "table_sp_fg_bom_operation",
   "table_sp_fg_om_cost"
  ],
  "fields": [
@@ -19,12 +19,6 @@
    "in_list_view": 1,
    "label": "Item",
    "options": "Item"
-  },
-  {
-   "fieldname": "table_sp_fg_bom_opration",
-   "fieldtype": "Table",
-   "label": "BOM Operations",
-   "options": "BOM Operation"
   },
   {
    "fieldname": "supplier",
@@ -39,12 +33,18 @@
    "label": "Cost by Order Method",
    "options": "BOM Order Method Cost",
    "read_only": 1
+  },
+  {
+   "fieldname": "table_sp_fg_bom_operation",
+   "fieldtype": "Table",
+   "label": "BOM Operations",
+   "options": "BOM Operation"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-30 11:27:36.038302",
+ "modified": "2025-10-01 18:17:15.605211",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Supplier FG Items",
