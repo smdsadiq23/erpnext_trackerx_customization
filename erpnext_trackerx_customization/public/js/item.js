@@ -102,9 +102,6 @@ frappe.ui.form.on('Item', {
 
 });
 
-
-
-
 function populate_measurement_table_sample_data(frm) {
     // Only proceed if both fields are selected
     if (frm.doc.custom_size_filter && frm.doc.custom_size_standard) {
