@@ -134,29 +134,72 @@ def create_purchase_receipt_for_items(grn_doc, items):
             "items": []
         }
         
+        # Get company from GRN to ensure warehouse belongs to same company
+        grn_company = grn_doc.company
+
         # Add items to purchase receipt with comprehensive field mapping
         mapped_fields_count = 0
         for item in items:
-            # Get warehouse - use item warehouse or GRN warehouse or a default
+            # Get warehouse - ensure it belongs to the same company as GRN
             warehouse = None
+
+            # Helper function to check if warehouse belongs to the company
+            def warehouse_belongs_to_company(warehouse_name, company):
+                if not warehouse_name:
+                    return False
+                try:
+                    warehouse_company = frappe.db.get_value("Warehouse", warehouse_name, "company")
+                    return warehouse_company == company
+                except:
+                    return False
+
+            # Try item warehouse first (if it belongs to same company)
             if hasattr(item, 'warehouse') and item.warehouse:
-                warehouse = item.warehouse
-            elif hasattr(grn_doc, 'set_warehouse') and grn_doc.set_warehouse:
-                warehouse = grn_doc.set_warehouse
-            else:
-                # Get default warehouse from Stock Settings
-                warehouse = frappe.db.get_single_value("Stock Settings", "default_warehouse")
-                if not warehouse:
-                    # Try to find any active warehouse
-                    warehouses = frappe.db.sql("""
-                        SELECT name FROM `tabWarehouse` 
-                        WHERE is_group = 0 AND disabled = 0 
-                        LIMIT 1
-                    """, as_dict=True)
-                    if warehouses:
-                        warehouse = warehouses[0].name
-                    else:
-                        warehouse = "Stores - T"  # Use actual default from system
+                if warehouse_belongs_to_company(item.warehouse, grn_company):
+                    warehouse = item.warehouse
+
+            # Try GRN set_warehouse (if it belongs to same company)
+            if not warehouse and hasattr(grn_doc, 'set_warehouse') and grn_doc.set_warehouse:
+                if warehouse_belongs_to_company(grn_doc.set_warehouse, grn_company):
+                    warehouse = grn_doc.set_warehouse
+
+            # If still no warehouse, find a company-specific warehouse
+            if not warehouse:
+                # Try to find an active warehouse for this company
+                company_warehouses = frappe.db.sql("""
+                    SELECT name FROM `tabWarehouse`
+                    WHERE company = %s AND is_group = 0 AND disabled = 0
+                    ORDER BY name
+                    LIMIT 1
+                """, (grn_company,), as_dict=True)
+
+                if company_warehouses:
+                    warehouse = company_warehouses[0].name
+                else:
+                    # FALLBACK: If no company-specific warehouse found, use any available warehouse
+                    # Log warning but don't block PR creation
+                    frappe.logger().warning(f"No active warehouse found for company {grn_company} for item {item.item_code}. Using fallback warehouse.")
+
+                    # Try default warehouse from Stock Settings first
+                    warehouse = frappe.db.get_single_value("Stock Settings", "default_warehouse")
+
+                    # If still no warehouse, use any active warehouse
+                    if not warehouse:
+                        fallback_warehouses = frappe.db.sql("""
+                            SELECT name FROM `tabWarehouse`
+                            WHERE is_group = 0 AND disabled = 0
+                            ORDER BY name
+                            LIMIT 1
+                        """, as_dict=True)
+
+                        if fallback_warehouses:
+                            warehouse = fallback_warehouses[0].name
+                        else:
+                            # Last resort: use a hardcoded warehouse name (will let ERPNext handle the error)
+                            warehouse = "Stores - Main"
+                            frappe.logger().warning(f"Using hardcoded fallback warehouse 'Stores - Main' for item {item.item_code}")
+
+                    frappe.logger().info(f"Using fallback warehouse '{warehouse}' for item {item.item_code} from company {grn_company}")
             
             # Get item name from Item master since GRN items may not have item_name
             item_name = item.item_code
