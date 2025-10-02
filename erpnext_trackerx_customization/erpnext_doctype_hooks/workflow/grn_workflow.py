@@ -130,6 +130,7 @@ def create_purchase_receipt_for_items(grn_doc, items):
             "posting_time": nowtime(),
             "grn_reference": grn_doc.name,
             "is_return": 0,
+            "custom_purchase_receipt_no": None,
             "items": []
         }
         
