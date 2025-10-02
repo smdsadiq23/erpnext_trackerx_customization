@@ -122,6 +122,11 @@ def create_purchase_receipt_for_items(grn_doc, items):
     Create purchase receipt in draft mode for items that don't require inspection
     """
     try:
+        # Generate a unique purchase receipt number for the mandatory field
+        from frappe.utils import now_datetime
+        timestamp = now_datetime().strftime("%Y%m%d%H%M%S")
+        generated_pr_no = f"PR-GRN-{grn_doc.name}-{timestamp}"
+
         # Create purchase receipt data
         purchase_receipt_data = {
             "doctype": "Purchase Receipt",
@@ -130,7 +135,7 @@ def create_purchase_receipt_for_items(grn_doc, items):
             "posting_time": nowtime(),
             "grn_reference": grn_doc.name,
             "is_return": 0,
-            "custom_purchase_receipt_no": None,
+            "custom_purchase_receipt_no": generated_pr_no,
             "items": []
         }
         
