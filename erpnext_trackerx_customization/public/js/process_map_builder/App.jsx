@@ -93,15 +93,6 @@ export function App() {
     }
   };
 
-  // Load dropdown items
-  // useEffect(() => {
-  //   const loadItems = async () => {
-  //     const itemList = await fetchDocType("Item");
-  //     setItems(itemList);
-  //   };
-  //   loadItems();
-  // }, []);
-
   useEffect(() => {
     const loadItems = async () => {
       const itemList = await fetchDocTypeItem("Item", [
@@ -176,10 +167,7 @@ export function App() {
         // Fetch other references in parallel
         const [opData, pgData, streamData, operationData, pmData] =
           await Promise.all([
-            //fetchDocType("Operation Process"),
-            //fetchDocType("Process Group"),
-            //fetchDocType("Stream"),
-            //fetchDocType("Operation"),
+            fetchDocType("Operation"),
             fetchProcessMaps(),
           ]);
 
@@ -213,9 +201,6 @@ export function App() {
 
     const [opData, pgData, streamData, operationData, pmData] =
       await Promise.all([
-        //fetchDocType("Operation Process"),
-        //fetchDocType("Process Group"),
-        //fetchDocType("Stream"),
         fetchDocType("Operation"),
         fetchProcessMaps(),
       ]);
