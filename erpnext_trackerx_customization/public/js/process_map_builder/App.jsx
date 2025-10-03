@@ -8,9 +8,6 @@ import { normalizeNodes, normalizeEdges } from "./nodeNormalizer";
 
 export function App() {
   const [operationProcesses, setOperationProcesses] = useState([]);
-  const [operation, setOperation] = useState([]);
-  const [processGroups, setProcessGroups] = useState([]);
-  const [streams, setStreams] = useState([]);
   const [processMaps, setProcessMaps] = useState([]);
   const [items, setItems] = useState([]);
   const [fgComponents, setFgComponents] = useState([]);
@@ -41,7 +38,7 @@ export function App() {
   const fetchDocType = async (doctypeName) => {
     try {
       const response = await fetch(
-        `${BASE_URL}/api/resource/${doctypeName}?fields=["*"]`,
+        `${BASE_URL}/api/resource/${doctypeName}?fields=["*"]&limit_page_length=0`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -78,7 +75,7 @@ export function App() {
   const fetchProcessMaps = async () => {
     try {
       const response = await fetch(
-        `${BASE_URL}/api/resource/Process Map?fields=["*"]`,
+        `${BASE_URL}/api/resource/Process Map?fields=["*"]&limit_page_length=0`,
         {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -108,6 +105,7 @@ export function App() {
     try {
       const url = new URL(`${BASE_URL}/api/resource/${doctypeName}`);
       url.searchParams.append("fields", JSON.stringify(["*"]));
+      url.searchParams.append("limit_page_length", "0");
 
       if (filters.length > 0) {
         url.searchParams.append("filters", JSON.stringify(filters));
@@ -165,7 +163,7 @@ export function App() {
         }
 
         // Fetch other references in parallel
-        const [opData, pgData, streamData, operationData, pmData] =
+        const [operationData, pmData] =
           await Promise.all([
             fetchDocType("Operation"),
             fetchProcessMaps(),
@@ -174,12 +172,9 @@ export function App() {
         let operationDataProcessed = operationData?.map((row) => ({
           ...row,
           process_name: row.name,
-        }));
+        })) || [];
         setOperationProcesses(operationDataProcessed);
-        setProcessGroups(pgData);
-        setStreams(streamData);
-        setOperation(operationData);
-        setProcessMaps(pmData);
+        setProcessMaps(pmData || []);
 
         setShowItemModal(false); // 🚀 Skip modal if URL provided
         setIsEditMode(true)
@@ -199,7 +194,7 @@ export function App() {
       details?.custom_fg_components?.map((row) => row.component_name) || [];
     setFgComponents(fgComps);
 
-    const [opData, pgData, streamData, operationData, pmData] =
+    const [operationData, pmData] =
       await Promise.all([
         fetchDocType("Operation"),
         fetchProcessMaps(),
@@ -208,12 +203,9 @@ export function App() {
     let operationDataProcessed = operationData?.map((row) => ({
       ...row,
       process_name: row.name,
-    }));
+    })) || [];
     setOperationProcesses(operationDataProcessed);
-    setProcessGroups(pgData);
-    setStreams(streamData);
-    setOperation(operationData);
-    setProcessMaps(pmData);
+    setProcessMaps(pmData || []);
 
     setShowItemModal(false);
   };
@@ -364,8 +356,6 @@ export function App() {
         <ReactFlowProvider>
           <FlowCanvas
             operationProcesses={operationProcesses}
-            processGroups={processGroups}
-            streams={streams}
             processMaps={processMaps}
             defaultComponents={fgComponents}
             processMapNumber={processMapNo}

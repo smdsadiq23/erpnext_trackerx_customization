@@ -2,8 +2,6 @@ import React, { useState } from "react";
 
 const Sidebar = ({
   operationProcesses,
-  processGroups,
-  streams,
   processMaps,
   handleSaveMap,
   handleLoadMap,
@@ -12,13 +10,13 @@ const Sidebar = ({
   const [mapSearchTerm, setMapSearchTerm] = useState(""); // new state
 
   // Filter processes by search term (case insensitive)
-  const filteredProcesses = operationProcesses.filter((op) =>
-    op.process_name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredProcesses = (operationProcesses || []).filter((op) =>
+    op.process_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Filter saved maps by search term (case insensitive)
-  const filteredMaps = processMaps.filter((map) =>
-    map.map_name.toLowerCase().includes(mapSearchTerm.toLowerCase())
+  const filteredMaps = (processMaps || []).filter((map) =>
+    map.map_name?.toLowerCase().includes(mapSearchTerm.toLowerCase())
   );
 
   return (
