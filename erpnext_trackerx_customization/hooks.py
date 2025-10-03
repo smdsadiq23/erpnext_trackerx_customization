@@ -157,8 +157,7 @@ after_migrate = [
 # app_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
 app_include_css = [
     "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css",
-    "/assets/erpnext_trackerx_customization/css/xystyle.css",
-    "/assets/erpnext_trackerx_customization/css/cutting_bundle_inspection.css"
+    "/assets/erpnext_trackerx_customization/css/xystyle.css"
 ]
 app_include_js = [
     "/assets/erpnext_trackerx_customization/js/fabric_inspection_routes.js",

@@ -30,8 +30,6 @@ const nodeTypes = {
 
 const FlowCanvas = ({
   operationProcesses,
-  processGroups,
-  streams,
   processMaps,
   defaultComponents,
   processMapNumber,
@@ -409,8 +407,6 @@ const FlowCanvas = ({
       <div className="row h-100">
         <Sidebar
           operationProcesses={operationProcesses}
-          processGroups={processGroups}
-          streams={streams}
           processMaps={processMaps}
           handleSaveMap={handleSaveMap}
           handleLoadMap={handleLoadMap}
