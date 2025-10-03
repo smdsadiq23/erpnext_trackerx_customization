@@ -1972,6 +1972,11 @@ def create_purchase_receipt_mobile(inspection_doc):
                            f"Inspector: {inspection_doc.inspector or 'N/A'}"
         purchase_receipt.remarks = inspection_summary
 
+        # Generate unique purchase receipt number for mandatory field
+        timestamp = frappe.utils.now_datetime().strftime("%Y%m%d%H%M%S")
+        generated_pr_no = f"PR-INSP-{inspection_doc.name}-{timestamp}"
+        purchase_receipt.custom_purchase_receipt_no = generated_pr_no
+
         # Process fabric rolls and create PR items
         fabric_rolls = inspection_doc.get('fabric_rolls_tab', [])
         total_accepted_qty = 0
