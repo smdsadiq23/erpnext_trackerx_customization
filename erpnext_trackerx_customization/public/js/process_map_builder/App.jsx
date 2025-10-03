@@ -176,10 +176,10 @@ export function App() {
         // Fetch other references in parallel
         const [opData, pgData, streamData, operationData, pmData] =
           await Promise.all([
-            fetchDocType("Operation Process"),
-            fetchDocType("Process Group"),
-            fetchDocType("Stream"),
-            fetchDocType("Operation"),
+            //fetchDocType("Operation Process"),
+            //fetchDocType("Process Group"),
+            //fetchDocType("Stream"),
+            //fetchDocType("Operation"),
             fetchProcessMaps(),
           ]);
 
@@ -213,9 +213,9 @@ export function App() {
 
     const [opData, pgData, streamData, operationData, pmData] =
       await Promise.all([
-        fetchDocType("Operation Process"),
-        fetchDocType("Process Group"),
-        fetchDocType("Stream"),
+        //fetchDocType("Operation Process"),
+        //fetchDocType("Process Group"),
+        //fetchDocType("Stream"),
         fetchDocType("Operation"),
         fetchProcessMaps(),
       ]);
