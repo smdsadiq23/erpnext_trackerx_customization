@@ -150,10 +150,9 @@ function setMeasurementUploadAttachExtensionRestriction(frm) {
         };
 }
 
-
-
 function setItemNameAndItemNumberProps(frm){
     const read_only_value = 1;
+    const reqd_value = 1;
         if(frm.doc.custom_select_master != 'Finished Goods'){
             read_only_value = 0;
         }
@@ -164,6 +163,8 @@ function setItemNameAndItemNumberProps(frm){
         frm.set_df_property("custom_item_number", "read_only", read_only_value);
         frm.refresh_field("item_name");
         frm.refresh_field("custom_item_number");
+        frm.set_df_property("custom_preferred_supplier", "reqd", reqd_value);
+        frm.refresh_field("custom_preferred_supplier");        
 }
 
 function setFieldsToReadyOnly(frm) {
