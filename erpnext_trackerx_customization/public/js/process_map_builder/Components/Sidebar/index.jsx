@@ -3,16 +3,22 @@ import React, { useState } from "react";
 const Sidebar = ({
   operationProcesses,
   processMaps,
+  operationGroups,
   handleSaveMap,
   handleLoadMap,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [mapSearchTerm, setMapSearchTerm] = useState(""); // new state
+  const [mapSearchTerm, setMapSearchTerm] = useState("");
+  const [selectedOperationGroup, setSelectedOperationGroup] = useState(""); // new state for operation group filter
 
-  // Filter processes by search term (case insensitive)
-  const filteredProcesses = (operationProcesses || []).filter((op) =>
-    op.process_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter processes by operation group and search term (case insensitive)
+  const filteredProcesses = (operationProcesses || []).filter((op) => {
+    // First filter by operation group if selected
+    const groupFilter = selectedOperationGroup === "" || op.custom_operation_group === selectedOperationGroup;
+    // Then filter by search term
+    const searchFilter = op.process_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    return groupFilter && searchFilter;
+  });
 
   // Filter saved maps by search term (case insensitive)
   const filteredMaps = (processMaps || []).filter((map) =>
@@ -29,6 +35,24 @@ const Sidebar = ({
         }}
       >
         <h5>Processes</h5>
+
+        {/* Operation Group Filter */}
+        <select
+          style={{
+            backgroundColor: "white",
+            borderRight: "0",
+          }}
+          className="form-select mb-3"
+          value={selectedOperationGroup}
+          onChange={(e) => setSelectedOperationGroup(e.target.value)}
+        >
+          <option value="">-- All Operation Groups --</option>
+          {(operationGroups || []).map((group) => (
+            <option key={group.name} value={group.name}>
+              {group.group_name}
+            </option>
+          ))}
+        </select>
 
         {/* Process Search Input */}
         <input
