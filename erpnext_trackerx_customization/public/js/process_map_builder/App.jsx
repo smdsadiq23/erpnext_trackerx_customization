@@ -11,6 +11,7 @@ export function App() {
   const [processMaps, setProcessMaps] = useState([]);
   const [items, setItems] = useState([]);
   const [fgComponents, setFgComponents] = useState([]);
+  const [operationGroups, setOperationGroups] = useState([]);
 
   // Modal + Process Map state
   const [showItemModal, setShowItemModal] = useState(true);
@@ -163,10 +164,11 @@ export function App() {
         }
 
         // Fetch other references in parallel
-        const [operationData, pmData] =
+        const [operationData, pmData, operationGroupData] =
           await Promise.all([
             fetchDocType("Operation"),
             fetchProcessMaps(),
+            fetchDocType("Operation Group"),
           ]);
 
         let operationDataProcessed = operationData?.map((row) => ({
@@ -175,6 +177,7 @@ export function App() {
         })) || [];
         setOperationProcesses(operationDataProcessed);
         setProcessMaps(pmData || []);
+        setOperationGroups(operationGroupData || []);
 
         setShowItemModal(false); // 🚀 Skip modal if URL provided
         setIsEditMode(true)
@@ -194,10 +197,11 @@ export function App() {
       details?.custom_fg_components?.map((row) => row.component_name) || [];
     setFgComponents(fgComps);
 
-    const [operationData, pmData] =
+    const [operationData, pmData, operationGroupData] =
       await Promise.all([
         fetchDocType("Operation"),
         fetchProcessMaps(),
+        fetchDocType("Operation Group"),
       ]);
 
     let operationDataProcessed = operationData?.map((row) => ({
@@ -206,6 +210,7 @@ export function App() {
     })) || [];
     setOperationProcesses(operationDataProcessed);
     setProcessMaps(pmData || []);
+    setOperationGroups(operationGroupData || []);
 
     setShowItemModal(false);
   };
@@ -357,6 +362,7 @@ export function App() {
           <FlowCanvas
             operationProcesses={operationProcesses}
             processMaps={processMaps}
+            operationGroups={operationGroups}
             defaultComponents={fgComponents}
             processMapNumber={processMapNo}
             selectedItem={selectedItem}
