@@ -4,112 +4,6 @@ from frappe.utils import flt, cint, getdate, nowdate, now_datetime
 import json
 from datetime import datetime, timedelta
 
-# ===========================
-# GRN STATUS SUMMARY API
-# ===========================
-
-@frappe.whitelist()
-def get_grn_status_summary():
-    """Get count of GRNs by status for dashboard display"""
-    try:
-        # Get count of GRNs by docstatus for comprehensive status overview
-        status_counts = frappe.db.sql("""
-            SELECT
-                CASE
-                    WHEN docstatus = 0 THEN 'Draft'
-                    WHEN docstatus = 1 THEN 'Submitted'
-                    WHEN docstatus = 2 THEN 'Cancelled'
-                    ELSE 'Unknown'
-                END as status,
-                COUNT(*) as count
-            FROM `tabPurchase Receipt`
-            GROUP BY docstatus
-        """, as_dict=True)
-
-        # Format result with status as key
-        result = {}
-        total = 0
-
-        for item in status_counts:
-            status = item['status']
-            count = item['count']
-            result[status] = count
-            total += count
-
-        # Add total count
-        result['total'] = total
-
-        # Add additional breakdown by workflow status if needed
-        # Get more detailed status breakdown based on custom fields or workflow states
-        detailed_status = frappe.db.sql("""
-            SELECT
-                status,
-                COUNT(*) as count
-            FROM `tabPurchase Receipt`
-            WHERE docstatus != 2
-            GROUP BY status
-        """, as_dict=True)
-
-        # Add workflow status breakdown
-        workflow_status = {}
-        for item in detailed_status:
-            status = item['status'] or 'No Status'
-            count = item['count']
-            workflow_status[status] = count
-
-        # Add recent activity counts (last 7 days)
-        recent_activity = frappe.db.sql("""
-            SELECT
-                CASE
-                    WHEN docstatus = 0 THEN 'Draft'
-                    WHEN docstatus = 1 THEN 'Submitted'
-                    WHEN docstatus = 2 THEN 'Cancelled'
-                END as status,
-                COUNT(*) as count
-            FROM `tabPurchase Receipt`
-            WHERE DATE(creation) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-            GROUP BY docstatus
-        """, as_dict=True)
-
-        recent_counts = {}
-        recent_total = 0
-        for item in recent_activity:
-            status = item['status']
-            count = item['count']
-            recent_counts[status] = count
-            recent_total += count
-
-        # Build comprehensive response
-        return {
-            "success": True,
-            "data": {
-                "summary": result,
-                "workflow_status": workflow_status,
-                "recent_activity": {
-                    "last_7_days": recent_counts,
-                    "total_recent": recent_total
-                },
-                "statistics": {
-                    "total_grns": total,
-                    "active_grns": result.get('Draft', 0) + result.get('Submitted', 0),
-                    "completed_percentage": round((result.get('Submitted', 0) / total * 100), 1) if total > 0 else 0,
-                    "draft_percentage": round((result.get('Draft', 0) / total * 100), 1) if total > 0 else 0
-                }
-            },
-            "timestamp": frappe.utils.now()
-        }
-
-    except Exception as e:
-        frappe.log_error(f"Error getting GRN status summary: {str(e)}", "GRN Status Summary Error")
-        return {
-            "success": False,
-            "error": {
-                "code": "DATA_FETCH_ERROR",
-                "message": "Error loading GRN status summary",
-                "details": str(e)
-            },
-            "timestamp": frappe.utils.now()
-        }
 
 # ===========================
 # PAGE 1: GRN LIST APIs
@@ -150,8 +44,8 @@ def get_grn_list(search=None, status=None, company=None, supplier=None,
             search_condition = """(
                 pr.name LIKE %(search)s OR
                 pr.supplier LIKE %(search)s OR
-                pr.bill_no LIKE %(search)s OR
-                pr.supplier_delivery_note LIKE %(search)s
+                pr.supplier_name LIKE %(search)s OR
+                pr.remarks LIKE %(search)s
             )"""
             conditions.append(search_condition)
             values["search"] = f"%{search}%"
@@ -207,9 +101,8 @@ def get_grn_list(search=None, status=None, company=None, supplier=None,
                 pr.grand_total,
                 pr.currency,
                 pr.docstatus,
-                pr.workflow_state,
-                pr.bill_no,
-                pr.supplier_delivery_note,
+                pr.status as workflow_status,
+                pr.remarks,
                 pr.is_return,
                 pr.modified,
                 pr.creation,
@@ -474,31 +367,29 @@ def get_grn_status_summary():
                 END
         """, as_dict=True)
 
-        # Format result
-        result = {}
+        # Build response as array of key-value objects to match mobile_v1 format
+        response_data = []
         total_count = 0
-        total_amount = 0
 
         for item in status_counts:
             status = item['status']
             count = item['count']
-            amount = flt(item['total_amount'], 2)
 
-            result[status.lower()] = {
-                "count": count,
-                "amount": amount
-            }
+            response_data.append({
+                "key": status,
+                "value": count
+            })
             total_count += count
-            total_amount += amount
 
-        result['total'] = {
-            "count": total_count,
-            "amount": flt(total_amount, 2)
-        }
+        # Add total at the end
+        response_data.append({
+            "key": "Total",
+            "value": total_count
+        })
 
         return {
             "success": True,
-            "data": result,
+            "data": response_data,
             "timestamp": now_datetime().isoformat()
         }
 
@@ -613,43 +504,43 @@ def get_grn(grn_id):
         # Get GRN document
         grn = frappe.get_doc("Purchase Receipt", grn_id)
 
-        # Format response
+        # Format response using getattr for safe access to potentially non-existent fields
         grn_data = {
             "grn_id": grn.name,
-            "title": grn.title,
-            "naming_series": grn.naming_series,
+            "title": getattr(grn, "title", ""),
+            "naming_series": getattr(grn, "naming_series", ""),
             "company": grn.company,
             "posting_date": str(grn.posting_date) if grn.posting_date else None,
             "posting_time": str(grn.posting_time) if grn.posting_time else None,
-            "set_posting_time": grn.set_posting_time,
+            "set_posting_time": getattr(grn, "set_posting_time", 0),
             "supplier": grn.supplier,
-            "supplier_name": grn.supplier_name,
-            "supplier_delivery_note": grn.supplier_delivery_note,
-            "bill_no": grn.bill_no,
-            "bill_date": str(grn.bill_date) if grn.bill_date else None,
-            "is_return": grn.is_return,
-            "apply_putaway_rule": grn.apply_putaway_rule,
-            "is_subcontracted": grn.is_subcontracted,
+            "supplier_name": getattr(grn, "supplier_name", ""),
+            "supplier_delivery_note": getattr(grn, "supplier_delivery_note", ""),
+            "bill_no": getattr(grn, "bill_no", ""),
+            "bill_date": str(getattr(grn, "bill_date", "")) if getattr(grn, "bill_date", None) else None,
+            "is_return": getattr(grn, "is_return", 0),
+            "apply_putaway_rule": getattr(grn, "apply_putaway_rule", 0),
+            "is_subcontracted": getattr(grn, "is_subcontracted", 0),
             "purchase_order": getattr(grn, "purchase_order", None),
-            "currency": grn.currency,
-            "conversion_rate": flt(grn.conversion_rate, 4),
-            "buying_price_list": grn.buying_price_list,
-            "price_list_currency": grn.price_list_currency,
-            "plc_conversion_rate": flt(grn.plc_conversion_rate, 4),
-            "ignore_pricing_rule": grn.ignore_pricing_rule,
+            "currency": getattr(grn, "currency", ""),
+            "conversion_rate": flt(getattr(grn, "conversion_rate", 1), 4),
+            "buying_price_list": getattr(grn, "buying_price_list", ""),
+            "price_list_currency": getattr(grn, "price_list_currency", ""),
+            "plc_conversion_rate": flt(getattr(grn, "plc_conversion_rate", 1), 4),
+            "ignore_pricing_rule": getattr(grn, "ignore_pricing_rule", 0),
             "scan_barcode": getattr(grn, "scan_barcode", None),
             "docstatus": grn.docstatus,
-            "workflow_state": grn.workflow_state,
-            "status": grn.status,
-            "per_billed": flt(grn.per_billed, 2),
-            "total_qty": flt(grn.total_qty, 2),
-            "total": flt(grn.total, 2),
-            "net_total": flt(grn.net_total, 2),
-            "total_taxes_and_charges": flt(grn.total_taxes_and_charges, 2),
-            "discount_amount": flt(grn.discount_amount, 2),
-            "grand_total": flt(grn.grand_total, 2),
-            "rounded_total": flt(grn.rounded_total, 2),
-            "in_words": grn.in_words,
+            "workflow_state": getattr(grn, "workflow_state", ""),
+            "status": getattr(grn, "status", ""),
+            "per_billed": flt(getattr(grn, "per_billed", 0), 2),
+            "total_qty": flt(getattr(grn, "total_qty", 0), 2),
+            "total": flt(getattr(grn, "total", 0), 2),
+            "net_total": flt(getattr(grn, "net_total", 0), 2),
+            "total_taxes_and_charges": flt(getattr(grn, "total_taxes_and_charges", 0), 2),
+            "discount_amount": flt(getattr(grn, "discount_amount", 0), 2),
+            "grand_total": flt(getattr(grn, "grand_total", 0), 2),
+            "rounded_total": flt(getattr(grn, "rounded_total", 0), 2),
+            "in_words": getattr(grn, "in_words", ""),
             "creation": grn.creation.isoformat() if grn.creation else None,
             "modified": grn.modified.isoformat() if grn.modified else None,
             "owner": grn.owner,

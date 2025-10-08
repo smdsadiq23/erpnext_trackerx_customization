@@ -21,7 +21,7 @@ def get_status_summary():
             GROUP BY inspection_status
         """, as_dict=True)
 
-        # Format result with status as key
+        # Build response as array of key-value objects for consistent mobile format
         result = {}
         total = 0
         for item in status_counts:
@@ -30,11 +30,25 @@ def get_status_summary():
             result[status] = count
             total += count
 
-        result['total'] = total
+        # Convert to array format
+        response_data = []
+
+        # Add status counts
+        for status, count in result.items():
+            response_data.append({
+                "key": status,
+                "value": count
+            })
+
+        # Add total
+        response_data.append({
+            "key": "Total",
+            "value": total
+        })
 
         return {
             "success": True,
-            "data": result,
+            "data": response_data,
             "timestamp": frappe.utils.now()
         }
 
