@@ -183,7 +183,7 @@ def fetch_sales_order_items_for_factory_ocr(sales_order):
         cut_qty = cut_map.get(key, 0.0)
         ship_qty = ship_map.get(key, 0.0)
         rejected_garments = float(rejection_garments_map.get(key, 0))
-        rejected_panels = float(rejection_panels_map.get(key, 0))
+        # rejected_panels = float(rejection_panels_map.get(key, 0))
 
         cut_to_ship_percent = (ship_qty / cut_qty * 100) if cut_qty else 0.0
 
