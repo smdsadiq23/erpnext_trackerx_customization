@@ -194,7 +194,7 @@ def fetch_sales_order_items_for_factory_ocr(sales_order):
             "cut_quantity": frappe.utils.flt(cut_qty, 2),
             "ship_quantity": frappe.utils.flt(ship_qty, 2),
             "rejected_garments": frappe.utils.flt(rejected_garments, 2),
-            "rejected_panels": frappe.utils.flt(rejected_panels, 2),
+            # "rejected_panels": frappe.utils.flt(rejected_panels, 2),
             "cut_to_ship": frappe.utils.flt(cut_to_ship_percent, 2)
         })
 
