@@ -1422,5 +1422,21 @@
   "property_type": "Int",
   "row_name": null,
   "value": "1"
+ },
+ {
+  "default_value": null,
+  "doc_type": "Factory OCR",
+  "docstatus": 0,
+  "doctype": "Property Setter",
+  "doctype_or_field": "DocType",
+  "field_name": null,
+  "is_system_generated": 1,
+  "modified": "2025-10-09 13:12:19.270158",
+  "module": "Erpnext Trackerx Customization",
+  "name": "Factory OCR-main-default_print_format",
+  "property": "default_print_format",
+  "property_type": "Data",
+  "row_name": null,
+  "value": "Factory OCR Report"
  }
 ]
