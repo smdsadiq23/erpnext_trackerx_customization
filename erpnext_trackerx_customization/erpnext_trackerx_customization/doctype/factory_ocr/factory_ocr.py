@@ -132,7 +132,7 @@ def fetch_sales_order_items_for_factory_ocr(sales_order):
         """, (sales_order,), as_dict=1)
         for d in rejection_data:
             color = d.color or ""
-            rejection_map[f"{d.item_code}||{color}"] = d.rejected_count
+            rejection_garments_map[f"{d.item_code}||{color}"] = d.rejected_count
 
     # # 5. Fetch REJECTED PANELS count per (style, color) — ALL COMPONENTS
     # rejection_panels_map = {}
