@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "bootstrap/dist/css/bootstrap.min.css";
-import './App.css';
 import { Modal, Button } from "react-bootstrap";
 import FlowCanvas from "./Components/FlowCanvas";
 import { normalizeNodes, normalizeEdges } from "./nodeNormalizer";
