@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "bootstrap/dist/css/bootstrap.min.css";
+import './App.css';
 import { Modal, Button } from "react-bootstrap";
 import FlowCanvas from "./Components/FlowCanvas";
 import { normalizeNodes, normalizeEdges } from "./nodeNormalizer";
@@ -296,16 +297,12 @@ export function App() {
            <Modal.Header>
             <Modal.Title>Enter Process Map Details</Modal.Title>
              <button
-             onClick={() => setShowItemModal(false)}
-             className="btn btn-light"
-             style={{
-      fontSize: "1.5rem",
-      paddingLeft:"10px",
-      PaddingRight:"10px",
-             }}
-             >
+               onClick={() => setShowItemModal(false)}
+               className="btn btn-light close-btn"
+            >
                  ×
              </button>
+
           </Modal.Header>
           <Modal.Body>
             {/* FG Item Group */}
