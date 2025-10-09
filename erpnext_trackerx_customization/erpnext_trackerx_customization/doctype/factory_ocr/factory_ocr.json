@@ -1,0 +1,158 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-10-08 13:51:38.350548",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_psl6",
+  "amended_from",
+  "buyer",
+  "ocn",
+  "ocn_details_section",
+  "table_ocn_details",
+  "totals_section",
+  "total_order_qty",
+  "total_rejected_garments",
+  "column_break_jbzz",
+  "total_cut_qty",
+  "total_rejected_panels",
+  "column_break_dmzw",
+  "total_ship_qty",
+  "cumulative_total",
+  "column_break_caxu",
+  "total_good_garments",
+  "cut_to_ship_of_order"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_psl6",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Factory OCR",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "buyer",
+   "fieldtype": "Link",
+   "label": "Buyer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "ocn",
+   "fieldtype": "Link",
+   "label": "OCN",
+   "options": "Sales Order"
+  },
+  {
+   "fieldname": "ocn_details_section",
+   "fieldtype": "Section Break",
+   "label": "OCN Details"
+  },
+  {
+   "fieldname": "totals_section",
+   "fieldtype": "Section Break",
+   "label": "Totals"
+  },
+  {
+   "fieldname": "total_order_qty",
+   "fieldtype": "Int",
+   "label": "Total Order Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_cut_qty",
+   "fieldtype": "Int",
+   "label": "Total Cut Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_ship_qty",
+   "fieldtype": "Int",
+   "label": "Total Ship Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_good_garments",
+   "fieldtype": "Int",
+   "label": "Total Good Garments",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_rejected_garments",
+   "fieldtype": "Int",
+   "label": "Total Rejected Garments",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_rejected_panels",
+   "fieldtype": "Int",
+   "label": "Total Rejected Panels",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cumulative_total",
+   "fieldtype": "Int",
+   "label": "Cumulative Total",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cut_to_ship_of_order",
+   "fieldtype": "Percent",
+   "label": "Cut to Ship of Order",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_jbzz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_dmzw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_caxu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "table_ocn_details",
+   "fieldtype": "Table",
+   "options": "Factory OCR Item"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-10-08 18:57:53.061898",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Factory OCR",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

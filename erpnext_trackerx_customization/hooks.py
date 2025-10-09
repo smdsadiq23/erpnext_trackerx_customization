@@ -54,7 +54,7 @@ fixtures = [
         "filters": [
             [
                 "doc_type", "in", ["Item", "BOM", "BOM Item", 'BOM Operation', "Supplier", "Sales Order", "Sales Order Item", "Goods Receipt Note", "Material Request", "Material Request Item", "Material Request item Summary",
-                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item", "Purchase Receipt Item", "Operation"
+                          "Work Order", "Work Order Item", "Warehouse", "Purchase Receipt", "Pick List", "Pick List Item", "Purchase Order", "Purchase Order Item", "Purchase Receipt Item", "Operation", 'Factory OCR'
                             ]
             ],
             [
@@ -157,8 +157,7 @@ after_migrate = [
 # app_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
 app_include_css = [
     "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css",
-    "/assets/erpnext_trackerx_customization/css/xystyle.css",
-    "/assets/erpnext_trackerx_customization/css/cutting_bundle_inspection.css"
+    "/assets/erpnext_trackerx_customization/css/xystyle.css"
 ]
 app_include_js = [
     "/assets/erpnext_trackerx_customization/js/fabric_inspection_routes.js",

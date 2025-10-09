@@ -122,6 +122,11 @@ def create_purchase_receipt_for_items(grn_doc, items):
     Create purchase receipt in draft mode for items that don't require inspection
     """
     try:
+        # Generate a unique purchase receipt number for the mandatory field
+        from frappe.utils import now_datetime
+        timestamp = now_datetime().strftime("%Y%m%d%H%M%S")
+        generated_pr_no = f"PR-GRN-{grn_doc.name}-{timestamp}"
+
         # Create purchase receipt data
         purchase_receipt_data = {
             "doctype": "Purchase Receipt",
@@ -130,32 +135,76 @@ def create_purchase_receipt_for_items(grn_doc, items):
             "posting_time": nowtime(),
             "grn_reference": grn_doc.name,
             "is_return": 0,
+            "custom_purchase_receipt_no": generated_pr_no,
             "items": []
         }
         
+        # Get company from GRN to ensure warehouse belongs to same company
+        grn_company = grn_doc.company
+
         # Add items to purchase receipt with comprehensive field mapping
         mapped_fields_count = 0
         for item in items:
-            # Get warehouse - use item warehouse or GRN warehouse or a default
+            # Get warehouse - ensure it belongs to the same company as GRN
             warehouse = None
+
+            # Helper function to check if warehouse belongs to the company
+            def warehouse_belongs_to_company(warehouse_name, company):
+                if not warehouse_name:
+                    return False
+                try:
+                    warehouse_company = frappe.db.get_value("Warehouse", warehouse_name, "company")
+                    return warehouse_company == company
+                except:
+                    return False
+
+            # Try item warehouse first (if it belongs to same company)
             if hasattr(item, 'warehouse') and item.warehouse:
-                warehouse = item.warehouse
-            elif hasattr(grn_doc, 'set_warehouse') and grn_doc.set_warehouse:
-                warehouse = grn_doc.set_warehouse
-            else:
-                # Get default warehouse from Stock Settings
-                warehouse = frappe.db.get_single_value("Stock Settings", "default_warehouse")
-                if not warehouse:
-                    # Try to find any active warehouse
-                    warehouses = frappe.db.sql("""
-                        SELECT name FROM `tabWarehouse` 
-                        WHERE is_group = 0 AND disabled = 0 
-                        LIMIT 1
-                    """, as_dict=True)
-                    if warehouses:
-                        warehouse = warehouses[0].name
-                    else:
-                        warehouse = "Stores - T"  # Use actual default from system
+                if warehouse_belongs_to_company(item.warehouse, grn_company):
+                    warehouse = item.warehouse
+
+            # Try GRN set_warehouse (if it belongs to same company)
+            if not warehouse and hasattr(grn_doc, 'set_warehouse') and grn_doc.set_warehouse:
+                if warehouse_belongs_to_company(grn_doc.set_warehouse, grn_company):
+                    warehouse = grn_doc.set_warehouse
+
+            # If still no warehouse, find a company-specific warehouse
+            if not warehouse:
+                # Try to find an active warehouse for this company
+                company_warehouses = frappe.db.sql("""
+                    SELECT name FROM `tabWarehouse`
+                    WHERE company = %s AND is_group = 0 AND disabled = 0
+                    ORDER BY name
+                    LIMIT 1
+                """, (grn_company,), as_dict=True)
+
+                if company_warehouses:
+                    warehouse = company_warehouses[0].name
+                else:
+                    # FALLBACK: If no company-specific warehouse found, use any available warehouse
+                    # Log warning but don't block PR creation
+                    frappe.logger().warning(f"No active warehouse found for company {grn_company} for item {item.item_code}. Using fallback warehouse.")
+
+                    # Try default warehouse from Stock Settings first
+                    warehouse = frappe.db.get_single_value("Stock Settings", "default_warehouse")
+
+                    # If still no warehouse, use any active warehouse
+                    if not warehouse:
+                        fallback_warehouses = frappe.db.sql("""
+                            SELECT name FROM `tabWarehouse`
+                            WHERE is_group = 0 AND disabled = 0
+                            ORDER BY name
+                            LIMIT 1
+                        """, as_dict=True)
+
+                        if fallback_warehouses:
+                            warehouse = fallback_warehouses[0].name
+                        else:
+                            # Last resort: use a hardcoded warehouse name (will let ERPNext handle the error)
+                            warehouse = "Stores - Main"
+                            frappe.logger().warning(f"Using hardcoded fallback warehouse 'Stores - Main' for item {item.item_code}")
+
+                    frappe.logger().info(f"Using fallback warehouse '{warehouse}' for item {item.item_code} from company {grn_company}")
             
             # Get item name from Item master since GRN items may not have item_name
             item_name = item.item_code
@@ -367,9 +416,15 @@ def create_inspection_for_material_type(grn_doc, material_type, items):
         
         # Add material-specific fields based on inspection type
         if doctype_name == 'Fabric Inspection':
-            # Fabric inspection - point-based system
+            # Fabric inspection - point-based system with updated roll counting
             total_quantity = sum(float(item.received_quantity or 0) for item in items)
-            total_rolls = len(items)  # Each item record represents one roll for fabrics
+            # Calculate total rolls based on new logic: roll_no=1, no_of_boxespacks=count
+            total_rolls = 0
+            for item in items:
+                if getattr(item, 'roll_no', None):
+                    total_rolls += 1  # Single roll for items with roll_no
+                else:
+                    total_rolls += int(getattr(item, 'no_of_boxespacks', 1) or 1)  # Multiple rolls/boxes
             
             inspection_data.update({
                 "total_quantity": total_quantity,
@@ -380,39 +435,58 @@ def create_inspection_for_material_type(grn_doc, material_type, items):
                 "inspection_regime": "Normal"  # Default
             })
             
-            # Add fabric rolls to the child table
+            # Add fabric rolls to the child table with new logic
             fabric_rolls = []
             for item in items:
-                # Each GRN item represents a roll (based on roll_no field)
-                roll_data = {
-                    "doctype": "Fabric Roll Inspection Item",
-                    "roll_number": getattr(item, 'roll_no', f'Roll-{item.idx}'),
-                    "roll_length": float(item.received_quantity or 0),  # Quantity is in meters
-                    "lot_number": getattr(item, 'lot_no', None),
-                    "shade_code": getattr(item, 'shade', None),
-                    "inspection_method": "4-Point Method",  # Default
-                    "inspected": 0,  # Not yet inspected
-                    "roll_result": "Pending"  # Default
-                }
-                fabric_rolls.append(roll_data)
+                # Determine how many rolls to create and quantity logic
+                if getattr(item, 'roll_no', None):  # Case 1: Specific roll number
+                    rolls_to_create = 1
+                    roll_quantity = float(item.received_quantity or 0)  # Use actual quantity
+                    base_roll_number = item.roll_no
+                else:  # Case 2: Multiple boxes/rolls (no specific roll_no)
+                    rolls_to_create = int(getattr(item, 'no_of_boxespacks', 1) or 1)
+                    roll_quantity = 0  # Set to 0 - users will update during inspection
+                    base_roll_number = f"Box-{item.item_code}"
+
+                # Create multiple rolls based on no_of_boxespacks or single roll for roll_no
+                for i in range(rolls_to_create):
+                    if rolls_to_create == 1 and getattr(item, 'roll_no', None):
+                        roll_number = item.roll_no  # Use actual roll number
+                    else:
+                        roll_number = f"{base_roll_number}-{i+1}"  # Box-ITEM-1, Box-ITEM-2, etc.
+
+                    roll_data = {
+                        "doctype": "Fabric Roll Inspection Item",
+                        "roll_number": roll_number,
+                        "roll_length": roll_quantity,  # Actual qty for roll_no, 0 for multiple
+                        "lot_number": getattr(item, 'lot_no', None),
+                        "shade_code": getattr(item, 'shade', None),
+                        "inspection_method": "4-Point Method",  # Default
+                        "inspected": 0,  # Not yet inspected
+                        "roll_result": "Pending"  # Default
+                    }
+                    fabric_rolls.append(roll_data)
             
             inspection_data["fabric_rolls_tab"] = fabric_rolls
         else:
-            # Trims inspection - count-based system for all non-fabric materials
+            # Trims inspection - count-based system for all non-fabric materials with updated logic
             total_quantity = sum(float(item.received_quantity or 0) for item in items)
-            
-            # Calculate total boxes from GRN items
-            total_boxes = sum(int(getattr(item, 'no_of_boxespacks', 0) or 0) for item in items)
-            if total_boxes == 0:
-                total_boxes = 1  # Default to 1 if no boxes specified
-            
+
+            # Calculate total boxes based on new logic: roll_no=1, no_of_boxespacks=count
+            total_boxes = 0
+            for item in items:
+                if getattr(item, 'roll_no', None):
+                    total_boxes += 1  # Single box for items with roll_no
+                else:
+                    total_boxes += int(getattr(item, 'no_of_boxespacks', 1) or 1)  # Multiple boxes
+
             # Calculate pieces per box (total pieces divided by total boxes)
             pieces_per_box = int(total_quantity / total_boxes) if total_boxes > 0 else int(total_quantity)
-            
+
             inspection_data.update({
                 "total_quantity": total_quantity,
                 "total_pieces": total_quantity,  # Set pieces equal to quantity for trims
-                "total_boxes": total_boxes,  # Map from GRN no_of_boxespacks
+                "total_boxes": total_boxes,  # Updated calculation logic
                 "pieces_per_box": pieces_per_box,  # Calculate pieces per box
                 "required_sample_size": 100,  # Default 100% for trims
                 "required_sample_pieces": total_quantity,  # Sample all pieces initially
@@ -420,33 +494,44 @@ def create_inspection_for_material_type(grn_doc, material_type, items):
                 "aql_value": "2.5",  # Default AQL value
                 "inspection_regime": "Normal"  # Default inspection regime
             })
-            
+
             frappe.logger().info(f"Trims inspection mapping: total_boxes={total_boxes}, pieces_per_box={pieces_per_box}, total_quantity={total_quantity}")
-            
-            # Create items data for Trims Inspection UI
+
+            # Create items data for Trims Inspection UI with updated logic
             items_data = []
             for idx, item in enumerate(items, 1):
-                # Calculate pieces for this specific item
-                item_boxes = int(getattr(item, 'no_of_boxespacks', 0) or 1)
-                item_pieces = int(item.received_quantity or 0)
-                
-                item_data = {
-                    "item_number": f"ITEM-{idx:03d}",
-                    "pieces": item_pieces,
-                    "quantity": item_pieces,
-                    "boxes": item_boxes,
-                    "description": getattr(item, 'description', f'Item from {item.item_code}'),
-                    "status": "Pending",
-                    "item_code": item.item_code,
-                    "grn_item_reference": item.name
-                }
-                items_data.append(item_data)
-            
+                # Determine how many boxes to create and quantity logic
+                if getattr(item, 'roll_no', None):  # Case 1: Specific roll/box number
+                    boxes_to_create = 1
+                    item_quantity = int(item.received_quantity or 0)  # Use actual quantity
+                else:  # Case 2: Multiple boxes (no specific roll_no)
+                    boxes_to_create = int(getattr(item, 'no_of_boxespacks', 1) or 1)
+                    item_quantity = 0  # Set to 0 - users will update during inspection
+
+                # Create multiple box entries
+                for i in range(boxes_to_create):
+                    if boxes_to_create == 1 and getattr(item, 'roll_no', None):
+                        box_identifier = item.roll_no  # Use actual roll/box number
+                    else:
+                        box_identifier = f"Box-{idx}-{i+1}"  # Box-1-1, Box-1-2, etc.
+
+                    item_data = {
+                        "item_number": box_identifier,
+                        "pieces": item_quantity,  # Actual qty for roll_no, 0 for multiple
+                        "quantity": item_quantity,  # Actual qty for roll_no, 0 for multiple
+                        "boxes": 1,  # Each entry represents 1 box
+                        "description": getattr(item, 'description', f'Item from {item.item_code}'),
+                        "status": "Pending",
+                        "item_code": item.item_code,
+                        "grn_item_reference": item.name
+                    }
+                    items_data.append(item_data)
+
             # Store items data as JSON for the UI
             import json
             inspection_data["items_data"] = json.dumps(items_data)
-            
-            frappe.logger().info(f"Created {len(items_data)} items for Trims Inspection UI")
+
+            frappe.logger().info(f"Created {len(items_data)} box entries for Trims Inspection UI")
         
         # Create the document
         inspection_doc = frappe.get_doc(inspection_data)

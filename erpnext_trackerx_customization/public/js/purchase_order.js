@@ -125,7 +125,7 @@ frappe.ui.form.on("Purchase Order", {
 
     frm.doc.items.forEach((row) => {
       cur_frm.script_manager.trigger(
-        "update_rate_from_bom",
+        "update_rate_from_supplier_fg_item",
         "Purchase Order Item",
         row.name
       );
@@ -135,7 +135,7 @@ frappe.ui.form.on("Purchase Order", {
   custom_order_method: function (frm) {
     frm.doc.items.forEach((row) => {
       cur_frm.script_manager.trigger(
-        "update_rate_from_bom",
+        "update_rate_from_supplier_fg_item",
         "Purchase Order Item",
         row.name
       );
@@ -203,10 +203,10 @@ frappe.ui.form.on("Purchase Order Item", {
     });
 
     // Trigger rate update when item changes
-    cur_frm.script_manager.trigger("update_rate_from_bom", cdt, cdn);
+    cur_frm.script_manager.trigger("update_rate_from_supplier_fg_item", cdt, cdn);
   },
 
-  update_rate_from_bom: function (frm, cdt, cdn) {
+  update_rate_from_supplier_fg_item: function (frm, cdt, cdn) {
     const row = locals[cdt][cdn];
     if (!row) {
       console.error("❌ Row not found for cdn:", cdn);
@@ -220,7 +220,7 @@ frappe.ui.form.on("Purchase Order Item", {
 
     frappe.call({
       method:
-        "erpnext_trackerx_customization.api.purchase_order.get_rate_from_bom_by_order_method",
+        "erpnext_trackerx_customization.api.purchase_order.get_rate_from_supplier_fg_item_order_method",
       args: {
         item_code: row.item_code,
         supplier: frm.doc.supplier,
@@ -258,7 +258,7 @@ frappe.ui.form.on("Purchase Order Item", {
             frm.dirty();
 
             frappe.show_alert({
-              message: __("Rate updated from BOM: ₹" + r.message.rate),
+              message: __("Rate updated from Supplier FG Items: ₹" + r.message.rate),
               indicator: "green",
             });
 
@@ -379,7 +379,7 @@ function get_items_from_sales_order(frm, values) {
                         
                         // Also trigger rate update
                         cur_frm.script_manager.trigger(
-                            'update_rate_from_bom', 
+                            'update_rate_from_supplier_fg_item', 
                             'Purchase Order Item', 
                             row.name
                         );

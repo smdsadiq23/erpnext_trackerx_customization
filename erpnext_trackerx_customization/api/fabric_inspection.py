@@ -39,48 +39,95 @@ def get_grn_rolls(grn_reference):
 
 @frappe.whitelist()
 def calculate_aql_sample_size(lot_size, aql_level, aql_value, inspection_regime='Normal'):
-    """Calculate AQL sample size"""
+    """Dynamic AQL sample size calculation using AQL Table doctype"""
     try:
         lot_size = cint(lot_size)
-        
-        # Simple AQL calculation based on standard tables
-        aql_map = {
-            'I': {
-                '0.4': 8, '0.65': 13, '1.0': 20, '1.5': 32, '2.5': 50, '4.0': 80
-            },
-            'II': {
-                '0.4': 13, '0.65': 20, '1.0': 32, '1.5': 50, '2.5': 80, '4.0': 125
-            },
-            'III': {
-                '0.4': 20, '0.65': 32, '1.0': 50, '1.5': 80, '2.5': 125, '4.0': 200
-            }
-        }
-        
-        # Get sample size from AQL table
-        level_data = aql_map.get(aql_level, aql_map['II'])
-        sample_size = level_data.get(str(aql_value), level_data.get('2.5', 80))
-        
-        # Adjust for lot size
-        if lot_size < sample_size:
+
+        # Step 1: Find the appropriate sample code letter based on lot size and inspection level
+        sample_code_letter = get_sample_code_for_lot_size(lot_size, aql_level, inspection_regime)
+
+        if not sample_code_letter:
+            frappe.log_error(f"No sample code found for lot size {lot_size}, level {aql_level}")
+            return {'sample_size': 100, 'sample_rolls': lot_size, 'sample_meters': lot_size * 50}
+
+        # Step 2: Get AQL criteria from AQL Table doctype using the static method
+        from erpnext_trackerx_customization.erpnext_trackerx_customization.doctype.aql_table.aql_table import AQLTable
+        aql_criteria = AQLTable.get_aql_criteria(sample_code_letter, aql_value, inspection_regime)
+
+        if not aql_criteria:
+            frappe.log_error(f"No AQL criteria found for code {sample_code_letter}, AQL {aql_value}, regime {inspection_regime}")
+            return {'sample_size': 100, 'sample_rolls': lot_size, 'sample_meters': lot_size * 50}
+
+        sample_rolls = aql_criteria['sample_size']
+
+        # Ensure we don't exceed lot size
+        if sample_rolls > lot_size:
             sample_rolls = lot_size
-            sample_size_percent = 100
-        else:
-            sample_rolls = min(sample_size, lot_size)
-            sample_size_percent = (sample_rolls / lot_size) * 100
-        
+
+        sample_size_percent = (sample_rolls / lot_size) * 100
+
         # Estimate sample meters
         avg_roll_length = 50  # Default
         sample_meters = sample_rolls * avg_roll_length
-        
+
         return {
             'sample_size': round(sample_size_percent, 2),
             'sample_rolls': sample_rolls,
-            'sample_meters': sample_meters
+            'sample_meters': sample_meters,
+            'accept_number': aql_criteria['acceptance_number'],
+            'reject_number': aql_criteria['rejection_number'],
+            'sample_code': sample_code_letter
         }
-        
+
     except Exception as e:
         frappe.log_error(f"Error calculating AQL sample size: {str(e)}")
         return {'sample_size': 25, 'sample_rolls': 1, 'sample_meters': 50}
+
+
+def get_sample_code_for_lot_size(lot_size, inspection_level, inspection_regime='Normal'):
+    """Find appropriate sample code letter for given lot size from AQL Table"""
+    try:
+        # Query AQL Table to find matching lot size range
+        aql_records = frappe.get_all("AQL Table",
+            filters={
+                "inspection_level": inspection_level,
+                "inspection_regime": inspection_regime,
+                "is_active": 1
+            },
+            fields=["sample_code_letter", "lot_size_range"],
+            order_by="sample_code_letter"
+        )
+
+        for record in aql_records:
+            lot_range = record.get('lot_size_range', '')
+            if is_lot_size_in_range(lot_size, lot_range):
+                return record.get('sample_code_letter')
+
+        # Fallback: if no range found, use smallest code for small lots
+        return 'A' if lot_size <= 8 else 'B'
+
+    except Exception as e:
+        frappe.log_error(f"Error finding sample code for lot size {lot_size}: {str(e)}")
+        return 'A'
+
+
+def is_lot_size_in_range(lot_size, lot_range):
+    """Check if lot size falls within the given range (e.g., '9-15', '2-8')"""
+    try:
+        if '-' not in lot_range:
+            return False
+
+        range_parts = lot_range.split('-')
+        if len(range_parts) != 2:
+            return False
+
+        min_size = int(range_parts[0].strip())
+        max_size = int(range_parts[1].strip())
+
+        return min_size <= lot_size <= max_size
+
+    except (ValueError, IndexError):
+        return False
 
 @frappe.whitelist()
 def generate_inspection_report(inspection_doc):

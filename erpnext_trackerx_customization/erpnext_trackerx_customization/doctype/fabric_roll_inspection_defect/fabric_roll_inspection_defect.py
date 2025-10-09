@@ -10,41 +10,21 @@ class FabricRollInspectionDefect(Document):
 		self.calculate_points()
 
 	def calculate_points(self):
-		"""Calculate points based on defect and size"""
-		if self.defect and self.size:
+		"""Calculate points based on defect size only"""
+		if self.size:
 			try:
-				# Get defect type from Defect Master or use local defect_type field
-				defect_type = None
-
-				# First try to get defect type from the defect_type field if it's set
-				if hasattr(self, 'defect_type') and self.defect_type:
-					defect_type = self.defect_type
-				else:
-					# Fallback to Defect Master lookup
-					defect_doc = frappe.get_doc("Defect Master", self.defect)
-					defect_type = defect_doc.defect_type
-
-				# Calculate points based on defect type and size
+				# Calculate points based on size ranges only
 				size = float(self.size)
 
-				if defect_type == "Critical":
-					# Critical defects typically get 4 points regardless of size
-					points = 4.0
-				elif defect_type == "Major":
-					# Major defects: 2-3 points based on size
-					if size <= 1:
-						points = 2.0
-					else:
-						points = 3.0
-				elif defect_type == "Minor":
-					# Minor defects: 1-2 points based on size
-					if size <= 3:
-						points = 1.0
-					else:
-						points = 2.0
+				# Simple size-based point calculation
+				if size <= 3:
+					points = 1.0          # Up to 3 inches = 1 Point
+				elif size <= 6:
+					points = 2.0          # Over 3 to 6 inches = 2 Points
+				elif size <= 9:
+					points = 3.0          # Over 6 to 9 inches = 3 Points
 				else:
-					# Default to 1 point if defect type is not specified
-					points = 1.0
+					points = 4.0          # Over 9 inches = 4 Points
 
 				self.points_auto = points
 

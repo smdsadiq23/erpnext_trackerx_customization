@@ -215,54 +215,104 @@ def get_fg_components_by_item(item_code):
     return options
 
 
+# @frappe.whitelist()
+# def get_rate_from_bom_by_order_method(item_code, supplier, order_method):
+#     """
+#     Fetch rate from BOM's custom_cost_by_order_method based on:
+#     - Item (matched by item_code and custom_preferred_supplier)
+#     - Its default BOM
+#     - Order Method in BOM's cost_by_order_method table
+#     """
+#     if not item_code or not supplier or not order_method:
+#         return None
+
+#     # Step 1: Verify item matches supplier
+#     item = frappe.db.get_value("Item", {
+#         "name": item_code,
+#         "custom_preferred_supplier": supplier
+#     }, "name")
+
+#     if not item:
+#         frappe.log_error(f"Item {item_code} not linked to supplier {supplier}", "Purchase Order Rate Lookup")
+#         return None
+
+#     # Step 2: Get default BOM for item
+#     bom_name = frappe.db.get_value("BOM", {
+#         "item": item_code,
+#         "is_default": 1,
+#         "docstatus": 1
+#     }, "name")
+    
+#     if not bom_name:
+#         frappe.log_error(f"No default BOM found for item {item_code}", "Purchase Order Rate Lookup")
+#         return None
+
+#     # Step 3: Get total_cost from custom_cost_by_order_method
+#     total_cost = frappe.db.get_value("BOM Order Method Cost", {
+#         "parent": bom_name,
+#         "parentfield": "custom_cost_by_order_method",
+#         "parenttype": "BOM",
+#         "omc_order_method": order_method
+#     }, "omc_total_cost")
+
+#     if total_cost is None:
+#         frappe.log_error(f"No cost found for order method {order_method} in BOM {bom_name}", "Purchase Order Rate Lookup")
+#         return None
+
+#     # Return updated item data
+#     return {
+#         "rate": total_cost,
+#         "message": f"Rate updated from BOM: ₹{total_cost}"
+#     }
+
+
 @frappe.whitelist()
-def get_rate_from_bom_by_order_method(item_code, supplier, order_method):
+def get_rate_from_supplier_fg_item_order_method(item_code, supplier, order_method):
     """
-    Fetch rate from BOM's custom_cost_by_order_method based on:
-    - Item (matched by item_code and custom_preferred_supplier)
-    - Its default BOM
-    - Order Method in BOM's cost_by_order_method table
+    Fetch rate from Supplier FG Items's child table 'table_sp_fg_om_cost' based on:
+    - item_code
+    - supplier
+    - order_method
     """
     if not item_code or not supplier or not order_method:
         return None
 
-    # Step 1: Verify item matches supplier
-    item = frappe.db.get_value("Item", {
-        "name": item_code,
-        "custom_preferred_supplier": supplier
-    }, "name")
-
-    if not item:
-        frappe.log_error(f"Item {item_code} not linked to supplier {supplier}", "Purchase Order Rate Lookup")
-        return None
-
-    # Step 2: Get default BOM for item
-    bom_name = frappe.db.get_value("BOM", {
+    # Step 1: Check if a Supplier FG Items record exists for this (item, supplier) pair
+    supplier_fg_item_name = frappe.db.get_value("Supplier FG Items", {
         "item": item_code,
-        "is_default": 1,
-        "docstatus": 1
+        "supplier": supplier,
     }, "name")
-    
-    if not bom_name:
-        frappe.log_error(f"No default BOM found for item {item_code}", "Purchase Order Rate Lookup")
+
+    if not supplier_fg_item_name:
+        frappe.log_error(
+            f"No active 'Supplier FG Items' found for Item: {item_code}, Supplier: {supplier}",
+            "Purchase Order Rate Lookup"
+        )
         return None
 
-    # Step 3: Get total_cost from custom_cost_by_order_method
-    total_cost = frappe.db.get_value("BOM Order Method Cost", {
-        "parent": bom_name,
-        "parentfield": "custom_cost_by_order_method",
-        "parenttype": "BOM",
-        "omc_order_method": order_method
-    }, "omc_total_cost")
+    # Step 2: Fetch omc_total_cost from child table 'table_sp_fg_om_cost'
+    total_cost = frappe.db.get_value(
+        "BOM Order Method Cost",  # child table doctype
+        {
+            "parent": supplier_fg_item_name,
+            "parentfield": "table_sp_fg_om_cost",
+            "parenttype": "Supplier FG Items",
+            "omc_order_method": order_method
+        },
+        "omc_total_cost"
+    )
 
     if total_cost is None:
-        frappe.log_error(f"No cost found for order method {order_method} in BOM {bom_name}", "Purchase Order Rate Lookup")
+        frappe.log_error(
+            f"No cost found for order method '{order_method}' in Supplier FG Items: {supplier_fg_item_name}",
+            "Purchase Order Rate Lookup"
+        )
         return None
-
-    # Return updated item data
+    
+    # Return result
     return {
-        "rate": total_cost,
-        "message": f"Rate updated from BOM: ₹{total_cost}"
+        "rate": flt(total_cost, 2),
+        "message": f"Rate updated from Supplier FG Items: ₹{flt(total_cost, 2)}"
     }
 
 @frappe.whitelist()

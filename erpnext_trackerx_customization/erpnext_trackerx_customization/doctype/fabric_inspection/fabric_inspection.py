@@ -9,10 +9,18 @@ import json
 class FabricInspection(Document):
     def before_insert(self):
         """Set default values before inserting new document"""
-        self.populate_aql_fields_from_grn()
+        # AQL population moved to after_insert with error handling
+        pass
 
     def after_insert(self):
         """Auto-populate checklist items from master checklist after document creation"""
+        # Try to populate AQL fields first, but don't let it block checklist population
+        try:
+            self.populate_aql_fields_from_grn()
+        except Exception as e:
+            frappe.logger().warning(f"AQL population failed for {self.name}: {str(e)} - Continuing with checklist population")
+            # Continue execution regardless of AQL errors
+
         # Always try to populate checklist if no items exist
         if not self.fabric_checklist_items:
             # Set default material_type if not set
@@ -44,8 +52,9 @@ class FabricInspection(Document):
             errors = validation_result.get('errors', [])
             frappe.throw(_("Cannot submit inspection: {0}").format('; '.join(errors)))
         
-        # Set final status
-        self.inspection_status = 'Completed'
+        # Set final status - use Submitted as per mobile API workflow
+        if self.inspection_status not in ['Submitted', 'Conditional Accept']:
+            self.inspection_status = 'Submitted'
         
         # Update linked GRN if exists
         self.update_grn_inspection_status()
@@ -113,52 +122,26 @@ class FabricInspection(Document):
             total_points = 0
             total_defects = 0
             defect_groups = {}
-            
-            # Get defects for this roll from the JSON defects data
-            roll_defects_data = {}
-            if self.defects_data:
-                try:
-                    defects_data = json.loads(self.defects_data) if isinstance(self.defects_data, str) else self.defects_data
-                    roll_defects_data = defects_data.get(roll.roll_number, {})
-                except:
-                    pass
-            
-            if roll_defects_data:
-                # Get defect master data for point calculation
-                defect_master = self.get_default_defect_categories_inline()
-                
-                # Calculate points from the structured defects data
-                for defect_key, size in roll_defects_data.items():
-                    if size > 0:
-                        # Parse defect_key to get category and code
-                        if '_' in defect_key:
-                            category_name = '_'.join(defect_key.split('_')[:-1])
-                            defect_code = defect_key.split('_')[-1]
-                            
-                            # Find the defect in master data
-                            points_per_meter = 2  # Default
-                            for category, defects in defect_master.items():
-                                if category == category_name:
-                                    for defect in defects:
-                                        if defect['code'] == defect_code:
-                                            points_per_meter = defect['points']
-                                            break
-                            
-                            # Calculate total points for this defect
-                            defect_points = flt(size) * points_per_meter
-                            total_points += defect_points
-                            total_defects += 1
-                            
-                            # Group defects by category
-                            if category_name not in defect_groups:
-                                defect_groups[category_name] = {
-                                    'count': 0,
-                                    'points': 0,
-                                    'defects': []
-                                }
-                            defect_groups[category_name]['count'] += 1
-                            defect_groups[category_name]['points'] += defect_points
-                            defect_groups[category_name]['defects'].append(defect_code)
+
+            # Get defects for this roll from the defects table
+            if hasattr(roll, 'defects') and roll.defects:
+                for defect_row in roll.defects:
+                    # Points already calculated automatically in fabric_roll_inspection_defect.py
+                    defect_points = flt(defect_row.points_auto or 0)
+                    total_points += defect_points
+                    total_defects += 1
+
+                    # Group defects by category for summary
+                    category_name = defect_row.category or 'Unknown'
+                    if category_name not in defect_groups:
+                        defect_groups[category_name] = {
+                            'count': 0,
+                            'points': 0,
+                            'defects': []
+                        }
+                    defect_groups[category_name]['count'] += 1
+                    defect_groups[category_name]['points'] += defect_points
+                    defect_groups[category_name]['defects'].append(defect_row.defect or 'Unknown')
             
             # Calculate roll metrics
             roll_area = self.calculate_roll_area(roll)
@@ -190,14 +173,10 @@ class FabricInspection(Document):
         return length_m * width_m
     
     def determine_roll_grade(self, points_per_100_sqm, total_points):
-        """Determine roll grade and result based on industry standards"""
-        # Standard grading based on 4-point system
-        if points_per_100_sqm <= 20:
-            return 'A', 'First Quality'
-        elif points_per_100_sqm <= 40:
-            return 'B', 'Second Quality'
-        elif points_per_100_sqm <= 60:
-            return 'C', 'Conditional Accept'
+        """Simplified roll grading - Accept/Reject only"""
+        # Simple grading based on 25 points threshold
+        if points_per_100_sqm <= 25:
+            return 'A', 'Accepted'
         else:
             return 'D', 'Rejected'
     
@@ -214,65 +193,65 @@ class FabricInspection(Document):
         return '; '.join(reasons) if reasons else "Quality standards not met"
     
     def calculate_overall_results(self):
-        """Calculate overall inspection results"""
+        """Simplified overall inspection result calculation"""
         if not self.fabric_rolls_tab:
+            self.inspection_result = 'Pending'
+            self.quality_grade = ''
             return
-        
+
+        # Get totals from already-calculated roll data
         total_points = 0
-        total_defects = 0
+        total_inspected_length = 0
+        total_defect_size = 0
         inspected_rolls = 0
         accepted_rolls = 0
         rejected_rolls = 0
-        grade_counts = {'A': 0, 'B': 0, 'C': 0, 'D': 0}
-        
+
         for roll in self.fabric_rolls_tab:
             if roll.inspected:
                 inspected_rolls += 1
                 total_points += flt(roll.total_defect_points or 0)
-                
-                # Count defects from the roll's defects table
+                # Use actual_length_m which is set by mobile API, fallback to roll_length
+                length = flt(roll.actual_length_m or roll.roll_length or 0)
+                total_inspected_length += length
+
+                # Count defect size (for reference)
                 if hasattr(roll, 'defects') and roll.defects:
-                    total_defects += len(roll.defects)
-                
-                # Count results
-                if roll.roll_result in ['First Quality', 'Accepted']:
+                    total_defect_size += len(roll.defects)
+
+                # Count accepted/rejected rolls for summary
+                if roll.roll_result in ['Accept', 'Accepted']:
                     accepted_rolls += 1
-                elif roll.roll_result == 'Rejected':
+                elif roll.roll_result in ['Reject', 'Rejected']:
                     rejected_rolls += 1
-                
-                # Count grades
-                grade = roll.roll_grade or 'D'
-                if grade in grade_counts:
-                    grade_counts[grade] += 1
-        
-        # Update overall fields
-        self.total_defect_points = total_points
-        
-        # Determine overall result
-        if inspected_rolls == 0:
-            overall_result = 'Pending'
-            overall_grade = ''
+
+        if inspected_rolls == 0 or total_inspected_length == 0:
+            self.inspection_result = 'Pending'
+            self.quality_grade = ''
+            return
+
+        # Calculate overall points per 100 sqm based on inspected length
+        overall_points_per_100_sqm = (total_points * 100) / total_inspected_length
+
+        # Simple Accept/Reject logic (25 points threshold)
+        if overall_points_per_100_sqm <= 25:
+            self.inspection_result = 'Accepted'
+            self.quality_grade = 'A'
         else:
-            acceptance_rate = (accepted_rolls / inspected_rolls) * 100
-            
-            if acceptance_rate >= 95:
-                overall_result = 'Accepted'
-                overall_grade = 'A'
-            elif acceptance_rate >= 85:
-                overall_result = 'Conditional Accept'
-                overall_grade = 'B'
-            else:
-                overall_result = 'Rejected'
-                overall_grade = 'C'
-        
-        self.inspection_result = overall_result
-        self.quality_grade = overall_grade
-        
-        # Generate inspection summary
-        self.generate_inspection_summary(inspected_rolls, accepted_rolls, rejected_rolls, grade_counts)
+            self.inspection_result = 'Rejected'
+            self.quality_grade = 'D'
+
+        # Store totals for reference
+        self.total_defect_points = total_points
+        self.overall_points_per_100_sqm = overall_points_per_100_sqm
+        self.total_inspected_length = total_inspected_length
+        self.total_defect_size = total_defect_size
+
+        # Generate inspection summary using real data
+        self.generate_inspection_summary(inspected_rolls, accepted_rolls, rejected_rolls, overall_points_per_100_sqm)
     
-    def generate_inspection_summary(self, inspected_rolls, accepted_rolls, rejected_rolls, grade_counts):
-        """Generate HTML inspection summary"""
+    def generate_inspection_summary(self, inspected_rolls, accepted_rolls, rejected_rolls, overall_points_per_100_sqm):
+        """Generate HTML inspection summary using real fabric_roll_inspection_item data"""
         total_rolls = len(self.fabric_rolls_tab)
         acceptance_rate = (accepted_rolls / inspected_rolls * 100) if inspected_rolls > 0 else 0
         
@@ -292,14 +271,12 @@ class FabricInspection(Document):
                     <table class="table table-condensed">
                         <tr><td><strong>Acceptance Rate:</strong></td><td>{acceptance_rate:.1f}%</td></tr>
                         <tr><td><strong>Total Points:</strong></td><td>{self.total_defect_points:.2f}</td></tr>
+                        <tr><td><strong>Points per 100 sqm:</strong></td><td>{overall_points_per_100_sqm:.2f}</td></tr>
+                        <tr><td><strong>Total Length:</strong></td><td>{getattr(self, 'total_inspected_length', 0):.2f}m</td></tr>
                         <tr><td><strong>Overall Grade:</strong></td><td>{self.quality_grade}</td></tr>
                         <tr><td><strong>Final Result:</strong></td><td><span class="indicator {self.get_result_indicator()}">{self.inspection_result}</span></td></tr>
                     </table>
                 </div>
-            </div>
-            <div class="grade-distribution">
-                <h5>Grade Distribution:</h5>
-                <p>Grade A: {grade_counts['A']} | Grade B: {grade_counts['B']} | Grade C: {grade_counts['C']} | Grade D: {grade_counts['D']}</p>
             </div>
         </div>
         """
@@ -318,8 +295,8 @@ class FabricInspection(Document):
     
     def update_inspection_status(self):
         """Update inspection status based on progress"""
-        # Don't auto-update status if manually set to Hold, Completed, Accepted, Rejected, Conditional Accept, or In Progress
-        if self.inspection_status in ['Hold', 'Completed', 'Accepted', 'Rejected', 'Conditional Accept', 'In Progress']:
+        # Don't auto-update status if manually set to Hold, Submitted, Accepted, Rejected, Conditional Accept, or In Progress
+        if self.inspection_status in ['Hold', 'Submitted', 'Accepted', 'Rejected', 'Conditional Accept', 'In Progress']:
             return
             
         if not self.fabric_rolls_tab:
@@ -338,7 +315,9 @@ class FabricInspection(Document):
             elif inspected_rolls < total_rolls:
                 self.inspection_status = 'In Progress'
             else:
-                self.inspection_status = 'Completed'
+                # When all rolls are inspected, status should be ready for submission
+                # Use 'In Progress' instead of non-existent 'Completed'
+                self.inspection_status = 'In Progress'
     
     def update_grn_inspection_status(self):
         """Update inspection status in linked GRN"""
@@ -536,6 +515,32 @@ class FabricInspection(Document):
                 frappe.logger().warning(f"Invalid inspection_type '{self.inspection_type}' detected, correcting to 'AQL Based'")
                 self.inspection_type = 'AQL Based'
     
+    def calculate_roll_grades_only(self):
+        """Calculate roll grades based on existing defect data without overwriting defects"""
+        if not self.fabric_rolls_tab:
+            return
+
+        for roll in self.fabric_rolls_tab:
+            if not roll.inspected:
+                continue
+
+            # Get points from existing roll calculations
+            points_per_100_sqm = flt(roll.points_per_100_sqm or 0)
+            total_points = flt(roll.total_defect_points or 0)
+
+            # Determine grade and result
+            grade, result = self.determine_roll_grade(points_per_100_sqm, total_points)
+
+            # Update roll fields
+            roll.roll_grade = grade
+            roll.roll_result = result
+
+            # Save directly to database to avoid triggering child table overwrites
+            frappe.db.set_value("Fabric Roll Inspection Item", roll.name, {
+                "roll_grade": grade,
+                "roll_result": result
+            })
+
     @frappe.whitelist()
     def recalculate_all_results(self):
         """Recalculate all roll and overall results"""
@@ -634,104 +639,113 @@ class FabricInspection(Document):
         }
     
     def calculate_aql_sample_size_inline(self, lot_size, aql_level, aql_value, inspection_regime='Normal'):
-        """Simple AQL sample size calculation"""
-        
-        # Basic AQL table mapping
-        aql_map = {
-            'I': {
-                '0.4': {'sample': 8, 'accept': 0, 'reject': 1},
-                '0.65': {'sample': 13, 'accept': 0, 'reject': 1},
-                '1.0': {'sample': 20, 'accept': 0, 'reject': 1},
-                '1.5': {'sample': 32, 'accept': 1, 'reject': 2},
-                '2.5': {'sample': 50, 'accept': 2, 'reject': 3},
-                '4.0': {'sample': 80, 'accept': 3, 'reject': 4},
-            },
-            'II': {
-                '0.4': {'sample': 13, 'accept': 0, 'reject': 1},
-                '0.65': {'sample': 20, 'accept': 0, 'reject': 1},
-                '1.0': {'sample': 32, 'accept': 1, 'reject': 2},
-                '1.5': {'sample': 50, 'accept': 2, 'reject': 3},
-                '2.5': {'sample': 80, 'accept': 3, 'reject': 4},
-                '4.0': {'sample': 125, 'accept': 5, 'reject': 6},
-            },
-            'III': {
-                '0.4': {'sample': 20, 'accept': 0, 'reject': 1},
-                '0.65': {'sample': 32, 'accept': 1, 'reject': 2},
-                '1.0': {'sample': 50, 'accept': 2, 'reject': 3},
-                '1.5': {'sample': 80, 'accept': 3, 'reject': 4},
-                '2.5': {'sample': 125, 'accept': 5, 'reject': 6},
-                '4.0': {'sample': 200, 'accept': 7, 'reject': 8},
-            }
-        }
-        
-        # Get sample requirements
-        level_data = aql_map.get(aql_level, aql_map['II'])  # Default to Level II
-        aql_data = level_data.get(str(aql_value), level_data.get('2.5'))  # Default to 2.5
-        
-        sample_size = aql_data['sample']
-        
-        # Adjust based on lot size
-        if lot_size < sample_size:
-            sample_rolls = lot_size
-            sample_size_percent = 100
-        else:
-            sample_rolls = min(sample_size, lot_size)
+        """Dynamic AQL sample size calculation using AQL Table doctype"""
+        try:
+            # Step 1: Find the appropriate sample code letter based on lot size and inspection level
+            sample_code_letter = self.get_sample_code_for_lot_size_inline(lot_size, aql_level, inspection_regime)
+
+            if not sample_code_letter:
+                frappe.log_error(f"No sample code found for lot size {lot_size}, level {aql_level}")
+                return {
+                    'sample_size': 100.0,
+                    'sample_rolls': lot_size,
+                    'sample_meters': lot_size * 50,
+                    'accept_number': 0,
+                    'reject_number': 1,
+                    'sample_code': 'A'
+                }
+
+            # Step 2: Get AQL criteria from AQL Table doctype using the static method
+            from erpnext_trackerx_customization.erpnext_trackerx_customization.doctype.aql_table.aql_table import AQLTable
+            aql_criteria = AQLTable.get_aql_criteria(sample_code_letter, aql_value, inspection_regime)
+
+            if not aql_criteria:
+                frappe.log_error(f"No AQL criteria found for code {sample_code_letter}, AQL {aql_value}, regime {inspection_regime}")
+                return {
+                    'sample_size': 100.0,
+                    'sample_rolls': lot_size,
+                    'sample_meters': lot_size * 50,
+                    'accept_number': 0,
+                    'reject_number': 1,
+                    'sample_code': sample_code_letter
+                }
+
+            sample_rolls = aql_criteria['sample_size']
+
+            # Ensure we don't exceed lot size
+            if sample_rolls > lot_size:
+                sample_rolls = lot_size
+
             sample_size_percent = (sample_rolls / lot_size) * 100
-        
-        # Estimate sample meters (assuming average roll length)
-        avg_roll_length = 50  # Default 50 meters per roll
-        sample_meters = sample_rolls * avg_roll_length
-        
-        return {
-            'sample_size': round(sample_size_percent, 2),
-            'sample_rolls': sample_rolls,
-            'sample_meters': sample_meters,
-            'accept_number': aql_data['accept'],
-            'reject_number': aql_data['reject']
-        }
+
+            # Estimate sample meters (assuming average roll length)
+            avg_roll_length = 50  # Default 50 meters per roll
+            sample_meters = sample_rolls * avg_roll_length
+
+            return {
+                'sample_size': round(sample_size_percent, 2),
+                'sample_rolls': sample_rolls,
+                'sample_meters': sample_meters,
+                'accept_number': aql_criteria['acceptance_number'],
+                'reject_number': aql_criteria['rejection_number'],
+                'sample_code': sample_code_letter
+            }
+
+        except Exception as e:
+            frappe.log_error(f"Error in AQL calculation: {str(e)}")
+            return {
+                'sample_size': 25.0,
+                'sample_rolls': 1,
+                'sample_meters': 50,
+                'accept_number': 0,
+                'reject_number': 1,
+                'sample_code': 'A'
+            }
+
+    def get_sample_code_for_lot_size_inline(self, lot_size, inspection_level, inspection_regime='Normal'):
+        """Find appropriate sample code letter for given lot size from AQL Table"""
+        try:
+            # Query AQL Table to find matching lot size range
+            aql_records = frappe.get_all("AQL Table",
+                filters={
+                    "inspection_level": inspection_level,
+                    "inspection_regime": inspection_regime,
+                    "is_active": 1
+                },
+                fields=["sample_code_letter", "lot_size_range"],
+                order_by="sample_code_letter"
+            )
+
+            for record in aql_records:
+                lot_range = record.get('lot_size_range', '')
+                if self.is_lot_size_in_range_inline(lot_size, lot_range):
+                    return record.get('sample_code_letter')
+
+            # Fallback: if no range found, use smallest code for small lots
+            return 'A' if lot_size <= 8 else 'B'
+
+        except Exception as e:
+            frappe.log_error(f"Error finding sample code for lot size {lot_size}: {str(e)}")
+            return 'A'
+
+    def is_lot_size_in_range_inline(self, lot_size, lot_range):
+        """Check if lot size falls within the given range (e.g., '9-15', '2-8')"""
+        try:
+            if '-' not in lot_range:
+                return False
+
+            range_parts = lot_range.split('-')
+            if len(range_parts) != 2:
+                return False
+
+            min_size = int(range_parts[0].strip())
+            max_size = int(range_parts[1].strip())
+
+            return min_size <= lot_size <= max_size
+
+        except (ValueError, IndexError):
+            return False
     
-    def get_default_defect_categories_inline(self):
-        """Get default defect categories and their point values"""
-        
-        return {
-            'Weaving': [
-                {'code': 'BROKEN_END', 'name': 'Broken End', 'points': 1},
-                {'code': 'BROKEN_PICK', 'name': 'Broken Pick', 'points': 1},
-                {'code': 'FLOAT', 'name': 'Float', 'points': 2},
-                {'code': 'SLACK_TENSION', 'name': 'Slack Tension', 'points': 2},
-                {'code': 'REED_MARK', 'name': 'Reed Mark', 'points': 3},
-                {'code': 'MISPICK', 'name': 'Mispick', 'points': 2}
-            ],
-            'Yarn': [
-                {'code': 'THICK_PLACE', 'name': 'Thick Place', 'points': 1},
-                {'code': 'THIN_PLACE', 'name': 'Thin Place', 'points': 1},
-                {'code': 'NEPS', 'name': 'Neps', 'points': 1},
-                {'code': 'SLUB', 'name': 'Slub', 'points': 2},
-                {'code': 'FOREIGN_YARN', 'name': 'Foreign Yarn', 'points': 4},
-                {'code': 'HAIRINESS', 'name': 'Hairiness', 'points': 1}
-            ],
-            'Dyeing': [
-                {'code': 'SHADE_VARIATION', 'name': 'Shade Variation', 'points': 4},
-                {'code': 'COLOR_BLEEDING', 'name': 'Color Bleeding', 'points': 4},
-                {'code': 'UNEVEN_DYEING', 'name': 'Uneven Dyeing', 'points': 3},
-                {'code': 'STAINING', 'name': 'Staining', 'points': 3},
-                {'code': 'COLOR_SPOT', 'name': 'Color Spot', 'points': 2}
-            ],
-            'Finishing': [
-                {'code': 'CREASE_MARK', 'name': 'Crease Mark', 'points': 2},
-                {'code': 'SHINE_MARK', 'name': 'Shine Mark', 'points': 2},
-                {'code': 'PILLING', 'name': 'Pilling', 'points': 2},
-                {'code': 'HAND_FEEL', 'name': 'Hand Feel', 'points': 1},
-                {'code': 'CHEMICAL_SPOT', 'name': 'Chemical Spot', 'points': 4}
-            ],
-            'Physical': [
-                {'code': 'HOLE', 'name': 'Hole', 'points': 4},
-                {'code': 'TEAR', 'name': 'Tear', 'points': 4},
-                {'code': 'CUT_MARK', 'name': 'Cut Mark', 'points': 3},
-                {'code': 'SOIL_MARK', 'name': 'Soil Mark', 'points': 2},
-                {'code': 'OIL_STAIN', 'name': 'Oil Stain', 'points': 3}
-            ]
-        }
 
     def populate_checklist_from_master(self):
         """Populate checklist items from Master Checklist based on material type"""
