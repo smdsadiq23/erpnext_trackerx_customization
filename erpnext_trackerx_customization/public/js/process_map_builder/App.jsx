@@ -275,8 +275,15 @@ export function App() {
 
       {!processMapId && (
         <Modal show={showItemModal} backdrop="static" keyboard={false}>
-          <Modal.Header>
+           <Modal.Header>
             <Modal.Title>Enter Process Map Details</Modal.Title>
+             <button
+               onClick={() => setShowItemModal(false)}
+               className="btn btn-light close-btn"
+            >
+                 ×
+             </button>
+
           </Modal.Header>
           <Modal.Body>
             {/* FG Item Group */}
