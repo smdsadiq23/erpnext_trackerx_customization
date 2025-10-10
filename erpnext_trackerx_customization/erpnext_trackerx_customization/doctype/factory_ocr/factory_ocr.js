@@ -82,9 +82,9 @@ frappe.ui.form.on('Factory OCR Item', {
 function set_ocn_query(frm) {
     frm.set_query('ocn', function() {
         return {
+            query: 'erpnext_trackerx_customization.erpnext_trackerx_customization.doctype.factory_ocr.factory_ocr.sales_order_query_for_factory_ocr',
             filters: {
-                customer: frm.doc.buyer,
-                docstatus: 1
+                customer: frm.doc.buyer
             }
         };
     });
