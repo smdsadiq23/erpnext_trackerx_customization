@@ -10,6 +10,12 @@
  "engine": "InnoDB",
  "field_order": [
   "supplier_section",
+  "barcode_section",
+  "barcode",
+  "column_break_barcode",
+  "qr_code_display",
+  "barcode_image",
+  "qr_code_image",
   "column_break0",
   "naming_series",
   "goods_receipt_note_no",
@@ -157,12 +163,6 @@
   "range",
   "is_old_subcontracting_flow",
   "other_details",
-  "barcode_section",
-  "barcode",
-  "column_break_barcode",
-  "qr_code_display",
-  "barcode_image",
-  "qr_code_image",
   "connections_tab",
   "amended_from"
  ],
@@ -171,6 +171,48 @@
    "fieldname": "supplier_section",
    "fieldtype": "Section Break",
    "options": "fa fa-user"
+  },
+  {
+   "fieldname": "barcode_section",
+   "fieldtype": "Section Break",
+   "label": "Barcode & QR Code",
+   "collapsible": 1,
+   "description": "Auto-generated barcode and QR code for this GRN"
+  },
+  {
+   "fieldname": "barcode",
+   "fieldtype": "Barcode",
+   "label": "Barcode",
+   "read_only": 1,
+   "width": "200",
+   "description": "Auto-generated barcode for this GRN"
+  },
+  {
+   "fieldname": "column_break_barcode",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "qr_code_display",
+   "fieldtype": "HTML",
+   "label": "QR Code",
+   "read_only": 1,
+   "description": "Auto-generated QR code for this GRN"
+  },
+  {
+   "fieldname": "barcode_image",
+   "fieldtype": "Long Text",
+   "label": "Barcode Image",
+   "hidden": 1,
+   "print_hide": 1,
+   "description": "Base64 encoded barcode image"
+  },
+  {
+   "fieldname": "qr_code_image",
+   "fieldtype": "Long Text",
+   "label": "QR Code Image",
+   "hidden": 1,
+   "print_hide": 1,
+   "description": "Base64 encoded QR code image"
   },
   {
    "fieldname": "column_break0",
@@ -1295,48 +1337,6 @@
    "print_hide": 1,
    "print_width": "30%",
    "width": "30%"
-  },
-  {
-   "fieldname": "barcode_section",
-   "fieldtype": "Section Break",
-   "label": "Barcode & QR Code",
-   "collapsible": 1,
-   "description": "Auto-generated barcode and QR code for this GRN"
-  },
-  {
-   "fieldname": "barcode",
-   "fieldtype": "Barcode",
-   "label": "Barcode",
-   "read_only": 1,
-   "width": "200",
-   "description": "Auto-generated barcode for this GRN"
-  },
-  {
-   "fieldname": "column_break_barcode",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "qr_code_display",
-   "fieldtype": "HTML",
-   "label": "QR Code",
-   "read_only": 1,
-   "description": "Auto-generated QR code for this GRN"
-  },
-  {
-   "fieldname": "barcode_image",
-   "fieldtype": "Long Text",
-   "label": "Barcode Image",
-   "hidden": 1,
-   "print_hide": 1,
-   "description": "Base64 encoded barcode image"
-  },
-  {
-   "fieldname": "qr_code_image",
-   "fieldtype": "Long Text",
-   "label": "QR Code Image",
-   "hidden": 1,
-   "print_hide": 1,
-   "description": "Base64 encoded QR code image"
   },
   {
    "fieldname": "connections_tab",
