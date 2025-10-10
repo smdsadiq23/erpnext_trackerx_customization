@@ -215,6 +215,12 @@ export function App() {
     setShowItemModal(false);
   };
 
+   const handleCloseModal = () => {
+    setShowItemModal(false);
+    window.history.pushState({}, "", "/app/home");
+    window.location.href = "/app/process-map";
+  };
+
   return (
     <>
       {/* Case 1 → Only show modal if no mapId */}
@@ -278,11 +284,12 @@ export function App() {
            <Modal.Header>
             <Modal.Title>Enter Process Map Details</Modal.Title>
              <button
-               onClick={() => setShowItemModal(false)}
-               className="btn btn-light close-btn"
-            >
-                 ×
-             </button>
+          onClick={handleCloseModal}
+          className="btn btn-light close-btn"
+             >
+               ×
+            </button>
+
 
           </Modal.Header>
           <Modal.Body>
