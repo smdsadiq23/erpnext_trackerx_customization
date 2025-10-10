@@ -45,6 +45,8 @@ def get_grn_list(search=None, status=None, company=None, supplier=None,
                 pr.name LIKE %(search)s OR
                 pr.supplier LIKE %(search)s OR
                 pr.supplier_name LIKE %(search)s OR
+                pr.goods_receipt_note_no LIKE %(search)s OR
+                pr.supplier_delivery_note LIKE %(search)s OR
                 pr.remarks LIKE %(search)s
             )"""
             conditions.append(search_condition)
@@ -94,6 +96,7 @@ def get_grn_list(search=None, status=None, company=None, supplier=None,
             SELECT
                 pr.name as id,
                 pr.title,
+                pr.goods_receipt_note_no,
                 pr.supplier,
                 pr.supplier_name,
                 pr.company,
@@ -114,8 +117,8 @@ def get_grn_list(search=None, status=None, company=None, supplier=None,
                     ELSE 'Unknown'
                 END as status,
                 COUNT(pri.name) as total_items
-            FROM `tabPurchase Receipt` pr
-            LEFT JOIN `tabPurchase Receipt Item` pri ON pri.parent = pr.name
+            FROM `tabGoods Receipt Note` pr
+            LEFT JOIN `tabGoods Receipt Item` pri ON pri.parent = pr.name
             WHERE {where_clause}
             GROUP BY pr.name
             ORDER BY pr.{sort_by} {sort_order.upper()}
@@ -130,7 +133,7 @@ def get_grn_list(search=None, status=None, company=None, supplier=None,
         # Get total count for pagination
         count_query = f"""
             SELECT COUNT(DISTINCT pr.name) as total
-            FROM `tabPurchase Receipt` pr
+            FROM `tabGoods Receipt Note` pr
             WHERE {where_clause}
         """
 
@@ -203,7 +206,7 @@ def get_grn_filters():
         # Get unique companies
         companies = frappe.db.sql("""
             SELECT DISTINCT company, company as label
-            FROM `tabPurchase Receipt`
+            FROM `tabGoods Receipt Note`
             WHERE docstatus != 2
             ORDER BY company
         """, as_dict=True)
@@ -211,7 +214,7 @@ def get_grn_filters():
         # Get unique suppliers
         suppliers = frappe.db.sql("""
             SELECT DISTINCT supplier, supplier_name as label
-            FROM `tabPurchase Receipt`
+            FROM `tabGoods Receipt Note`
             WHERE docstatus != 2 AND supplier IS NOT NULL
             ORDER BY supplier_name
         """, as_dict=True)
@@ -228,7 +231,7 @@ def get_grn_filters():
             SELECT
                 MIN(posting_date) as min_date,
                 MAX(posting_date) as max_date
-            FROM `tabPurchase Receipt`
+            FROM `tabGoods Receipt Note`
             WHERE docstatus != 2
         """, as_dict=True)[0]
 
@@ -281,6 +284,7 @@ def search_grn(search_term, limit=10):
             SELECT
                 pr.name as id,
                 pr.title,
+                pr.goods_receipt_note_no,
                 pr.supplier,
                 pr.supplier_name,
                 pr.posting_date as date,
@@ -293,14 +297,15 @@ def search_grn(search_term, limit=10):
                     WHEN pr.docstatus = 2 THEN 'Cancelled'
                     ELSE 'Unknown'
                 END as status
-            FROM `tabPurchase Receipt` pr
+            FROM `tabGoods Receipt Note` pr
             WHERE pr.docstatus != 2
             AND (
                 pr.name LIKE %(search)s OR
                 pr.supplier LIKE %(search)s OR
                 pr.supplier_name LIKE %(search)s OR
-                pr.bill_no LIKE %(search)s OR
-                pr.supplier_delivery_note LIKE %(search)s
+                pr.goods_receipt_note_no LIKE %(search)s OR
+                pr.supplier_delivery_note LIKE %(search)s OR
+                pr.purchase_order LIKE %(search)s
             )
             ORDER BY pr.modified DESC
             LIMIT %(limit)s
@@ -355,7 +360,7 @@ def get_grn_status_summary():
                 END as status,
                 COUNT(*) as count,
                 SUM(grand_total) as total_amount
-            FROM `tabPurchase Receipt`
+            FROM `tabGoods Receipt Note`
             WHERE docstatus != 2
             GROUP BY
                 CASE
@@ -408,37 +413,78 @@ def get_grn_status_summary():
 # ===========================
 
 @frappe.whitelist()
-def create_grn():
+def create_grn(company=None, naming_series=None, supplier=None, purchase_order=None, goods_receipt_note_no=None):
     """
     Create new GRN with default values
+
+    Args:
+        company (str): Company name
+        naming_series (str): Naming series for the GRN
+        supplier (str): Supplier name
+        purchase_order (str): Purchase Order reference
+        goods_receipt_note_no (str): Goods Receipt Note number (optional)
 
     Returns:
         dict: New GRN details with default values
     """
     try:
         # Get user defaults
-        user_defaults = frappe.get_user_default_values()
-        default_company = user_defaults.get("company") or frappe.db.get_single_value("Global Defaults", "default_company")
+        default_company = frappe.defaults.get_user_default("Company") or frappe.db.get_single_value("Global Defaults", "default_company")
 
-        # Create new Purchase Receipt document
-        grn = frappe.new_doc("Purchase Receipt")
+        # Create new Goods Receipt Note document
+        grn = frappe.new_doc("Goods Receipt Note")
 
         # Set default values
         grn.posting_date = getdate()
         grn.posting_time = now_datetime().time()
         grn.set_posting_time = 0
-        grn.company = default_company
+        grn.company = company or default_company
         grn.is_return = 0
         grn.apply_putaway_rule = 0
 
-        # Get default naming series
-        naming_series = frappe.db.get_value("Purchase Receipt", {"company": default_company}, "naming_series")
-        if not naming_series:
-            naming_series = frappe.get_meta("Purchase Receipt").get_field("naming_series").options.split("\n")[0]
+        # Set naming series
+        if naming_series:
+            grn.naming_series = naming_series
+        else:
+            # Get default naming series
+            default_naming_series = frappe.db.get_value("Goods Receipt Note", {"company": grn.company}, "naming_series")
+            if not default_naming_series:
+                default_naming_series = frappe.get_meta("Goods Receipt Note").get_field("naming_series").options.split("\n")[0]
+            grn.naming_series = default_naming_series
 
-        grn.naming_series = naming_series
+        # Set supplier and purchase order if provided
+        if supplier:
+            grn.supplier = supplier
+        if purchase_order:
+            grn.purchase_order = purchase_order
 
-        # Insert document (save as draft)
+        # Set required goods_receipt_note_no field
+        if goods_receipt_note_no:
+            grn.goods_receipt_note_no = goods_receipt_note_no
+        elif not getattr(grn, 'goods_receipt_note_no', None):
+            # Generate a temporary value if not provided
+            grn.goods_receipt_note_no = f"TEMP-{grn.naming_series.replace('.', '')}-{now_datetime().strftime('%Y%m%d%H%M%S')}"
+
+        # Insert document (save as draft) with validation bypass for required items
+        # This allows creating a GRN without items initially
+        grn.flags.ignore_validate = True
+        grn.flags.ignore_mandatory = True
+        grn.flags.ignore_links = True
+
+        # Alternative approach: Add a temporary placeholder item to satisfy validation
+        # This will be removed when real items are added
+        temp_item = grn.append("items", {})
+        temp_item.item_code = "TEMP-PLACEHOLDER"
+        temp_item.item_name = "Temporary Placeholder - To be replaced"
+        temp_item.qty = 1
+        temp_item.received_qty = 1
+        temp_item.rate = 0
+        temp_item.amount = 0
+        temp_item.uom = "Nos"
+        temp_item.stock_uom = "Nos"
+        temp_item.conversion_factor = 1
+        temp_item.stock_qty = 1
+
         grn.insert(ignore_permissions=True)
 
         return {
@@ -449,11 +495,13 @@ def create_grn():
                 "posting_date": str(grn.posting_date),
                 "posting_time": str(grn.posting_time) if grn.posting_time else None,
                 "company": grn.company,
+                "supplier": grn.supplier,
+                "purchase_order": grn.purchase_order,
                 "is_return": grn.is_return,
                 "apply_putaway_rule": grn.apply_putaway_rule,
                 "set_posting_time": grn.set_posting_time,
                 "docstatus": grn.docstatus,
-                "workflow_state": grn.workflow_state,
+                "goods_receipt_note_no": getattr(grn, "goods_receipt_note_no", ""),
                 "creation": grn.creation.isoformat() if grn.creation else None,
                 "modified": grn.modified.isoformat() if grn.modified else None
             },
@@ -492,7 +540,7 @@ def get_grn(grn_id):
             }
 
         # Check if GRN exists
-        if not frappe.db.exists("Purchase Receipt", grn_id):
+        if not frappe.db.exists("Goods Receipt Note", grn_id):
             return {
                 "success": False,
                 "error": {
@@ -502,13 +550,14 @@ def get_grn(grn_id):
             }
 
         # Get GRN document
-        grn = frappe.get_doc("Purchase Receipt", grn_id)
+        grn = frappe.get_doc("Goods Receipt Note", grn_id)
 
         # Format response using getattr for safe access to potentially non-existent fields
         grn_data = {
             "grn_id": grn.name,
             "title": getattr(grn, "title", ""),
             "naming_series": getattr(grn, "naming_series", ""),
+            "goods_receipt_note_no": getattr(grn, "goods_receipt_note_no", ""),
             "company": grn.company,
             "posting_date": str(grn.posting_date) if grn.posting_date else None,
             "posting_time": str(grn.posting_time) if grn.posting_time else None,
@@ -548,8 +597,8 @@ def get_grn(grn_id):
         }
 
         # Get related purchase order details if available
-        if grn.items and grn.items[0].purchase_order:
-            po_name = grn.items[0].purchase_order
+        if grn.purchase_order:
+            po_name = grn.purchase_order
             po_details = frappe.db.get_value("Purchase Order", po_name,
                 ["supplier", "supplier_name", "transaction_date", "status"], as_dict=True)
             if po_details:
@@ -599,7 +648,7 @@ def update_grn_header(grn_id, **kwargs):
             }
 
         # Get GRN document
-        grn = frappe.get_doc("Purchase Receipt", grn_id)
+        grn = frappe.get_doc("Goods Receipt Note", grn_id)
 
         # Check if GRN can be modified
         if grn.docstatus != 0:
@@ -689,7 +738,7 @@ def get_naming_series():
     """
     try:
         # Get naming series from Purchase Receipt doctype
-        naming_series_field = frappe.get_meta("Purchase Receipt").get_field("naming_series")
+        naming_series_field = frappe.get_meta("Goods Receipt Note").get_field("naming_series")
 
         if not naming_series_field or not naming_series_field.options:
             return {
@@ -882,7 +931,7 @@ def validate_grn_header(grn_id):
             }
 
         # Get GRN document
-        grn = frappe.get_doc("Purchase Receipt", grn_id)
+        grn = frappe.get_doc("Goods Receipt Note", grn_id)
 
         # Validation rules
         errors = []
@@ -949,7 +998,7 @@ def get_grn_items(grn_id):
     """
     try:
         # Check if GRN exists and user has permission
-        if not frappe.db.exists("Purchase Receipt", grn_id):
+        if not frappe.db.exists("Goods Receipt Note", grn_id):
             return {"success": False, "error": {"message": "GRN not found", "code": "GRN_NOT_FOUND"}}
 
         # Get GRN items
@@ -979,7 +1028,7 @@ def get_grn_items(grn_id):
                 i.has_batch_no,
                 i.has_serial_no,
                 i.maintain_stock
-            FROM `tabPurchase Receipt Item` pri
+            FROM `tabGoods Receipt Item` pri
             LEFT JOIN `tabItem` i ON pri.item_code = i.name
             WHERE pri.parent = %(grn_id)s
             ORDER BY pri.idx
@@ -1066,7 +1115,7 @@ def add_grn_item(grn_id, item_code, warehouse, qty=1, received_qty=None, no_of_b
             return {"success": False, "error": {"message": "GRN ID, Item Code, and Warehouse are required", "code": "MISSING_REQUIRED_FIELDS"}}
 
         # Check if GRN exists and is editable
-        grn = frappe.get_doc("Purchase Receipt", grn_id)
+        grn = frappe.get_doc("Goods Receipt Note", grn_id)
         if grn.docstatus == 1:
             return {"success": False, "error": {"message": "Cannot modify submitted GRN", "code": "INVALID_STATE"}}
 
@@ -1156,12 +1205,12 @@ def update_grn_item(item_id, **kwargs):
     """
     try:
         # Check if item exists
-        if not frappe.db.exists("Purchase Receipt Item", item_id):
+        if not frappe.db.exists("Goods Receipt Item", item_id):
             return {"success": False, "error": {"message": "Item not found", "code": "ITEM_NOT_FOUND"}}
 
         # Get the item and parent GRN
-        item_doc = frappe.get_doc("Purchase Receipt Item", item_id)
-        grn = frappe.get_doc("Purchase Receipt", item_doc.parent)
+        item_doc = frappe.get_doc("Goods Receipt Item", item_id)
+        grn = frappe.get_doc("Goods Receipt Note", item_doc.parent)
 
         if grn.docstatus == 1:
             return {"success": False, "error": {"message": "Cannot modify submitted GRN", "code": "INVALID_STATE"}}
@@ -1222,12 +1271,12 @@ def delete_grn_item(item_id):
     """
     try:
         # Check if item exists
-        if not frappe.db.exists("Purchase Receipt Item", item_id):
+        if not frappe.db.exists("Goods Receipt Item", item_id):
             return {"success": False, "error": {"message": "Item not found", "code": "ITEM_NOT_FOUND"}}
 
         # Get the item and parent GRN
-        item_doc = frappe.get_doc("Purchase Receipt Item", item_id)
-        grn = frappe.get_doc("Purchase Receipt", item_doc.parent)
+        item_doc = frappe.get_doc("Goods Receipt Item", item_id)
+        grn = frappe.get_doc("Goods Receipt Note", item_doc.parent)
 
         if grn.docstatus == 1:
             return {"success": False, "error": {"message": "Cannot modify submitted GRN", "code": "INVALID_STATE"}}
@@ -1472,7 +1521,7 @@ def validate_grn_items(grn_id):
         dict: Validation results
     """
     try:
-        grn = frappe.get_doc("Purchase Receipt", grn_id)
+        grn = frappe.get_doc("Goods Receipt Note", grn_id)
         validation_results = {"is_valid": True, "can_proceed": True, "issues": []}
 
         # Check if there are any items
@@ -1532,10 +1581,10 @@ def get_grn_taxes_and_charges(grn_id):
         dict: Tax and charge details
     """
     try:
-        if not frappe.db.exists("Purchase Receipt", grn_id):
+        if not frappe.db.exists("Goods Receipt Note", grn_id):
             return {"success": False, "error": {"message": "GRN not found", "code": "GRN_NOT_FOUND"}}
 
-        grn = frappe.get_doc("Purchase Receipt", grn_id)
+        grn = frappe.get_doc("Goods Receipt Note", grn_id)
 
         # Get tax details
         taxes_and_charges = []
@@ -1686,7 +1735,7 @@ def apply_tax_template(grn_id, template_name):
         dict: Updated tax information
     """
     try:
-        grn = frappe.get_doc("Purchase Receipt", grn_id)
+        grn = frappe.get_doc("Goods Receipt Note", grn_id)
         if grn.docstatus == 1:
             return {"success": False, "error": {"message": "Cannot modify submitted GRN", "code": "INVALID_STATE"}}
 
@@ -1737,7 +1786,7 @@ def add_tax_charge(grn_id, charge_type, account_head, rate=0, tax_amount=0, desc
         dict: Added tax charge details
     """
     try:
-        grn = frappe.get_doc("Purchase Receipt", grn_id)
+        grn = frappe.get_doc("Goods Receipt Note", grn_id)
         if grn.docstatus == 1:
             return {"success": False, "error": {"message": "Cannot modify submitted GRN", "code": "INVALID_STATE"}}
 
@@ -1796,7 +1845,7 @@ def update_tax_charge(tax_id, **kwargs):
             return {"success": False, "error": {"message": "Tax charge not found", "code": "TAX_NOT_FOUND"}}
 
         tax_doc = frappe.get_doc("Purchase Taxes and Charges", tax_id)
-        grn = frappe.get_doc("Purchase Receipt", tax_doc.parent)
+        grn = frappe.get_doc("Goods Receipt Note", tax_doc.parent)
 
         if grn.docstatus == 1:
             return {"success": False, "error": {"message": "Cannot modify submitted GRN", "code": "INVALID_STATE"}}
@@ -1851,7 +1900,7 @@ def delete_tax_charge(tax_id):
             return {"success": False, "error": {"message": "Tax charge not found", "code": "TAX_NOT_FOUND"}}
 
         tax_doc = frappe.get_doc("Purchase Taxes and Charges", tax_id)
-        grn = frappe.get_doc("Purchase Receipt", tax_doc.parent)
+        grn = frappe.get_doc("Goods Receipt Note", tax_doc.parent)
 
         if grn.docstatus == 1:
             return {"success": False, "error": {"message": "Cannot modify submitted GRN", "code": "INVALID_STATE"}}
@@ -1889,7 +1938,7 @@ def update_grn_tax_settings(grn_id, **kwargs):
         dict: Updated settings
     """
     try:
-        grn = frappe.get_doc("Purchase Receipt", grn_id)
+        grn = frappe.get_doc("Goods Receipt Note", grn_id)
         if grn.docstatus == 1:
             return {"success": False, "error": {"message": "Cannot modify submitted GRN", "code": "INVALID_STATE"}}
 
@@ -1944,7 +1993,7 @@ def calculate_grn_totals(grn_id):
         dict: Calculated totals
     """
     try:
-        grn = frappe.get_doc("Purchase Receipt", grn_id)
+        grn = frappe.get_doc("Goods Receipt Note", grn_id)
 
         # Force recalculation
         grn.save()
@@ -1995,10 +2044,10 @@ def get_grn_checklist(grn_id):
         dict: Checklist items and status
     """
     try:
-        if not frappe.db.exists("Purchase Receipt", grn_id):
+        if not frappe.db.exists("Goods Receipt Note", grn_id):
             return {"success": False, "error": {"message": "GRN not found", "code": "GRN_NOT_FOUND"}}
 
-        grn = frappe.get_doc("Purchase Receipt", grn_id)
+        grn = frappe.get_doc("Goods Receipt Note", grn_id)
 
         # Default checklist items for GRN
         default_checklist = [
@@ -2025,18 +2074,18 @@ def get_grn_checklist(grn_id):
         # Get existing checklist items from custom field or table
         checklist_items = []
 
-        # Check if GRN has custom checklist field
-        if hasattr(grn, 'custom_document_checklist') and grn.custom_document_checklist:
-            for item in grn.custom_document_checklist:
+        # Check if GRN has document checklist field
+        if hasattr(grn, 'document_checklist') and grn.document_checklist:
+            for item in grn.document_checklist:
                 checklist_item = {
                     "id": item.name,
-                    "item_name": item.checklist_item,
-                    "description": item.description,
-                    "status": item.status or "Not Received",
+                    "item_name": item.document_type,
+                    "description": item.document_type,
+                    "status": "Received" if item.received else "Not Received",
                     "received_date": item.received_date,
                     "remarks": item.remarks,
-                    "is_required": cint(item.is_required),
-                    "priority": cint(item.priority) or 99
+                    "is_required": 1 if item.document_type in ["Purchase Order", "Delivery Challan / Invoice", "Packing List"] else 0,
+                    "priority": 99
                 }
                 checklist_items.append(checklist_item)
         else:
@@ -2105,20 +2154,20 @@ def update_checklist_item(grn_id, item_id, status=None, received_date=None, rema
         dict: Updated item details
     """
     try:
-        grn = frappe.get_doc("Purchase Receipt", grn_id)
+        grn = frappe.get_doc("Goods Receipt Note", grn_id)
         if grn.docstatus == 1:
             return {"success": False, "error": {"message": "Cannot modify submitted GRN", "code": "INVALID_STATE"}}
 
         # Initialize checklist if not exists
-        if not hasattr(grn, 'custom_document_checklist') or not grn.custom_document_checklist:
+        if not hasattr(grn, 'document_checklist') or not grn.document_checklist:
             _initialize_default_checklist(grn)
 
         # Find and update the checklist item
         item_updated = False
-        for item in grn.custom_document_checklist:
+        for item in grn.document_checklist:
             if item.name == item_id or str(item.idx) == str(item_id):
                 if status:
-                    item.status = status
+                    item.received = 1 if status == "Received" else 0
                 if received_date:
                     item.received_date = getdate(received_date)
                 if remarks is not None:
@@ -2136,13 +2185,11 @@ def update_checklist_item(grn_id, item_id, status=None, received_date=None, rema
 
             item_index = int(item_id.split('_')[1]) - 1
             if 0 <= item_index < len(default_items):
-                new_item = grn.append("custom_document_checklist", {})
-                new_item.checklist_item = default_items[item_index]
-                new_item.status = status or "Not Received"
+                new_item = grn.append("document_checklist", {})
+                new_item.document_type = default_items[item_index]
+                new_item.received = 1 if status == "Received" else 0
                 new_item.received_date = getdate(received_date) if received_date else None
                 new_item.remarks = remarks or ""
-                new_item.is_required = 1 if item_index < 2 else 0
-                new_item.priority = item_index + 1
                 item_updated = True
 
         if not item_updated:
@@ -2187,7 +2234,7 @@ def add_checklist_item(grn_id, item_name, description=None, is_required=0):
         dict: Added item details
     """
     try:
-        grn = frappe.get_doc("Purchase Receipt", grn_id)
+        grn = frappe.get_doc("Goods Receipt Note", grn_id)
         if grn.docstatus == 1:
             return {"success": False, "error": {"message": "Cannot modify submitted GRN", "code": "INVALID_STATE"}}
 
@@ -2195,16 +2242,14 @@ def add_checklist_item(grn_id, item_name, description=None, is_required=0):
             return {"success": False, "error": {"message": "Item name is required", "code": "MISSING_REQUIRED_FIELDS"}}
 
         # Initialize checklist if not exists
-        if not hasattr(grn, 'custom_document_checklist'):
+        if not hasattr(grn, 'document_checklist'):
             _initialize_default_checklist(grn)
 
         # Add new checklist item
-        new_item = grn.append("custom_document_checklist", {})
-        new_item.checklist_item = item_name
-        new_item.description = description or ""
-        new_item.status = "Not Received"
-        new_item.is_required = cint(is_required)
-        new_item.priority = len(grn.custom_document_checklist) + 1
+        new_item = grn.append("document_checklist", {})
+        new_item.document_type = item_name
+        new_item.received = 0
+        new_item.remarks = description or ""
 
         # Save the GRN
         grn.save()
@@ -2213,12 +2258,12 @@ def add_checklist_item(grn_id, item_name, description=None, is_required=0):
         added_item = {
             "id": new_item.name,
             "item_name": item_name,
-            "description": description,
+            "description": item_name,
             "status": "Not Received",
             "received_date": None,
-            "remarks": "",
+            "remarks": description or "",
             "is_required": cint(is_required),
-            "priority": new_item.priority
+            "priority": 99
         }
 
         return {
@@ -2245,7 +2290,7 @@ def validate_grn_for_submission(grn_id):
         dict: Validation results and submission readiness
     """
     try:
-        grn = frappe.get_doc("Purchase Receipt", grn_id)
+        grn = frappe.get_doc("Goods Receipt Note", grn_id)
 
         validation_results = {
             "is_valid": True,
@@ -2368,7 +2413,7 @@ def submit_grn(grn_id):
             }
 
         # Get and submit the GRN
-        grn = frappe.get_doc("Purchase Receipt", grn_id)
+        grn = frappe.get_doc("Goods Receipt Note", grn_id)
 
         if grn.docstatus == 1:
             return {"success": False, "error": {"message": "GRN is already submitted", "code": "ALREADY_SUBMITTED"}}
@@ -2415,34 +2460,17 @@ def _initialize_default_checklist(grn):
         grn: GRN document object
     """
     default_items = [
-        {
-            "checklist_item": "Delivery Challan / Invoice",
-            "description": "Invoice or delivery challan received from supplier",
-            "is_required": 1,
-            "priority": 1
-        },
-        {
-            "checklist_item": "Packing List",
-            "description": "Detailed packing list with item descriptions",
-            "is_required": 1,
-            "priority": 2
-        },
-        {
-            "checklist_item": "Material Test Certificate (MTC)",
-            "description": "Test certificate for material quality validation",
-            "is_required": 0,
-            "priority": 3
-        }
+        "Delivery Challan / Invoice",
+        "Packing List",
+        "Material Test Certificate (MTC)"
     ]
 
-    if not hasattr(grn, 'custom_document_checklist'):
-        # If custom_document_checklist field doesn't exist, skip initialization
+    if not hasattr(grn, 'document_checklist'):
+        # If document_checklist field doesn't exist, skip initialization
         return
 
-    for item_data in default_items:
-        item = grn.append("custom_document_checklist", {})
-        item.checklist_item = item_data["checklist_item"]
-        item.description = item_data["description"]
-        item.status = "Not Received"
-        item.is_required = item_data["is_required"]
-        item.priority = item_data["priority"]
+    for item_name in default_items:
+        item = grn.append("document_checklist", {})
+        item.document_type = item_name
+        item.received = 0
+        item.remarks = ""
