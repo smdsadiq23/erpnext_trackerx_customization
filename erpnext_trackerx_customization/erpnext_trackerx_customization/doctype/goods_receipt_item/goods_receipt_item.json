@@ -29,7 +29,10 @@
   "amount",
   "shelf_life_months",
   "expiration_date",
-  "remarks"
+  "remarks",
+  "item_barcode",
+  "item_barcode_image",
+  "item_qr_code_image"
  ],
  "fields": [
   {
@@ -172,6 +175,28 @@
    "fieldname": "remarks",
    "fieldtype": "Small Text",
    "label": "Remarks"
+  },
+  {
+   "fieldname": "item_barcode",
+   "fieldtype": "Barcode",
+   "label": "Item Barcode",
+   "read_only": 1,
+   "in_list_view": 0,
+   "description": "Auto-generated barcode for this item"
+  },
+  {
+   "fieldname": "item_barcode_image",
+   "fieldtype": "Long Text",
+   "label": "Item Barcode Image",
+   "hidden": 1,
+   "description": "Base64 encoded item barcode image"
+  },
+  {
+   "fieldname": "item_qr_code_image",
+   "fieldtype": "Long Text",
+   "label": "Item QR Code Image",
+   "hidden": 1,
+   "description": "Base64 encoded item QR code image"
   },
   {
    "allow_in_quick_entry": 1,

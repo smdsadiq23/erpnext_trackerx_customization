@@ -5,6 +5,14 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+# Import barcode/QR code generation utilities
+try:
+    from labelx.utils.generators import generate_barcode_base64, generate_qrcode_base64
+    BARCODE_UTILS_AVAILABLE = True
+except ImportError:
+    BARCODE_UTILS_AVAILABLE = False
+    frappe.log_error("labelx.utils.generators not available for barcode generation", "GRN Barcode Import Error")
+
 class GoodsReceiptNote(Document):    
     def autoname(self):
         """Set document name based on goods_receipt_note_no or naming_series"""
@@ -16,6 +24,69 @@ class GoodsReceiptNote(Document):
             # Use naming_series field (must exist in DocType)
             from frappe.model.naming import set_name_by_naming_series
             set_name_by_naming_series(self)
+
+    def before_save(self):
+        """Generate and store barcode & QR code for GRN and items"""
+        if BARCODE_UTILS_AVAILABLE and self.name:
+            self.generate_grn_barcodes()
+            self.generate_item_barcodes()
+
+    def generate_grn_barcodes(self):
+        """Generate barcode and QR code for the GRN document"""
+        try:
+            # Only generate if not already set
+            if not getattr(self, 'barcode_image', None) or not getattr(self, 'qr_code_image', None):
+                grn_code = self.name  # Use document name as the code
+
+                # Generate Base64 images
+                barcode_b64 = generate_barcode_base64(grn_code)
+                qrcode_b64 = generate_qrcode_base64(grn_code)
+
+                # Store in fields (only if fields exist)
+                if hasattr(self, 'barcode_image'):
+                    self.barcode_image = barcode_b64
+                if hasattr(self, 'qr_code_image'):
+                    self.qr_code_image = qrcode_b64
+                if hasattr(self, 'barcode'):
+                    self.barcode = grn_code
+                if hasattr(self, 'qr_code_display'):
+                    # Create HTML to display QR code
+                    self.qr_code_display = f'<img src="{qrcode_b64}" style="max-width: 150px; max-height: 150px;" alt="QR Code"/>'
+
+                frappe.logger().info(f"Generated barcode and QR code for GRN: {self.name}")
+
+        except Exception as e:
+            frappe.log_error(f"Error generating GRN barcode/QR code: {str(e)}", "GRN Barcode Generation Error")
+
+    def generate_item_barcodes(self):
+        """Generate barcode and QR code for each item in the GRN"""
+        try:
+            if not self.get("items"):
+                return
+
+            for idx, item in enumerate(self.items, 1):
+                # Only generate if not already set
+                if not getattr(item, 'item_barcode_image', None) or not getattr(item, 'item_qr_code_image', None):
+                    # Create unique item code: GRN-NAME-ITEM-INDEX-BATCH/LOT
+                    batch_or_lot = getattr(item, 'batch_no', None) or getattr(item, 'lot_no', None) or f"IDX{idx}"
+                    item_code = f"{self.name}-ITEM-{idx}-{batch_or_lot}"
+
+                    # Generate Base64 images
+                    item_barcode_b64 = generate_barcode_base64(item_code)
+                    item_qrcode_b64 = generate_qrcode_base64(item_code)
+
+                    # Store in item fields (only if fields exist)
+                    if hasattr(item, 'item_barcode_image'):
+                        item.item_barcode_image = item_barcode_b64
+                    if hasattr(item, 'item_qr_code_image'):
+                        item.item_qr_code_image = item_qrcode_b64
+                    if hasattr(item, 'item_barcode'):
+                        item.item_barcode = item_code
+
+                frappe.logger().info(f"Generated barcode and QR code for {len(self.items)} items in GRN: {self.name}")
+
+        except Exception as e:
+            frappe.log_error(f"Error generating item barcodes/QR codes: {str(e)}", "GRN Item Barcode Generation Error")
 
     def before_validate(self):
         """Apply putaway rules if checkbox is enabled"""
