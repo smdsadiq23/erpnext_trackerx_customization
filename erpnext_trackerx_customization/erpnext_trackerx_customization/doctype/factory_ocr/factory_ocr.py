@@ -12,17 +12,42 @@ class FactoryOCR(Document):
 
 
 @frappe.whitelist()
-def get_sales_orders_by_brand(brand):
-    # Get customers linked to this brand
-    customers = frappe.get_all('Customer', filters={'brand': brand}, pluck='name')
-    if not customers:
+def sales_order_query_for_factory_ocr(doctype, txt, searchfield, start, page_len, filters):
+    """
+    Returns Sales Orders for the given customer that:
+    - Are submitted (docstatus = 1)
+    - Are NOT used in any Factory OCR (Draft or Submitted)
+    """
+    customer = filters.get("customer")
+    if not customer:
         return []
-    # Get sales orders for those customers
-    orders = frappe.get_all('Sales Order', 
-        filters={'customer': ['in', customers], 'docstatus': 1},
-        pluck='name'
+
+    # Get all OCNs already used in Factory OCR (Draft + Submitted)
+    used_ocns = frappe.get_all(
+        "Factory OCR",
+        filters={"docstatus": ["<", 2], "ocn": ["is", "set"]},
+        pluck="ocn"
     )
-    return orders
+    # Ensure it's a tuple (even if empty) for SQL safety
+    used_ocns = tuple(set(used_ocns)) if used_ocns else ("__none__",)
+
+    # Main query: Sales Orders for this customer, not used, matching search text
+    return frappe.db.sql("""
+        SELECT name, customer, transaction_date
+        FROM `tabSales Order`
+        WHERE docstatus = 1
+          AND customer = %(customer)s
+          AND name LIKE %(txt)s
+          AND name NOT IN %(used_ocns)s
+        ORDER BY transaction_date DESC
+        LIMIT %(start)s, %(page_len)s
+    """, {
+        "customer": customer,
+        "txt": "%" + txt + "%",
+        "used_ocns": used_ocns,
+        "start": int(start),
+        "page_len": int(page_len)
+    })
 
 
 @frappe.whitelist()
