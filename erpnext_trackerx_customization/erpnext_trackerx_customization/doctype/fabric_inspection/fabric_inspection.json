@@ -32,6 +32,7 @@
   "inspection_regime",
   "aql_value",
   "inspection_type",
+  "sampling_percentage",
   "column_break_3",
   "required_sample_size",
   "required_sample_rolls",
@@ -207,23 +208,20 @@
    "fieldname": "aql_level",
    "fieldtype": "Link",
    "label": "AQL Level",
-   "options": "AQL Level",
-   "reqd": 1
+   "options": "AQL Level"
   },
   {
    "default": "Normal",
    "fieldname": "inspection_regime",
    "fieldtype": "Select",
    "label": "Inspection Regime",
-   "options": "Normal\nTightened\nReduced",
-   "reqd": 1
+   "options": "Normal\nTightened\nReduced"
   },
   {
    "fieldname": "aql_value",
    "fieldtype": "Link",
    "label": "AQL Value",
-   "options": "AQL Standard",
-   "reqd": 1
+   "options": "AQL Standard"
   },
   {
    "fieldname": "inspection_type",
@@ -232,6 +230,13 @@
    "options": "AQL Based\n100% Inspection\nCustom Sampling",
    "default": "AQL Based",
    "reqd": 1
+  },
+  {
+   "fieldname": "sampling_percentage",
+   "fieldtype": "Float",
+   "label": "Sampling Percentage (%)",
+   "precision": "2",
+   "description": "Enter percentage of total quantity to inspect (0.1 - 100). Only applicable for Custom Sampling."
   },
   {
    "fieldname": "column_break_3",
