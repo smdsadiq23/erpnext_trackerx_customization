@@ -19,6 +19,7 @@
   "naming_series",
   "goods_receipt_note_no",
   "purchase_order",
+  "process_order_number",
   "title",
   "supplier",
   "supplier_name",
@@ -1375,13 +1376,18 @@
    "fieldtype": "Data",
    "label": "Goods Receipt Note No",
    "reqd": 1
+  },
+  {
+   "fieldname": "process_order_number",
+   "fieldtype": "Data",
+   "label": "Process Order Number"
   }
  ],
  "grid_page_length": 50,
  "icon": "fa fa-truck",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-13 16:54:43.570409",
+ "modified": "2025-10-13 18:12:49.549564",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Note",
