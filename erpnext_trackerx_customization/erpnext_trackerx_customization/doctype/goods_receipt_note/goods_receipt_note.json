@@ -9,7 +9,6 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "supplier_section",
   "barcode_section",
   "barcode",
   "column_break_barcode",
@@ -168,51 +167,46 @@
  ],
  "fields": [
   {
-   "fieldname": "supplier_section",
-   "fieldtype": "Section Break",
-   "options": "fa fa-user"
-  },
-  {
+   "collapsible": 1,
+   "description": "Auto-generated barcode and QR code for this GRN",
    "fieldname": "barcode_section",
    "fieldtype": "Section Break",
-   "label": "Barcode & QR Code",
-   "collapsible": 1,
-   "description": "Auto-generated barcode and QR code for this GRN"
+   "label": "Barcode & QR Code"
   },
   {
+   "description": "Auto-generated barcode for this GRN",
    "fieldname": "barcode",
    "fieldtype": "Barcode",
    "label": "Barcode",
    "read_only": 1,
-   "width": "200",
-   "description": "Auto-generated barcode for this GRN"
+   "width": "200"
   },
   {
    "fieldname": "column_break_barcode",
    "fieldtype": "Column Break"
   },
   {
+   "description": "Auto-generated QR code for this GRN",
    "fieldname": "qr_code_display",
    "fieldtype": "HTML",
    "label": "QR Code",
-   "read_only": 1,
-   "description": "Auto-generated QR code for this GRN"
+   "read_only": 1
   },
   {
+   "description": "Base64 encoded barcode image",
    "fieldname": "barcode_image",
    "fieldtype": "Long Text",
-   "label": "Barcode Image",
    "hidden": 1,
-   "print_hide": 1,
-   "description": "Base64 encoded barcode image"
+   "label": "Barcode Image",
+   "print_hide": 1
   },
   {
+   "description": "Base64 encoded QR code image",
    "fieldname": "qr_code_image",
    "fieldtype": "Long Text",
-   "label": "QR Code Image",
    "hidden": 1,
-   "print_hide": 1,
-   "description": "Base64 encoded QR code image"
+   "label": "QR Code Image",
+   "print_hide": 1
   },
   {
    "fieldname": "column_break0",
@@ -1364,8 +1358,7 @@
    "fieldtype": "Link",
    "label": "Purchase Order",
    "link_filters": "[[\"Purchase Order\",\"status\",\"in\",[\"Draft\",\"On Hold\",\"To Receive\",\"To Receive and Bill\",null]]]",
-   "options": "Purchase Order",
-   "reqd": 1
+   "options": "Purchase Order"
   },
   {
    "fieldname": "section_break_qfsn",
@@ -1388,7 +1381,7 @@
  "icon": "fa fa-truck",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-25 11:37:35.738252",
+ "modified": "2025-10-13 16:54:43.570409",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Note",
