@@ -193,8 +193,35 @@ frappe.ui.form.on("Goods Receipt Item", {
         const row = locals[cdt][cdn];
         const amount = (row.received_quantity || 0) * (row.rate || 0);
         frappe.model.set_value(cdt, cdn, 'amount', amount);
-    }
-    // items_add is handled in parent
+    },
+    // 👇 NEW: Auto-fill color & composition when item_code changes
+    item_code(frm, cdt, cdn) {
+        const row = locals[cdt][cdn];
+        const item_code = row.item_code;
+
+        if (!item_code) {
+            frappe.model.set_value(cdt, cdn, 'color', '');
+            frappe.model.set_value(cdt, cdn, 'composition', '');
+            frappe.model.set_value(cdt, cdn, 'material_type', '');
+            return;
+        }
+
+        frappe.db.get_doc('Item', item_code)
+            .then(item_doc => {
+                frappe.model.set_value(cdt, cdn, 'color', item_doc.custom_colour_name || '');
+                frappe.model.set_value(cdt, cdn, 'composition', item_doc.custom_material_composition || '');
+                frappe.model.set_value(cdt, cdn, 'material_type', item_doc.custom_select_master || '');
+            })
+            .catch(err => {
+                console.warn("Could not fetch Item details for:", item_code, err);
+                // Optionally show a message
+                frappe.msgprint({
+                    title: __("Item Not Found"),
+                    indicator: "orange",
+                    message: __("Could not load details for item {0}", [item_code])
+                });
+            });
+    }    
 });
 
 // --- Checklist Table Events ---
