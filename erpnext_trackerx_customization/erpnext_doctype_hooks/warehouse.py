@@ -49,6 +49,12 @@ def validate(doc, method):
         # Log when warehouse barcode fields are accessed for debugging
         if hasattr(doc, 'warehouse_barcode') and doc.warehouse_barcode:
             frappe.logger().info(f"Warehouse {doc.name} has barcode: {doc.warehouse_barcode}")
+
+        # Update parent warehouse capacity from child warehouse
+        if hasattr(doc, 'capacity') and doc.capacity and doc.parent_warehouse:
+            update_parent_warehouse_capacity_from_child_with_current_doc(doc.parent_warehouse, doc.name, doc.capacity)
+        else:
+            pass
     except Exception as e:
         frappe.log_error(f"Error in warehouse validation: {str(e)}", "Warehouse Validation Error")
 
@@ -350,3 +356,103 @@ def generate_weekly_capacity_report(capacity_data):
 
     except Exception as e:
         frappe.log_error(f"Error generating weekly capacity report: {str(e)}")
+
+# ===========================
+# PARENT-CHILD WAREHOUSE CAPACITY MANAGEMENT
+# ===========================
+
+def update_parent_warehouse_capacity_from_child(parent_warehouse_name):
+    """Update parent warehouse capacity from child warehouse"""
+    try:
+
+        if not parent_warehouse_name:
+            return
+
+        parent_warehouse = frappe.get_doc("Warehouse", parent_warehouse_name)
+
+        # Get all child warehouses with capacity field
+        child_warehouses = frappe.get_all(
+            "Warehouse",
+            filters={"parent_warehouse": parent_warehouse_name},
+            fields=["name", "capacity", "capacity_unit"]
+        )
+
+
+        if not child_warehouses:
+            return
+
+        total_capacity = 0
+        capacity_unit = None
+
+        for child_warehouse in child_warehouses:
+            if child_warehouse.capacity:
+                total_capacity += child_warehouse.capacity
+                # Use the first non-null capacity unit
+                if not capacity_unit and child_warehouse.capacity_unit:
+                    capacity_unit = child_warehouse.capacity_unit
+
+
+        # Update parent warehouse capacity
+        if hasattr(parent_warehouse, 'capacity'):
+            old_capacity = getattr(parent_warehouse, 'capacity', 0)
+            parent_warehouse.capacity = total_capacity
+            if capacity_unit and hasattr(parent_warehouse, 'capacity_unit'):
+                parent_warehouse.capacity_unit = capacity_unit
+            parent_warehouse.save()
+        else:
+            pass
+    except Exception as e:
+        frappe.msgprint(f"ERROR: Failed to update parent warehouse capacity: {str(e)}")
+        frappe.log_error(f"Error updating parent warehouse capacity: {str(e)}", "Parent Warehouse Capacity Update Error")
+
+def update_parent_warehouse_capacity_from_child_with_current_doc(parent_warehouse_name, current_child_name, current_child_capacity):
+    """Update parent warehouse capacity using the current document's capacity value"""
+    try:
+
+        if not parent_warehouse_name:
+            return
+
+        parent_warehouse = frappe.get_doc("Warehouse", parent_warehouse_name)
+        # Get all child warehouses with capacity field
+        child_warehouses = frappe.get_all(
+            "Warehouse",
+            filters={"parent_warehouse": parent_warehouse_name},
+            fields=["name", "capacity", "capacity_unit"]
+        )
+
+
+        if not child_warehouses:
+
+            return
+
+        total_capacity = 0
+        capacity_unit = None
+
+        for child_warehouse in child_warehouses:
+
+            if child_warehouse.name == current_child_name:
+                # Use the current document's capacity for the warehouse being updated
+                if current_child_capacity:
+                    total_capacity += current_child_capacity
+                    if not capacity_unit and child_warehouse.capacity_unit:
+                        capacity_unit = child_warehouse.capacity_unit
+            else:
+                # Use database capacity for other warehouses
+                if child_warehouse.capacity:
+                    total_capacity += child_warehouse.capacity
+                    if not capacity_unit and child_warehouse.capacity_unit:
+                        capacity_unit = child_warehouse.capacity_unit
+
+
+        # Update parent warehouse capacity
+        if hasattr(parent_warehouse, 'capacity'):
+            old_capacity = getattr(parent_warehouse, 'capacity', 0)
+            parent_warehouse.capacity = total_capacity
+            if capacity_unit and hasattr(parent_warehouse, 'capacity_unit'):
+                parent_warehouse.capacity_unit = capacity_unit
+            parent_warehouse.save()
+        else:
+            pass
+    except Exception as e:
+        frappe.msgprint(f"ERROR: Failed to update parent warehouse capacity: {str(e)}")
+        frappe.log_error(f"Error updating parent warehouse capacity: {str(e)}", "Parent Warehouse Capacity Update Error")
