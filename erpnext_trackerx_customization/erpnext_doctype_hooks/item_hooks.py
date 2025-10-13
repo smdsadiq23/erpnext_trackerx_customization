@@ -101,8 +101,8 @@ def generate_item_code(doc):
     sp_type = doc.custom_spare_part_type or ''
 
     # Fabric-specific fields (only used when master == 'Fabrics')
-    fabric_gsm = str(doc.custom_gsm).strip() if doc.custom_gsm else ""
     fabric_width = str(doc.custom_width).strip() if doc.custom_width else ""
+    fabric_gsm = str(doc.custom_gsm).strip() if doc.custom_gsm else ""
     fabric_finish = str(doc.custom_type_of_finish).strip() if doc.custom_type_of_finish else ""
 
     # Build parts list
@@ -135,7 +135,7 @@ def generate_item_code(doc):
 
         # ➕ Extra: Append fabric specs ONLY for Fabrics
         if is_fabrics:
-            fabric_attrs = [fabric_gsm, fabric_width, fabric_finish]
+            fabric_attrs = [fabric_width, fabric_gsm, fabric_finish]
             fabric_attrs = [attr for attr in fabric_attrs if attr]  # skip empty
             if fabric_attrs:
                 parts.append("-".join(fabric_attrs))
