@@ -16,6 +16,7 @@
   "received_quantity",
   "fabric_length",
   "fabric_width",
+  "dia",
   "shade",
   "batch_no",
   "lot_no",
@@ -80,12 +81,12 @@
    "read_only": 1
   },
   {
+   "description": "Putaway rule that was applied to assign the warehouse",
    "fieldname": "putaway_rule",
    "fieldtype": "Link",
    "label": "Applied Putaway Rule",
    "options": "Putaway Rule",
-   "read_only": 1,
-   "description": "Putaway rule that was applied to assign the warehouse"
+   "read_only": 1
   },
   {
    "allow_in_quick_entry": 1,
@@ -177,26 +178,25 @@
    "label": "Remarks"
   },
   {
+   "description": "Auto-generated barcode for this item",
    "fieldname": "item_barcode",
    "fieldtype": "Barcode",
    "label": "Item Barcode",
-   "read_only": 1,
-   "in_list_view": 0,
-   "description": "Auto-generated barcode for this item"
+   "read_only": 1
   },
   {
+   "description": "Base64 encoded item barcode image",
    "fieldname": "item_barcode_image",
    "fieldtype": "Long Text",
-   "label": "Item Barcode Image",
    "hidden": 1,
-   "description": "Base64 encoded item barcode image"
+   "label": "Item Barcode Image"
   },
   {
+   "description": "Base64 encoded item QR code image",
    "fieldname": "item_qr_code_image",
    "fieldtype": "Long Text",
-   "label": "Item QR Code Image",
    "hidden": 1,
-   "description": "Base64 encoded item QR code image"
+   "label": "Item QR Code Image"
   },
   {
    "allow_in_quick_entry": 1,
@@ -251,13 +251,18 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Selected Warehouse"
+  },
+  {
+   "fieldname": "dia",
+   "fieldtype": "Float",
+   "label": "Dia"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-02 17:28:40.957171",
+ "modified": "2025-10-14 18:04:56.717440",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Item",
