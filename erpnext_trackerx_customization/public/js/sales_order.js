@@ -46,7 +46,7 @@ frappe.ui.form.on('Sales Order', {
     before_save(frm) {
         // Convert tree data to child table before saving
         convert_tree_to_table(frm);
-    }
+    }  
 });
 
 function update_total_qty(frm){
@@ -340,6 +340,7 @@ function convert_tree_to_table(frm) {
                 item_code: item.item_code || '',
                 custom_color: item.custom_color || '',
                 custom_colour: item.custom_color || '',
+                custom_style: item.custom_style || '',
                 custom_lineitem: item.custom_lineitem || '',
                 delivery_date: item.delivery_date || '',
                 custom_ex_fty_date: item.custom_ex_fty_date || '',
@@ -656,23 +657,39 @@ function bind_tree_events(frm) {
     $('.item-code-select').off('change').on('change', async function() {
         const item_index = $(this).data('item-index');
         const item_code = $(this).val();
-        frm.tree_data[item_index].item_code = item_code;
-        frm.tree_data[item_index].sizes = [];
-        render_tree_view(frm);
         
-        // Get item attributes asynchronously
+        // Reset fields
+        frm.tree_data[item_index].item_code = item_code;
+        frm.tree_data[item_index].custom_style = '';
+        frm.tree_data[item_index].custom_color = '';
+        frm.tree_data[item_index].sizes = [];
+
         if (item_code) {
+            // Fetch UOM, style, and color in parallel
             try {
+                // Fetch UOM/conversion
                 const attributes = await get_item_attributes(item_code);
                 frm.tree_data[item_index].uom = attributes.uom;
                 frm.tree_data[item_index].conversion_factor = attributes.conversion_factor;
+
+                // Fetch style and color from Item
+                const item_data = await frappe.db.get_value('Item', item_code, 
+                    ['custom_style_master', 'custom_colour_name']
+                );
+                if (item_data.message) {
+                    frm.tree_data[item_index].custom_style = item_data.message.custom_style_master || '';
+                    frm.tree_data[item_index].custom_color = item_data.message.custom_colour_name || '';
+                }
             } catch (error) {
-                console.warn('Failed to fetch item attributes:', error);
+                console.warn('Failed to fetch item details:', error);
                 frm.tree_data[item_index].uom = 'Nos';
                 frm.tree_data[item_index].conversion_factor = 1;
+                frm.tree_data[item_index].custom_style = '';
+                frm.tree_data[item_index].custom_color = '';
             }
         }
-        
+
+        render_tree_view(frm);
         frm.dirty();
     });
     
