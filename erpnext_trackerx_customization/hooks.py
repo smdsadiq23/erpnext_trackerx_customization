@@ -461,14 +461,6 @@ override_whitelisted_methods = {
 
 # Login hooks
 # -----------
-# on_login = "erpnext_trackerx_customization.utils.quality_redirect.redirect_quality_users_on_login"
-
-# Role-based home page redirection
-# Removed - not working properly with custom pages, users can access Quality Dashboard through workspace
-# role_home_page = {
-#     "Quality Inspector": "/app/quality_dashboard",
-#     "Quality Manager": "/app/quality_dashboard"
-# }
 
 
 # Automatically update python controller files with type annotations for this app.
