@@ -10,7 +10,7 @@ def autoname(doc, method):
     - If custom_purchase_receipt_no is provided, use it as the doc name.
     - Otherwise, use the standard naming series.
     """
-    if doc.custom_purchase_receipt_no:
+    if hasattr(doc, 'custom_purchase_receipt_no') and doc.custom_purchase_receipt_no:
         doc.name = doc.custom_purchase_receipt_no
     else:
         # Use naming series defined in Purchase Receipt doctype
@@ -18,7 +18,7 @@ def autoname(doc, method):
 
 
 def validate(doc, method):
-    if doc.custom_purchase_receipt_no:
+    if hasattr(doc, 'custom_purchase_receipt_no') and doc.custom_purchase_receipt_no:
         # Check if another Purchase Receipt (excluding current one) has the same custom number
         existing = frappe.db.exists(
             "Purchase Receipt",

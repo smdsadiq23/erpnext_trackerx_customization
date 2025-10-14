@@ -13,6 +13,28 @@ def execute():
         # Define custom fields for Purchase Receipt and Purchase Receipt Item
         custom_fields = {
             "Purchase Receipt": [
+                # Purchase Receipt Number and Billing Section
+                {
+                    "fieldname": "custom_purchase_receipt_no",
+                    "label": "Purchase Receipt No",
+                    "fieldtype": "Data",
+                    "insert_after": "naming_series",
+                    "description": "Custom purchase receipt number if different from auto-generated"
+                },
+                {
+                    "fieldname": "bill_no",
+                    "label": "Bill No",
+                    "fieldtype": "Data",
+                    "insert_after": "supplier_delivery_note",
+                    "description": "Supplier bill/invoice number"
+                },
+                {
+                    "fieldname": "bill_date",
+                    "label": "Bill Date",
+                    "fieldtype": "Date",
+                    "insert_after": "bill_no",
+                    "description": "Supplier bill/invoice date"
+                },
                 # Inspection and Quality Control Section
                 {
                     "fieldname": "linked_inspection",

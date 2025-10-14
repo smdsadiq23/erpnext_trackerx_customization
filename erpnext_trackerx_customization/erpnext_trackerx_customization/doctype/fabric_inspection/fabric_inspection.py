@@ -71,38 +71,83 @@ class FabricInspection(Document):
         """Validate basic inspection setup"""
         if not self.grn_reference:
             frappe.throw(_("GRN Reference is required"))
-        
+
         if not self.fabric_rolls_tab:
             frappe.throw(_("At least one fabric roll must be added for inspection"))
-        
+    
+    def validate_aql_configuration(self):
+        """Validate AQL configuration and calculate sample requirements"""
         if self.inspection_type == 'AQL Based':
+            # Validate required AQL fields
             if not self.aql_level:
                 frappe.throw(_("AQL Level is required for AQL Based inspection"))
             if not self.aql_value:
                 frappe.throw(_("AQL Value is required for AQL Based inspection"))
-    
-    def validate_aql_configuration(self):
-        """Validate AQL configuration and calculate sample requirements"""
-        if self.inspection_type == 'AQL Based' and self.total_rolls:
-            # Simple AQL sample size calculation
-            sample_data = self.calculate_aql_sample_size_inline(
-                lot_size=self.total_rolls,
-                aql_level=self.aql_level,
-                aql_value=self.aql_value,
-                inspection_regime=self.inspection_regime or 'Normal'
-            )
-            
-            if sample_data:
-                self.required_sample_size = sample_data.get('sample_size', 0)
-                self.required_sample_rolls = sample_data.get('sample_rolls', 0)
-                self.required_sample_meters = sample_data.get('sample_meters', 0)
-        
+            if not self.inspection_regime:
+                frappe.throw(_("Inspection Regime is required for AQL Based inspection"))
+
+            if self.total_rolls:
+                # Simple AQL sample size calculation
+                sample_data = self.calculate_aql_sample_size_inline(
+                    lot_size=self.total_rolls,
+                    aql_level=self.aql_level,
+                    aql_value=self.aql_value,
+                    inspection_regime=self.inspection_regime or 'Normal'
+                )
+
+                if sample_data:
+                    self.required_sample_size = sample_data.get('sample_size', 0)
+                    self.required_sample_rolls = sample_data.get('sample_rolls', 0)
+                    self.required_sample_meters = sample_data.get('sample_meters', 0)
+
         elif self.inspection_type == '100% Inspection':
+            # Auto-set to 100% inspection values
             self.required_sample_size = 100
             self.required_sample_rolls = self.total_rolls or 0
             # Calculate total meters
             total_meters = sum(flt(roll.roll_length or 0) for roll in self.fabric_rolls_tab)
             self.required_sample_meters = total_meters
+            # Clear AQL fields as they're not needed
+            self.aql_level = None
+            self.aql_value = None
+            self.inspection_regime = None
+
+        elif self.inspection_type == 'Custom Sampling':
+            # Validate sampling percentage
+            if not self.sampling_percentage or self.sampling_percentage <= 0 or self.sampling_percentage > 100:
+                frappe.throw(_("Sampling Percentage must be between 0.1 and 100 for Custom Sampling"))
+
+            # Calculate custom sampling requirements
+            self.calculate_custom_sampling()
+            # Clear AQL fields as they're not needed
+            self.aql_level = None
+            self.aql_value = None
+            self.inspection_regime = None
+
+    def calculate_custom_sampling(self):
+        """Calculate sample requirements based on custom sampling percentage"""
+        import math
+
+        if not self.sampling_percentage or not self.total_rolls:
+            return
+
+        # Calculate sample rolls (always round up to ensure minimum 1 roll)
+        sample_rolls = max(1, math.ceil(self.total_rolls * self.sampling_percentage / 100))
+        self.required_sample_rolls = sample_rolls
+
+        # Set the sampling percentage as required sample size
+        self.required_sample_size = self.sampling_percentage
+
+        # Calculate sample meters if total quantity is available
+        if self.total_quantity:
+            sample_meters = self.total_quantity * self.sampling_percentage / 100
+            self.required_sample_meters = sample_meters
+        else:
+            # Calculate from roll lengths if available
+            total_meters = sum(flt(roll.roll_length or 0) for roll in self.fabric_rolls_tab)
+            if total_meters:
+                sample_meters = total_meters * self.sampling_percentage / 100
+                self.required_sample_meters = sample_meters
     
     def calculate_roll_results(self):
         """Calculate results for each inspected roll"""
@@ -628,10 +673,17 @@ class FabricInspection(Document):
             required_sample = cint(self.required_sample_rolls or 0)
             if inspected_rolls < required_sample:
                 errors.append(f"Minimum sample size not met: {inspected_rolls}/{required_sample} rolls inspected")
-        
+
         # For 100% inspection, all rolls must be inspected
-        if self.inspection_type == '100% Inspection' and inspected_rolls < total_rolls:
+        elif self.inspection_type == '100% Inspection' and inspected_rolls < total_rolls:
             errors.append(f"100% inspection requires all rolls to be inspected: {inspected_rolls}/{total_rolls}")
+
+        # For Custom Sampling, check if minimum sample size is met
+        elif self.inspection_type == 'Custom Sampling':
+            required_sample = cint(self.required_sample_rolls or 0)
+            if inspected_rolls < required_sample:
+                sampling_percent = flt(self.sampling_percentage or 0)
+                errors.append(f"Custom sampling requires {required_sample} rolls to be inspected ({sampling_percent}% of {total_rolls}): {inspected_rolls}/{required_sample} inspected")
         
         return {
             'valid': len(errors) == 0,

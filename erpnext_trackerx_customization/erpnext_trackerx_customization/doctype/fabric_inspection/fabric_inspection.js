@@ -10,28 +10,7 @@ frappe.ui.form.on('Fabric Inspection', {
 
     refresh: function(frm) {
         try {
-            // Add custom buttons for specific actions
-            if (frm.doc.docstatus === 0) {
-                frm.add_custom_button(__('Fetch Rolls from GRN'), function() {
-                    fetch_rolls_from_grn(frm);
-                });
-                
-                frm.add_custom_button(__('Calculate Sample Requirements'), function() {
-                    calculate_sample_requirements(frm);
-                });
-
-
-                // Add Four-Point Inspection button
-                frm.add_custom_button(__('🎯 Four-Point Inspection'), function() {
-                    open_four_point_inspection(frm);
-                }, __('Inspection'));
-            }
-
-            if (frm.doc.docstatus === 1 && frm.doc.inspection_status === 'Completed') {
-                frm.add_custom_button(__('Generate Inspection Report'), function() {
-                    generate_inspection_report(frm);
-                });
-            }
+            // No custom buttons - handled by mobile app
         } catch (e) {
             console.error('Error in refresh:', e);
         }
@@ -77,8 +56,6 @@ frappe.ui.form.on('Fabric Inspection', {
 
     inspection_type: function(frm) {
         if (frm.doc.inspection_type) {
-            calculate_sample_requirements(frm);
-            
             // Show/hide relevant fields based on inspection type
             if (frm.doc.inspection_type === '100% Inspection') {
                 frm.set_value('required_sample_size', 100);
@@ -90,22 +67,6 @@ frappe.ui.form.on('Fabric Inspection', {
                 frm.set_df_property('required_sample_rolls', 'read_only', 1);
             }
         }
-    },
-
-    aql_level: function(frm) {
-        calculate_sample_requirements(frm);
-    },
-
-    aql_value: function(frm) {
-        calculate_sample_requirements(frm);
-    },
-
-    inspection_regime: function(frm) {
-        calculate_sample_requirements(frm);
-    },
-
-    total_rolls: function(frm) {
-        calculate_sample_requirements(frm);
     }
 });
 
@@ -136,90 +97,7 @@ frappe.ui.form.on('Fabric Roll Inspection Item', {
     }
 });
 
-// Helper Functions
-
-function fetch_rolls_from_grn(frm) {
-    if (!frm.doc.grn_reference) {
-        frappe.msgprint(__('Please select a GRN Reference first'));
-        return;
-    }
-
-    frappe.call({
-        method: 'erpnext_trackerx_customization.api.fabric_inspection.get_grn_rolls',
-        args: {
-            grn_reference: frm.doc.grn_reference
-        },
-        callback: function(r) {
-            if (r.message && r.message.length > 0) {
-                // Clear existing rolls
-                frm.clear_table('fabric_rolls_tab');
-                
-                // Add rolls from GRN
-                r.message.forEach(function(roll_data) {
-                    var row = frm.add_child('fabric_rolls_tab');
-                    row.roll_number = roll_data.roll_number;
-                    row.shade_code = roll_data.shade_code;
-                    row.lot_number = roll_data.lot_number;
-                    row.roll_length = roll_data.length;
-                    row.roll_width = roll_data.width;
-                    row.sample_length = roll_data.length; // Default to full length for 100% inspection
-                    
-                    // Set inspection percentage based on inspection type
-                    if (frm.doc.inspection_type === '100% Inspection') {
-                        row.inspection_percentage = 100;
-                        row.sample_length = roll_data.length;
-                    } else {
-                        // Calculate sample length based on AQL
-                        row.inspection_percentage = get_sample_percentage(frm);
-                        row.sample_length = (roll_data.length * row.inspection_percentage / 100).toFixed(2);
-                    }
-                });
-                
-                frm.refresh_field('fabric_rolls_tab');
-                
-                frappe.msgprint({
-                    title: __('Success'),
-                    message: __('Fetched {0} rolls from GRN', [r.message.length]),
-                    indicator: 'green'
-                });
-            } else {
-                frappe.msgprint(__('No rolls found in the selected GRN'));
-            }
-        }
-    });
-}
-
-function calculate_sample_requirements(frm) {
-    if (!frm.doc.total_rolls || !frm.doc.inspection_type) {
-        return;
-    }
-
-    if (frm.doc.inspection_type === '100% Inspection') {
-        frm.set_value('required_sample_size', 100);
-        frm.set_value('required_sample_rolls', frm.doc.total_rolls);
-        frm.set_value('required_sample_meters', calculate_total_meters(frm));
-        return;
-    }
-
-    if (frm.doc.inspection_type === 'AQL Based' && frm.doc.aql_level && frm.doc.aql_value) {
-        frappe.call({
-            method: 'erpnext_trackerx_customization.api.fabric_inspection.calculate_aql_sample_size',
-            args: {
-                lot_size: frm.doc.total_rolls,
-                aql_level: frm.doc.aql_level,
-                aql_value: frm.doc.aql_value,
-                inspection_regime: frm.doc.inspection_regime || 'Normal'
-            },
-            callback: function(r) {
-                if (r.message) {
-                    frm.set_value('required_sample_size', r.message.sample_size);
-                    frm.set_value('required_sample_rolls', r.message.sample_rolls);
-                    frm.set_value('required_sample_meters', r.message.sample_meters);
-                }
-            }
-        });
-    }
-}
+// Helper Functions - Simplified for Mobile App Integration
 
 function calculate_total_meters(frm) {
     var total_meters = 0;
@@ -236,7 +114,7 @@ function calculate_total_meters(frm) {
 function calculate_total_rolls_from_grn(frm, grn) {
     // Count rolls for fabric items in GRN
     var total_rolls = 0;
-    
+
     if (grn.items && grn.items.length > 0) {
         grn.items.forEach(function(item) {
             if (item.item_code === frm.doc.item_code && item.material_type === 'Fabrics') {
@@ -244,7 +122,7 @@ function calculate_total_rolls_from_grn(frm, grn) {
             }
         });
     }
-    
+
     frm.set_value('total_rolls', total_rolls);
     console.log('Total rolls calculated from GRN:', total_rolls, 'for item:', frm.doc.item_code);
 }
@@ -253,7 +131,7 @@ function populate_aql_fields_from_grn(frm) {
     if (!frm.doc.grn_reference || !frm.doc.item_code) {
         return;
     }
-    
+
     // Call server-side method to populate AQL fields
     frappe.call({
         method: 'update_aql_fields_from_grn',
@@ -266,16 +144,13 @@ function populate_aql_fields_from_grn(frm) {
                 frm.set_value('inspection_regime', r.message.inspection_regime);
                 frm.set_value('aql_value', r.message.aql_value);
                 frm.set_value('inspection_type', r.message.inspection_type);
-                
+
                 // Show success message
                 frappe.msgprint({
                     title: __('AQL Configuration Updated'),
                     message: __('AQL configuration fields have been populated from Item Master and GRN'),
                     indicator: 'green'
                 });
-                
-                // Calculate sample requirements after updating AQL fields
-                calculate_sample_requirements(frm);
             }
         },
         error: function(err) {
@@ -370,44 +245,9 @@ function calculate_overall_inspection_results(frm) {
     }
 }
 
-function get_sample_percentage(frm) {
-    // Calculate sample percentage based on AQL configuration
-    if (frm.doc.inspection_type === '100% Inspection') {
-        return 100;
-    }
-    
-    // Default sampling percentages based on AQL
-    var sample_map = {
-        'I': 10,    // AQL Level I
-        'II': 20,   // AQL Level II  
-        'III': 35,  // AQL Level III
-        'S-1': 5,   // Special Level 1
-        'S-2': 8,   // Special Level 2
-        'S-3': 13,  // Special Level 3
-        'S-4': 20   // Special Level 4
-    };
-    
-    return sample_map[frm.doc.aql_level] || 25;
-}
-
-function generate_inspection_report(frm) {
-    // Generate comprehensive inspection report
-    frappe.call({
-        method: 'erpnext_trackerx_customization.api.fabric_inspection.generate_inspection_report',
-        args: {
-            inspection_doc: frm.doc.name
-        },
-        callback: function(r) {
-            if (r.message) {
-                window.open(r.message.report_url, '_blank');
-            }
-        }
-    });
-}
-
 function fetch_roll_details(frm, roll_row) {
     if (!roll_row.roll_number) return;
-    
+
     frappe.call({
         method: 'frappe.client.get_list',
         args: {
@@ -428,86 +268,5 @@ function fetch_roll_details(frm, roll_row) {
             }
         }
     });
-}
-
-function open_four_point_inspection(frm) {
-    /**
-     * Open the dedicated four-point inspection page
-     */
-    try {
-        // Check if document is saved
-        if (frm.is_new()) {
-            frappe.msgprint({
-                title: __('Document Not Saved'),
-                message: __('Please save the document first before opening Four-Point Inspection'),
-                indicator: 'orange'
-            });
-            return;
-        }
-
-        // Check if fabric rolls exist
-        if (!frm.doc.fabric_rolls_tab || frm.doc.fabric_rolls_tab.length === 0) {
-            frappe.msgprint({
-                title: __('No Fabric Rolls'),
-                message: __('Please add fabric rolls to the inspection before opening Four-Point Inspection'),
-                indicator: 'orange'
-            });
-            return;
-        }
-
-        // Show loading message
-        frappe.show_progress(__('Opening Four-Point Inspection...'), 50, 100);
-
-        // Save current changes before redirecting
-        if (frm.is_dirty()) {
-            frm.save().then(function() {
-                // Open the four-point inspection page
-                open_inspection_page(frm.doc.name);
-            });
-        } else {
-            // Open directly
-            open_inspection_page(frm.doc.name);
-        }
-
-    } catch (error) {
-        console.error('Error opening four-point inspection:', error);
-        frappe.msgprint({
-            title: __('Error'),
-            message: __('Error opening Four-Point Inspection: {0}', [error.message]),
-            indicator: 'red'
-        });
-    }
-}
-
-function open_inspection_page(inspection_name) {
-    /**
-     * Open the four-point inspection page in a new tab
-     */
-    try {
-        // Hide loading progress
-        frappe.hide_progress();
-
-        // Construct the URL for the traditional four-point inspection page
-        const inspection_url = `/fabric_inspection_ui?name=${encodeURIComponent(inspection_name)}`;
-        
-        // Open in new tab
-        window.open(inspection_url, '_blank');
-        
-        // Show success message
-        frappe.msgprint({
-            title: __('Four-Point Inspection Opened'),
-            message: __('The Four-Point Inspection interface has been opened in a new tab'),
-            indicator: 'green'
-        });
-
-    } catch (error) {
-        console.error('Error opening inspection page:', error);
-        frappe.hide_progress();
-        frappe.msgprint({
-            title: __('Error'),
-            message: __('Error opening inspection page: {0}', [error.message]),
-            indicator: 'red'
-        });
-    }
 }
 

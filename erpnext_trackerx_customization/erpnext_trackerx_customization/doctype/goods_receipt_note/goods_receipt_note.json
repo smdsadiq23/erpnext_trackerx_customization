@@ -9,11 +9,17 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "supplier_section",
+  "barcode_section",
+  "barcode",
+  "column_break_barcode",
+  "qr_code_display",
+  "barcode_image",
+  "qr_code_image",
   "column_break0",
   "naming_series",
   "goods_receipt_note_no",
   "purchase_order",
+  "process_order_number",
   "title",
   "supplier",
   "supplier_name",
@@ -162,9 +168,46 @@
  ],
  "fields": [
   {
-   "fieldname": "supplier_section",
+   "collapsible": 1,
+   "description": "Auto-generated barcode and QR code for this GRN",
+   "fieldname": "barcode_section",
    "fieldtype": "Section Break",
-   "options": "fa fa-user"
+   "label": "Barcode & QR Code"
+  },
+  {
+   "description": "Auto-generated barcode for this GRN",
+   "fieldname": "barcode",
+   "fieldtype": "Barcode",
+   "label": "Barcode",
+   "read_only": 1,
+   "width": "200"
+  },
+  {
+   "fieldname": "column_break_barcode",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Auto-generated QR code for this GRN",
+   "fieldname": "qr_code_display",
+   "fieldtype": "HTML",
+   "label": "QR Code",
+   "read_only": 1
+  },
+  {
+   "description": "Base64 encoded barcode image",
+   "fieldname": "barcode_image",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "Barcode Image",
+   "print_hide": 1
+  },
+  {
+   "description": "Base64 encoded QR code image",
+   "fieldname": "qr_code_image",
+   "fieldtype": "Long Text",
+   "hidden": 1,
+   "label": "QR Code Image",
+   "print_hide": 1
   },
   {
    "fieldname": "column_break0",
@@ -1316,8 +1359,7 @@
    "fieldtype": "Link",
    "label": "Purchase Order",
    "link_filters": "[[\"Purchase Order\",\"status\",\"in\",[\"Draft\",\"On Hold\",\"To Receive\",\"To Receive and Bill\",null]]]",
-   "options": "Purchase Order",
-   "reqd": 1
+   "options": "Purchase Order"
   },
   {
    "fieldname": "section_break_qfsn",
@@ -1334,13 +1376,18 @@
    "fieldtype": "Data",
    "label": "Goods Receipt Note No",
    "reqd": 1
+  },
+  {
+   "fieldname": "process_order_number",
+   "fieldtype": "Data",
+   "label": "Process Order Number"
   }
  ],
  "grid_page_length": 50,
  "icon": "fa fa-truck",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-09-25 11:37:35.738252",
+ "modified": "2025-10-13 18:12:49.549564",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Note",

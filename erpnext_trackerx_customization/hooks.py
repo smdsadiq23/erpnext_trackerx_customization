@@ -145,6 +145,7 @@ after_migrate = [
     #"erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse_customization.execute",
     #"erpnext_trackerx_customization.setup.warehouse_structure.create_warehouse_structure"
     "erpnext_trackerx_customization.setup.purchase_receipt_custom_fields.execute",
+    "erpnext_trackerx_customization.setup.warehouse_fields.execute",
     "erpnext_trackerx_customization.setup.migrate_quality_roles.execute",
     "erpnext_trackerx_customization.setup.aql_data_setup.import_aql_fixtures",
     "erpnext_trackerx_customization.whitelabel.apply"
@@ -346,8 +347,10 @@ doc_events= {
         "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.supplier_group.before_delete"
     },
     "Warehouse": {
-        "after_insert": "erpnext_trackerx_customization.warehouse_hooks.on_warehouse_create",
-        "on_update": "erpnext_trackerx_customization.warehouse_hooks.on_warehouse_update",
+        "after_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse.after_insert",
+        "on_update": "erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse.on_update",
+        "before_save": "erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse.before_save",
+        "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse.validate"
     },
     "Operation": {
         "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.operation.on_trash",
@@ -482,10 +485,10 @@ boot_session = "erpnext_trackerx_customization.utils.constants.boot_session"
 # ---------------
 scheduler_events = {
     "daily": [
-        "erpnext_trackerx_customization.warehouse_hooks.daily_capacity_sync"
+        "erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse.daily_capacity_sync"
     ],
     "weekly": [
-        "erpnext_trackerx_customization.warehouse_hooks.weekly_capacity_report"
+        "erpnext_trackerx_customization.erpnext_doctype_hooks.warehouse.weekly_capacity_report"
     ],
     "cron": {
         "30 23 * * *": [

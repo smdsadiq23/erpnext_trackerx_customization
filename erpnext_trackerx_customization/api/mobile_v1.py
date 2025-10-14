@@ -3,7 +3,61 @@ from frappe import _
 from frappe.utils import flt, cint
 import json
 
+# ===========================
+# UTILITY FUNCTIONS
+# ===========================
 
+def format_total_rolls_display(total_quantity, unit_of_measure, total_rolls):
+    """
+    Format total rolls display as: "500kg (1 Roll)" or "1500.5 Meter (3 Rolls)"
+
+    Args:
+        total_quantity (float): The received quantity
+        unit_of_measure (str): The unit of measurement
+        total_rolls (int): Number of rolls
+
+    Returns:
+        str: Formatted display string
+    """
+    try:
+        # Convert values to proper types
+        quantity = flt(total_quantity or 0)
+        rolls = cint(total_rolls or 0)
+        unit = str(unit_of_measure or "").strip()
+
+        # If no quantity or rolls, return just roll count
+        if not quantity or not rolls:
+            rolls_text = "Roll" if rolls == 1 else "Rolls"
+            return f"{rolls} {rolls_text}"
+
+        # Format quantity - remove trailing zeros
+        if quantity == int(quantity):
+            quantity_str = str(int(quantity))
+        else:
+            quantity_str = f"{quantity:g}"  # Removes trailing zeros
+
+        # Standardize unit abbreviations for mobile display
+        unit_mapping = {
+            "Kilogram": "kg", "Kg": "kg", "KG": "kg", "kg": "kg",
+            "Meter": "m", "Metre": "m", "M": "m", "m": "m",
+            "Piece": "pcs", "Pieces": "pcs", "PCS": "pcs", "pcs": "pcs",
+            "Yard": "yd", "YD": "yd", "yd": "yd",
+            "Inch": "in", "IN": "in", "in": "in"
+        }
+
+        standardized_unit = unit_mapping.get(unit, unit.lower() if unit else "")
+
+        # Handle singular/plural for rolls
+        rolls_text = "Roll" if rolls == 1 else "Rolls"
+
+        # Create final formatted string
+        return f"{quantity_str}{standardized_unit} ({rolls} {rolls_text})"
+
+    except Exception as e:
+        # Fallback to basic roll count if formatting fails
+        frappe.log_error(f"Error formatting total rolls display: {str(e)}")
+        rolls_text = "Roll" if cint(total_rolls) == 1 else "Rolls"
+        return f"{cint(total_rolls or 0)} {rolls_text}"
 
 # ===========================
 # HOME PAGE APIs
@@ -110,7 +164,8 @@ def get_inspection_list(status=None, search=None, page=1, limit=20, sort_by="cre
                 SELECT
                     name, inspection_status, purchase_order_reference,
                     grn_reference, supplier, inspector, inspection_date,
-                    total_rolls, item_code, item_name, creation
+                    total_rolls, total_quantity, unit_of_measure,
+                    item_code, item_name, creation
                 FROM `tabFabric Inspection`
                 WHERE {where_clause}
                 ORDER BY {sort_by} {sort_order}
@@ -132,7 +187,8 @@ def get_inspection_list(status=None, search=None, page=1, limit=20, sort_by="cre
                 fields=[
                     'name', 'inspection_status', 'purchase_order_reference',
                     'grn_reference', 'supplier', 'inspector', 'inspection_date',
-                    'total_rolls', 'item_code', 'item_name', 'creation'
+                    'total_rolls', 'total_quantity', 'unit_of_measure',
+                    'item_code', 'item_name', 'creation'
                 ],
                 limit=limit,
                 start=start,
@@ -141,6 +197,14 @@ def get_inspection_list(status=None, search=None, page=1, limit=20, sort_by="cre
 
             # Get total count for pagination
             total_count = frappe.db.count('Fabric Inspection', filters)
+
+        # Format total_rolls display for all inspections
+        for inspection in inspections:
+            inspection['total_rolls'] = format_total_rolls_display(
+                inspection.get('total_quantity'),
+                inspection.get('unit_of_measure'),
+                inspection.get('total_rolls')
+            )
 
         # Calculate pagination info
         total_pages = (total_count + limit - 1) // limit
@@ -225,6 +289,7 @@ def get_inspection_details(inspection_id=None):
                 "aql_level": inspection.aql_level or "",
                 "aql_value": inspection.aql_value or "",
                 "inspection_regime": inspection.inspection_regime or "Normal",
+                "sampling_percentage": flt(getattr(inspection, 'sampling_percentage', 0)),
                 "sample_rolls_text": generate_sample_rolls_text(inspection)
             },
             "general_details": {
@@ -234,7 +299,11 @@ def get_inspection_details(inspection_id=None):
                 "grn_reference": inspection.grn_reference or "",
                 "purchase_order": inspection.purchase_order_reference or "",
                 "total_quantity": flt(inspection.total_quantity or 0),
-                "total_rolls": cint(inspection.total_rolls or 0)
+                "total_rolls": format_total_rolls_display(
+                    inspection.total_quantity,
+                    getattr(inspection, 'unit_of_measure', None),
+                    inspection.total_rolls
+                )
             },
             "roll_details": build_roll_details(inspection),
             "physical_testing": build_physical_testing(inspection),
@@ -282,7 +351,7 @@ def get_inspection_details(inspection_id=None):
         }
 
 @frappe.whitelist()
-def update_aql_configuration(inspection_id=None, inspection_type=None, aql_level=None, aql_value=None, inspection_regime=None):
+def update_aql_configuration(inspection_id=None, inspection_type=None, aql_level=None, aql_value=None, inspection_regime=None, sampling_percentage=None):
     """Update AQL configuration for an inspection"""
     try:
         # Validate required parameters
@@ -312,6 +381,8 @@ def update_aql_configuration(inspection_id=None, inspection_type=None, aql_level
             inspection.aql_value = aql_value
         if inspection_regime is not None:
             inspection.inspection_regime = inspection_regime
+        if sampling_percentage is not None:
+            inspection.sampling_percentage = flt(sampling_percentage)
 
         # Update status to In Progress if currently Draft
         if inspection.inspection_status == "Draft":
@@ -926,6 +997,11 @@ def generate_sample_rolls_text(inspection):
         sample_rolls = inspection.required_sample_rolls or 0
         total_rolls = inspection.total_rolls or 0
         return f"{sample_rolls} rolls ({total_rolls} units, AQL sampling)"
+    elif inspection.inspection_type == "Custom Sampling":
+        sample_rolls = inspection.required_sample_rolls or 0
+        total_rolls = inspection.total_rolls or 0
+        sampling_percent = flt(getattr(inspection, 'sampling_percentage', 0))
+        return f"{sample_rolls} rolls ({total_rolls} units, {sampling_percent}% sampling)"
     else:
         return f"{inspection.total_rolls or 0} rolls (custom sampling)"
 

@@ -51,7 +51,8 @@ def set_item_code_before_insert(doc, method):
 
 def generate_item_code(doc):
     """
-    Your custom logic to generate item_code
+    Generate item_code with custom logic.
+    For 'Fabrics', include standard fields + GSM, Width, and Finish.
     """
     master = doc.custom_select_master
     prefix_map = {
@@ -68,48 +69,50 @@ def generate_item_code(doc):
 
     prefix = prefix_map.get(master)
     if not prefix:
-        #frappe.throw(f"Invalid custom_select_master value: {master}")
         prefix = "ITEM"
 
     # Format item_group conditionally
     item_group = doc.item_group or ""
     item_group_code = ""
 
-    is_machine = doc.custom_select_master and doc.custom_select_master == 'Machines'
-    is_spare_parts = doc.custom_select_master and doc.custom_select_master == 'Spare Parts'
-
-    is_machine_or_spare_parts = is_machine or is_spare_parts
+    is_machine = master == 'Machines'
+    is_spare_parts = master == 'Spare Parts'
+    is_fabrics = master == 'Fabrics'
 
     if item_group:
         if master == "Accessories":
-            # Use full item_group name for Accessories
-            item_group_code = item_group
+            item_group_code = item_group  # full name
         else:
-            # Use abbreviation for other types
             words = item_group.split()
             if len(words) == 1:
                 item_group_code = words[0][:3].upper()
             else:
-                item_group_code = ''.join([word[0].upper() for word in words])
+                item_group_code = ''.join(word[0].upper() for word in words)
 
+    # Standard fields (used for most types, including Fabrics)
     item_name = doc.item_name or ""
     color_name = doc.custom_colour_name or ""
     color_code = doc.custom_colour_code or ""
-    
+
+    # Machine / Spare Parts fields
     machine_type = doc.custom_machineequipment_type or ''
     machine_model_no = doc.custom_model_no or ''
     sp_category = doc.custom_spare_part_category or ''
     sp_type = doc.custom_spare_part_type or ''
 
+    # Fabric-specific fields (only used when master == 'Fabrics')
+    fabric_width = str(doc.custom_width).strip() if doc.custom_width else ""
+    fabric_gsm = str(doc.custom_gsm).strip() if doc.custom_gsm else ""
+    fabric_finish = str(doc.custom_type_of_finish).strip() if doc.custom_type_of_finish else ""
+
+    # Build parts list
     if item_group_code == prefix:
-        # set prefix to empty if Group shorthand is same as prefix, eg: PM
         prefix = ""
         parts = []
     else:
         parts = [prefix]
 
-    
-    if is_machine_or_spare_parts:
+    if is_machine or is_spare_parts:
         if machine_type:
             parts.append(machine_type)
         if machine_model_no:
@@ -120,7 +123,7 @@ def generate_item_code(doc):
             parts.append(sp_type)
 
     else:
-
+        # This block now includes Fabrics AND other standard types
         if item_group_code:
             parts.append(item_group_code)
         if item_name:
@@ -129,6 +132,13 @@ def generate_item_code(doc):
             parts.append(color_name)
         if color_code:
             parts.append(color_code)
+
+        # ➕ Extra: Append fabric specs ONLY for Fabrics
+        if is_fabrics:
+            fabric_attrs = [fabric_width, fabric_gsm, fabric_finish]
+            fabric_attrs = [attr for attr in fabric_attrs if attr]  # skip empty
+            if fabric_attrs:
+                parts.append("-".join(fabric_attrs))
 
     base_code = "-".join(parts)
 
@@ -145,12 +155,12 @@ def generate_item_code(doc):
             last_seq = int(item_code_parts[1])
         else:
             last_seq = 0
-            
         next_seq = last_seq + 1
     else:
         next_seq = 1
 
     return f"{base_code}-{next_seq:06d}"
+
 
 def validate_item(doc, method):
     pass
