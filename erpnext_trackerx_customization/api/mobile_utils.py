@@ -240,7 +240,6 @@ def get_companies():
     try:
         companies = frappe.get_all("Company",
             fields=["name", "company_name", "abbr", "default_currency"],
-            filters={"disabled": 0},
             order_by="company_name asc"
         )
 
@@ -528,3 +527,513 @@ def get_document_status_summary(doctype):
                 "code": "DOCUMENT_STATUS_SUMMARY_ERROR"
             }
         }
+
+
+@frappe.whitelist()
+def get_naming_series(doctype):
+    """
+    Get available naming series for a doctype
+
+    Args:
+        doctype (str): The doctype to get naming series for
+
+    Returns:
+        dict: Available naming series
+    """
+    try:
+        # Get naming series from doctype
+        naming_series_field = frappe.get_meta(doctype).get_field("naming_series")
+
+        if not naming_series_field or not naming_series_field.options:
+            return {
+                "success": False,
+                "error": {
+                    "message": f"No naming series configured for {doctype}",
+                    "code": "NO_NAMING_SERIES"
+                }
+            }
+
+        # Parse options
+        options = []
+        for series in naming_series_field.options.split('\n'):
+            series = series.strip()
+            if series:
+                options.append({
+                    "value": series,
+                    "label": series
+                })
+
+        return {
+            "success": True,
+            "data": {
+                "naming_series": options,
+                "default": options[0]["value"] if options else None
+            }
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error getting naming series for {doctype}: {str(e)}", "Mobile Utils Naming Series Error")
+        return {
+            "success": False,
+            "error": {
+                "message": str(e),
+                "code": "NAMING_SERIES_ERROR"
+            }
+        }
+
+
+@frappe.whitelist()
+def search_items(search_term, supplier=None, company=None, limit=10):
+    """
+    Search items for adding to documents
+
+    Args:
+        search_term (str): Item code or name to search
+        supplier (str): Filter by supplier (optional)
+        company (str): Filter by company (optional)
+        limit (int): Maximum results to return
+
+    Returns:
+        dict: List of matching items
+    """
+    try:
+        limit = cint(limit) or 10
+
+        # Build search conditions
+        conditions = ["i.disabled = 0", "i.is_purchase_item = 1"]
+        values = {"limit": limit}
+
+        if search_term:
+            conditions.append("(i.item_code LIKE %(search)s OR i.item_name LIKE %(search)s)")
+            values["search"] = f"%{search_term}%"
+
+        # Filter by supplier if provided
+        supplier_condition = ""
+        if supplier:
+            supplier_condition = """
+            AND EXISTS (
+                SELECT 1 FROM `tabItem Supplier`
+                WHERE parent = i.name AND supplier = %(supplier)s
+            )
+            """
+            values["supplier"] = supplier
+
+        query = f"""
+            SELECT
+                i.item_code,
+                i.item_name,
+                i.description,
+                i.stock_uom,
+                i.purchase_uom,
+                i.item_group,
+                i.has_batch_no,
+                i.has_serial_no,
+                i.maintain_stock,
+                COALESCE(ip.price_list_rate, 0) as rate
+            FROM `tabItem` i
+            LEFT JOIN `tabItem Price` ip ON i.item_code = ip.item_code
+                AND ip.price_list = 'Standard Buying'
+            WHERE {' AND '.join(conditions)}
+            {supplier_condition}
+            ORDER BY
+                CASE WHEN i.item_code LIKE %(search)s THEN 1 ELSE 2 END,
+                i.item_name
+            LIMIT %(limit)s
+        """
+
+        items = frappe.db.sql(query, values, as_dict=True)
+
+        # Format for mobile display
+        formatted_items = []
+        for item in items:
+            formatted_item = {
+                "item_code": item.item_code,
+                "item_name": item.item_name,
+                "description": item.description,
+                "stock_uom": item.stock_uom,
+                "purchase_uom": item.purchase_uom,
+                "item_group": item.item_group,
+                "has_batch_no": item.has_batch_no,
+                "has_serial_no": item.has_serial_no,
+                "maintain_stock": item.maintain_stock,
+                "rate": flt(item.rate),
+                "display_name": f"{item.item_code} - {item.item_name}",
+                "rate_display": f"{flt(item.rate):,.2f}"
+            }
+            formatted_items.append(formatted_item)
+
+        return {
+            "success": True,
+            "data": formatted_items,
+            "total": len(formatted_items),
+            "timestamp": now_datetime().isoformat()
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error searching items: {str(e)}", "Mobile Utils Search Items Error")
+        return {"success": False, "error": {"message": "Failed to search items", "code": "API_ERROR"}}
+
+
+@frappe.whitelist()
+def get_document_items(doctype, doc_id):
+    """
+    Get all items in a document for the Items tab
+
+    Args:
+        doctype (str): Document type
+        doc_id (str): Document ID
+
+    Returns:
+        dict: List of document items with details
+    """
+    try:
+        # Check if document exists
+        if not frappe.db.exists(doctype, doc_id):
+            return {"success": False, "error": {"message": f"{doctype} not found", "code": "DOCUMENT_NOT_FOUND"}}
+
+        # Get child table name
+        child_table = f"`tab{doctype} Item`"
+
+        # Get document items
+        items = frappe.db.sql(f"""
+            SELECT
+                pri.name,
+                pri.item_code,
+                pri.item_name,
+                pri.description,
+                pri.qty,
+                pri.received_qty,
+                pri.uom,
+                pri.warehouse,
+                pri.batch_no,
+                pri.serial_no,
+                pri.rate,
+                pri.amount,
+                pri.conversion_factor,
+                pri.stock_uom,
+                pri.stock_qty,
+                pri.custom_color,
+                pri.custom_roll_box_no,
+                pri.custom_composition,
+                pri.custom_no_of_boxes,
+                i.item_group,
+                i.stock_uom as item_stock_uom,
+                i.has_batch_no,
+                i.has_serial_no,
+                i.maintain_stock
+            FROM {child_table} pri
+            LEFT JOIN `tabItem` i ON pri.item_code = i.name
+            WHERE pri.parent = %(doc_id)s
+            ORDER BY pri.idx
+        """, {"doc_id": doc_id}, as_dict=True)
+
+        # Format items for mobile display
+        formatted_items = []
+        for item in items:
+            formatted_item = {
+                "name": item.name,
+                "item_code": item.item_code,
+                "item_name": item.item_name,
+                "description": item.description,
+                "qty": flt(item.qty),
+                "received_qty": flt(item.received_qty),
+                "uom": item.uom,
+                "warehouse": item.warehouse,
+                "batch_no": item.batch_no,
+                "serial_no": item.serial_no,
+                "rate": flt(item.rate),
+                "amount": flt(item.amount),
+                "conversion_factor": flt(item.conversion_factor),
+                "stock_uom": item.stock_uom,
+                "stock_qty": flt(item.stock_qty),
+                "custom_color": item.custom_color,
+                "custom_roll_box_no": item.custom_roll_box_no,
+                "custom_composition": item.custom_composition,
+                "custom_no_of_boxes": flt(item.custom_no_of_boxes),
+                "item_group": item.item_group,
+                "item_stock_uom": item.item_stock_uom,
+                "has_batch_no": item.has_batch_no,
+                "has_serial_no": item.has_serial_no,
+                "maintain_stock": item.maintain_stock,
+                "display_name": f"{item.item_code} - {item.item_name}",
+                "amount_display": f"{flt(item.amount):,.2f}",
+                "rate_display": f"{flt(item.rate):,.2f}"
+            }
+            formatted_items.append(formatted_item)
+
+        return {
+            "success": True,
+            "data": formatted_items,
+            "total": len(formatted_items),
+            "timestamp": now_datetime().isoformat()
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error getting {doctype} items: {str(e)}", "Mobile Utils Get Items Error")
+        return {"success": False, "error": {"message": "Failed to get items", "code": "API_ERROR"}}
+
+
+@frappe.whitelist()
+def add_document_item(doctype, doc_id, item_code, warehouse, qty=1, received_qty=None, no_of_boxes=None,
+                     batch_no=None, serial_no=None, rate=None):
+    """
+    Add a new item to document
+
+    Args:
+        doctype (str): Document type
+        doc_id (str): Document ID
+        item_code (str): Item code to add
+        warehouse (str): Warehouse for the item
+        qty (float): Ordered quantity
+        received_qty (float): Actually received quantity
+        no_of_boxes (float): Number of boxes/rolls
+        batch_no (str): Batch number if applicable
+        serial_no (str): Serial number if applicable
+        rate (float): Item rate
+
+    Returns:
+        dict: Added item details
+    """
+    try:
+        # Validate inputs
+        if not doc_id or not item_code or not warehouse:
+            return {"success": False, "error": {"message": "Document ID, Item Code, and Warehouse are required", "code": "MISSING_REQUIRED_FIELDS"}}
+
+        # Check if document exists and is editable
+        doc = frappe.get_doc(doctype, doc_id)
+        if doc.docstatus == 1:
+            return {"success": False, "error": {"message": "Cannot modify submitted document", "code": "INVALID_STATE"}}
+
+        # Get item details
+        if not frappe.db.exists("Item", item_code):
+            return {"success": False, "error": {"message": "Item not found", "code": "ITEM_NOT_FOUND"}}
+
+        item = frappe.get_doc("Item", item_code)
+
+        # Get default rate if not provided
+        if not rate:
+            rate = frappe.db.get_value("Item Price", {"item_code": item_code, "price_list": "Standard Buying"}, "price_list_rate") or 0
+
+        # Calculate quantities
+        qty = flt(qty) or 1
+        received_qty = flt(received_qty) or qty
+        rate = flt(rate)
+
+        # Create new item row
+        item_row = doc.append("items", {})
+        item_row.item_code = item_code
+        item_row.item_name = item.item_name
+        item_row.description = item.description
+        item_row.qty = qty
+        item_row.received_qty = received_qty
+        item_row.uom = item.purchase_uom or item.stock_uom
+        item_row.warehouse = warehouse
+        item_row.rate = rate
+        item_row.amount = received_qty * rate
+        item_row.conversion_factor = 1
+        item_row.stock_uom = item.stock_uom
+        item_row.stock_qty = received_qty
+
+        # Add optional fields
+        if batch_no:
+            item_row.batch_no = batch_no
+        if serial_no:
+            item_row.serial_no = serial_no
+        if no_of_boxes:
+            item_row.custom_no_of_boxes = flt(no_of_boxes)
+
+        # Save the document
+        doc.save()
+
+        return {
+            "success": True,
+            "message": "Item added successfully",
+            "data": {
+                "name": item_row.name,
+                "item_code": item_row.item_code,
+                "item_name": item_row.item_name,
+                "qty": flt(item_row.qty),
+                "received_qty": flt(item_row.received_qty),
+                "rate": flt(item_row.rate),
+                "amount": flt(item_row.amount),
+                "warehouse": item_row.warehouse
+            },
+            "timestamp": now_datetime().isoformat()
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error adding item to {doctype}: {str(e)}", "Mobile Utils Add Item Error")
+        return {"success": False, "error": {"message": "Failed to add item", "code": "API_ERROR"}}
+
+
+@frappe.whitelist()
+def update_document_item(doctype, item_id, **kwargs):
+    """
+    Update an existing document item
+
+    Args:
+        doctype (str): Document type
+        item_id (str): Item ID
+        **kwargs: Fields to update (qty, received_qty, warehouse, rate, etc.)
+
+    Returns:
+        dict: Updated item details
+    """
+    try:
+        # Get child table name
+        child_table = f"{doctype} Item"
+
+        # Check if item exists
+        if not frappe.db.exists(child_table, item_id):
+            return {"success": False, "error": {"message": "Item not found", "code": "ITEM_NOT_FOUND"}}
+
+        # Get the item and parent document
+        item_doc = frappe.get_doc(child_table, item_id)
+        doc = frappe.get_doc(doctype, item_doc.parent)
+
+        if doc.docstatus == 1:
+            return {"success": False, "error": {"message": "Cannot modify submitted document", "code": "INVALID_STATE"}}
+
+        # Update allowed fields
+        allowed_fields = ['qty', 'received_qty', 'warehouse', 'rate', 'batch_no', 'serial_no', 'custom_no_of_boxes']
+        updated_fields = []
+
+        for field, value in kwargs.items():
+            if field in allowed_fields and value is not None:
+                if field in ['qty', 'received_qty', 'rate', 'custom_no_of_boxes']:
+                    setattr(item_doc, field, flt(value))
+                else:
+                    setattr(item_doc, field, value)
+                updated_fields.append(field)
+
+        # Recalculate amount if qty or rate changed
+        if 'received_qty' in updated_fields or 'rate' in updated_fields:
+            item_doc.amount = item_doc.received_qty * item_doc.rate
+            item_doc.stock_qty = item_doc.received_qty * item_doc.conversion_factor
+
+        # Save the document
+        doc.save()
+
+        return {
+            "success": True,
+            "message": "Item updated successfully",
+            "data": {
+                "name": item_doc.name,
+                "item_code": item_doc.item_code,
+                "qty": flt(item_doc.qty),
+                "received_qty": flt(item_doc.received_qty),
+                "rate": flt(item_doc.rate),
+                "amount": flt(item_doc.amount),
+                "warehouse": item_doc.warehouse,
+                "updated_fields": updated_fields
+            },
+            "timestamp": now_datetime().isoformat()
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error updating item in {doctype}: {str(e)}", "Mobile Utils Update Item Error")
+        return {"success": False, "error": {"message": "Failed to update item", "code": "API_ERROR"}}
+
+
+@frappe.whitelist()
+def delete_document_item(doctype, item_id):
+    """
+    Delete a document item
+
+    Args:
+        doctype (str): Document type
+        item_id (str): Item ID
+
+    Returns:
+        dict: Success confirmation
+    """
+    try:
+        # Get child table name
+        child_table = f"{doctype} Item"
+
+        # Check if item exists
+        if not frappe.db.exists(child_table, item_id):
+            return {"success": False, "error": {"message": "Item not found", "code": "ITEM_NOT_FOUND"}}
+
+        # Get the item and parent document
+        item_doc = frappe.get_doc(child_table, item_id)
+        doc = frappe.get_doc(doctype, item_doc.parent)
+
+        if doc.docstatus == 1:
+            return {"success": False, "error": {"message": "Cannot modify submitted document", "code": "INVALID_STATE"}}
+
+        # Remove the item from document
+        for i, row in enumerate(doc.items):
+            if row.name == item_id:
+                del doc.items[i]
+                break
+
+        # Save the document
+        doc.save()
+
+        return {
+            "success": True,
+            "message": "Item deleted successfully",
+            "timestamp": now_datetime().isoformat()
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error deleting item from {doctype}: {str(e)}", "Mobile Utils Delete Item Error")
+        return {"success": False, "error": {"message": "Failed to delete item", "code": "API_ERROR"}}
+
+
+@frappe.whitelist()
+def validate_document_items(doctype, doc_id):
+    """
+    Validate document items before moving to next tab
+
+    Args:
+        doctype (str): Document type
+        doc_id (str): Document ID
+
+    Returns:
+        dict: Validation results
+    """
+    try:
+        doc = frappe.get_doc(doctype, doc_id)
+        validation_results = {"is_valid": True, "can_proceed": True, "issues": []}
+
+        # Check if there are any items
+        if not doc.items:
+            validation_results["is_valid"] = False
+            validation_results["can_proceed"] = False
+            validation_results["issues"].append("At least one item is required")
+
+        # Validate each item
+        for item in doc.items:
+            item_issues = []
+
+            # Check required fields
+            if not item.item_code:
+                item_issues.append("Item code is required")
+            if not item.warehouse:
+                item_issues.append("Warehouse is required")
+            if flt(item.received_qty) <= 0:
+                item_issues.append("Received quantity must be greater than 0")
+
+            # Check batch requirement
+            if item.item_code:
+                has_batch = frappe.db.get_value("Item", item.item_code, "has_batch_no")
+                if has_batch and not item.batch_no:
+                    item_issues.append("Batch number is required for this item")
+
+            if item_issues:
+                validation_results["is_valid"] = False
+                validation_results["issues"].extend([f"Item {item.item_code}: {issue}" for issue in item_issues])
+
+        # Final validation
+        if validation_results["issues"]:
+            validation_results["can_proceed"] = False
+
+        message = "Items validation successful" if validation_results["is_valid"] else "Items validation failed"
+
+        return {"success": True, "data": validation_results, "message": message}
+
+    except Exception as e:
+        frappe.log_error(f"Error validating {doctype} items: {str(e)}", "Mobile Utils Validate Items Error")
+        return {"success": False, "error": {"message": "Items validation failed", "code": "VALIDATION_ERROR"}}

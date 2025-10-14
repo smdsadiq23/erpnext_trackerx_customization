@@ -4,13 +4,18 @@ from frappe.utils import flt, cint, getdate, nowdate, now_datetime
 import json
 from datetime import datetime, timedelta
 from .mobile_utils import (
-    get_document_list, get_document_filters, search_document,
-    get_companies, get_purchase_orders, get_warehouses, 
-    get_tax_templates, get_tax_accounts, get_document_status_summary
+    get_document_list as get_document_list_utils, get_document_filters as get_document_filters_utils, search_document as search_document_utils,
+    get_companies as get_companies_utils, get_purchase_orders as get_purchase_orders_utils, get_warehouses as get_warehouses_utils, 
+    get_tax_templates as get_tax_templates_utils, get_tax_accounts as get_tax_accounts_utils, get_document_status_summary
+    as get_document_status_summary_utils, get_naming_series as get_naming_series_utils,
+    search_items as search_items_utils, get_document_items as get_document_items_utils, add_document_item as add_document_item_utils,
+    update_document_item as update_document_item_utils, delete_document_item as delete_document_item_utils, 
+    validate_document_items as validate_document_items_utils,
 )
 
 # Constants
 DOCTYPE = "Purchase Receipt"
+
 
 
 # ===========================
@@ -19,11 +24,11 @@ DOCTYPE = "Purchase Receipt"
 
 @frappe.whitelist()
 def get_pr_list(search=None, status=None, company=None, supplier=None,
-                date_from=None, date_to=None, page=1, limit=20, sort_by="creation", sort_order="desc"):
+                            date_from=None, date_to=None, page=1, limit=20, sort_by="creation", sort_order="desc"):
     """
     List PRs with filters/pagination
     """
-    return get_document_list(DOCTYPE, search, status, company, supplier,
+    return get_document_list_utils(DOCTYPE, search, status, company, supplier,
                             date_from, date_to, page, limit, sort_by, sort_order)
 
 @frappe.whitelist()
@@ -31,19 +36,29 @@ def get_pr_filters():
     """
     Get filter options for PR list
     """
-    return get_document_filters(DOCTYPE)
+    return get_document_filters_utils(DOCTYPE)
 
 @frappe.whitelist()
 def search_pr(search_term, limit=10):
     """
     Quick search PRs
     """
-    return search_document(DOCTYPE, search_term, limit)
+    return search_document_utils(DOCTYPE, search_term, limit)
 
 @frappe.whitelist()
-def create_pr(company=None, naming_series=None, supplier=None, purchase_order=None):
+def create_pr(company=None, naming_series=None, supplier=None, purchase_order=None, supplier_delivery_note=None):
     """
-    Create new Purchase Receipt
+    Create new Purchase Receipt with default values
+
+    Args:
+        company (str): Company name
+        naming_series (str): Naming series for the PR
+        supplier (str): Supplier name
+        purchase_order (str): Purchase Order reference
+        supplier_delivery_note (str): Supplier delivery note number (optional)
+
+    Returns:
+        dict: New PR details with default values
     """
     try:
         # Get user defaults
@@ -63,6 +78,7 @@ def create_pr(company=None, naming_series=None, supplier=None, purchase_order=No
         if naming_series:
             pr.naming_series = naming_series
         else:
+            # Get default naming series
             default_naming_series = frappe.db.get_value(DOCTYPE, {"company": pr.company}, "naming_series")
             if not default_naming_series:
                 default_naming_series = frappe.get_meta(DOCTYPE).get_field("naming_series").options.split("\n")[0]
@@ -74,10 +90,29 @@ def create_pr(company=None, naming_series=None, supplier=None, purchase_order=No
         if purchase_order:
             pr.purchase_order = purchase_order
 
-        # Insert document (save as draft)
+        # Set supplier delivery note if provided
+        if supplier_delivery_note:
+            pr.supplier_delivery_note = supplier_delivery_note
+
+        # Insert document (save as draft) with validation bypass for required items
+        # This allows creating a PR without items initially
         pr.flags.ignore_validate = True
         pr.flags.ignore_mandatory = True
         pr.flags.ignore_links = True
+
+        # Alternative approach: Add a temporary placeholder item to satisfy validation
+        # This will be removed when real items are added
+        temp_item = pr.append("items", {})
+        temp_item.item_code = "TEMP-PLACEHOLDER"
+        temp_item.item_name = "Temporary Placeholder - To be replaced"
+        temp_item.qty = 1
+        temp_item.received_qty = 1
+        temp_item.rate = 0
+        temp_item.amount = 0
+        temp_item.uom = "Nos"
+        temp_item.stock_uom = "Nos"
+        temp_item.conversion_factor = 1
+        temp_item.stock_qty = 1
 
         pr.insert(ignore_permissions=True)
 
@@ -91,18 +126,25 @@ def create_pr(company=None, naming_series=None, supplier=None, purchase_order=No
                 "company": pr.company,
                 "supplier": pr.supplier,
                 "purchase_order": pr.purchase_order,
+                "supplier_delivery_note": getattr(pr, "supplier_delivery_note", ""),
                 "is_return": pr.is_return,
                 "set_posting_time": pr.set_posting_time,
                 "docstatus": pr.docstatus,
-                "creation": pr.creation.isoformat() if pr.creation else None,
-                "modified": pr.modified.isoformat() if pr.modified else None
+                "creation": str(pr.creation) if pr.creation else None,
+                "modified": str(pr.modified) if pr.modified else None
             },
             "message": "Purchase Receipt created successfully"
         }
 
     except Exception as e:
         frappe.log_error("Mobile PR Create Error", frappe.get_traceback())
-        return {"success": False, "error": {"message": str(e), "code": "PR_CREATE_ERROR"}}
+        return {
+            "success": False,
+            "error": {
+                "message": str(e),
+                "code": "PR_CREATE_ERROR"
+            }
+        }
 
 @frappe.whitelist()
 def get_pr(pr_id):
@@ -327,31 +369,197 @@ def submit_pr(pr_id):
 @frappe.whitelist()
 def get_companies():
     """Get companies list for dropdown"""
-    return get_companies()
+    return get_companies_utils()
 
 @frappe.whitelist()
 def get_purchase_orders(supplier=None, company=None, search=None):
     """Get purchase orders for dropdown"""
-    return get_purchase_orders(supplier, company, search)
+    return get_purchase_orders_utils(supplier, company, search)
 
 @frappe.whitelist()
 def get_warehouses(company=None):
     """Get list of warehouses for dropdown"""
-    return get_warehouses(company)
+    return get_warehouses_utils(company)
 
 @frappe.whitelist()
 def get_tax_templates():
     """Get available Purchase Taxes and Charges templates"""
-    return get_tax_templates()
+    return get_tax_templates_utils()
 
 @frappe.whitelist()
 def get_tax_accounts(company=None):
     """Get tax account heads for dropdown"""
-    return get_tax_accounts(company)
+    return get_tax_accounts_utils(company)
 
 @frappe.whitelist()
 def get_pr_status_summary():
     """
     Get count of PRs by status for dashboard display
     """
-    return get_document_status_summary(DOCTYPE)
+    return get_document_status_summary_utils(DOCTYPE)
+
+@frappe.whitelist()
+def get_naming_series():
+    """
+    Get available naming series for Purchase Receipt
+    """
+    return get_naming_series_utils(DOCTYPE)
+
+@frappe.whitelist()
+def update_pr_header(pr_id, **kwargs):
+    """
+    Update PR header information
+
+    Args:
+        pr_id (str): PR document name
+        **kwargs: Fields to update
+
+    Returns:
+        dict: Update result
+    """
+    try:
+        if not pr_id:
+            return {
+                "success": False,
+                "error": {
+                    "message": "PR ID is required",
+                    "code": "PR_ID_REQUIRED"
+                }
+            }
+
+        # Get PR document
+        pr = frappe.get_doc(DOCTYPE, pr_id)
+
+        # Check if PR can be modified
+        if pr.docstatus != 0:
+            return {
+                "success": False,
+                "error": {
+                    "message": f"Cannot modify {pr.status} Purchase Receipt",
+                    "code": "PR_NOT_DRAFT"
+                }
+            }
+
+        # Track changes
+        changes = {}
+
+        # Update allowed fields
+        updatable_fields = [
+            'posting_date', 'posting_time', 'set_posting_time', 'company',
+            'supplier_delivery_note', 'bill_no', 'bill_date', 'is_return',
+            'purchase_order', 'supplier', 'title', 'remarks', 'currency',
+            'conversion_rate', 'buying_price_list', 'price_list_currency',
+            'plc_conversion_rate', 'ignore_pricing_rule'
+        ]
+
+        for field, value in kwargs.items():
+            if field in updatable_fields and hasattr(pr, field):
+                old_value = getattr(pr, field)
+
+                # Handle date fields
+                if field in ['posting_date', 'bill_date'] and value:
+                    value = getdate(value)
+
+                # Handle time fields
+                if field == 'posting_time' and value:
+                    from frappe.utils import get_time
+                    value = get_time(value)
+
+                # Handle boolean fields
+                if field in ['set_posting_time', 'is_return', 'ignore_pricing_rule']:
+                    value = cint(value)
+
+                # Handle float fields
+                if field in ['conversion_rate', 'plc_conversion_rate']:
+                    value = flt(value)
+
+                if old_value != value:
+                    setattr(pr, field, value)
+                    changes[field] = {"old": old_value, "new": value}
+
+        # If purchase order is updated, update supplier automatically
+        if 'purchase_order' in changes and changes['purchase_order']['new']:
+            po_name = changes['purchase_order']['new']
+            po_supplier = frappe.db.get_value("Purchase Order", po_name, "supplier")
+            if po_supplier and po_supplier != pr.supplier:
+                pr.supplier = po_supplier
+                changes['supplier'] = {"old": pr.supplier, "new": po_supplier}
+
+        # Save document if changes were made
+        if changes:
+            pr.save(ignore_permissions=True)
+
+        return {
+            "success": True,
+            "data": {
+                "pr_id": pr.name,
+                "changes_made": len(changes),
+                "changes": changes,
+                "modified": pr.modified.isoformat() if pr.modified else None
+            },
+            "message": f"Purchase Receipt updated successfully. {len(changes)} field(s) changed."
+        }
+
+    except Exception as e:
+        frappe.log_error("Mobile PR Update Error", frappe.get_traceback())
+        return {
+            "success": False,
+            "error": {
+                "message": str(e),
+                "code": "PR_UPDATE_ERROR"
+            }
+        }
+
+
+# ===========================
+# ITEM MANAGEMENT APIs
+# ===========================
+
+@frappe.whitelist()
+def search_items(search_term, supplier=None, company=None, limit=10):
+    """
+    Search items for adding to Purchase Receipt
+    """
+    return search_items_utils(search_term, supplier, company, limit)
+
+
+@frappe.whitelist()
+def get_pr_items(pr_id):
+    """
+    Get all items in a Purchase Receipt for the Items tab
+    """
+    return get_document_items_utils(DOCTYPE, pr_id)
+
+
+@frappe.whitelist()
+def add_pr_item(pr_id, item_code, warehouse, qty=1, received_qty=None, no_of_boxes=None,
+                batch_no=None, serial_no=None, rate=None):
+    """
+    Add a new item to Purchase Receipt
+    """
+    return add_document_item_utils(DOCTYPE, pr_id, item_code, warehouse, qty, received_qty, 
+                                   no_of_boxes, batch_no, serial_no, rate)
+
+
+@frappe.whitelist()
+def update_pr_item(item_id, **kwargs):
+    """
+    Update an existing Purchase Receipt item
+    """
+    return update_document_item_utils(DOCTYPE, item_id, **kwargs)
+
+
+@frappe.whitelist()
+def delete_pr_item(item_id):
+    """
+    Delete a Purchase Receipt item
+    """
+    return delete_document_item_utils(DOCTYPE, item_id)
+
+
+@frappe.whitelist()
+def validate_pr_items(pr_id):
+    """
+    Validate Purchase Receipt items before moving to next tab
+    """
+    return validate_document_items_utils(DOCTYPE, pr_id)
