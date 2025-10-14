@@ -503,7 +503,7 @@ function render_tree_view(frm) {
 
                     <div class="header-field">
                         <label>UOM:</label>
-                        <input type="text" class="form-control uom-display" style="width: 100px;" 
+                        <input id="uom-input" type="text" class="form-control uom-display" style="width: 100px;" 
                                value="${item.uom}" data-item-index="${item_index}" readonly>
                     </div>
 
@@ -712,6 +712,8 @@ function bind_tree_events(frm) {
     $('.order-qty-input, .tolerance-input').off('input').on('input', function() {
         const item_index = $(this).data('item-index');
         const size_index = $(this).data('size-index');
+        uom = $('#uom-input').val()
+        console.log(uom)
         
         const size_obj = frm.tree_data[item_index].sizes[size_index];
         
@@ -722,8 +724,13 @@ function bind_tree_events(frm) {
         }
         
         // Calculate final qty
-        const final_qty = size_obj.custom_order_qty + (size_obj.custom_order_qty * size_obj.custom_tolerance_percentage / 100);
+        final_qty = size_obj.custom_order_qty + (size_obj.custom_order_qty * size_obj.custom_tolerance_percentage / 100);
+        if(uom === "Nos")
+        {
+            final_qty = Math.ceil(final_qty)
+        }
         size_obj.qty = final_qty;
+        
         
         // Update display
         $(this).closest('.size-item').find('.qty-display').val(final_qty.toFixed(2));
