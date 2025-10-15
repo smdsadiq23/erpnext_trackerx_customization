@@ -177,12 +177,17 @@ function load_process_map_count(frm) {
 
                 // Update button label with count
                 if (count > 0) {
-                    frm.custom_buttons[__('Process Map')][__('View Process Maps')].html(
-                        __('View Process Maps ({0})', [count])
-                    );
+                    // Check if button structure exists before updating
+                    if (frm.custom_buttons &&
+                        frm.custom_buttons[__('Process Map')] &&
+                        frm.custom_buttons[__('Process Map')][__('View Process Maps')]) {
+                        frm.custom_buttons[__('Process Map')][__('View Process Maps')].html(
+                            __('View Process Maps ({0})', [count])
+                        );
+                    }
 
                     // Add info to form
-                    if (!frm.process_map_info_added) {
+                    if (!frm.process_map_info_added && frm.dashboard) {
                         frm.dashboard.add_indicator(__('Process Maps: {0}', [count]), 'blue');
                         frm.process_map_info_added = true;
                     }

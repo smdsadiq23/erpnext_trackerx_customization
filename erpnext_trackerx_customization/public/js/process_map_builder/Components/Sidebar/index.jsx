@@ -6,6 +6,9 @@ const Sidebar = ({
   operationGroups,
   handleSaveMap,
   handleLoadMap,
+  deleteSelectedElements,
+  selectedNodes,
+  selectedEdges,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [mapSearchTerm, setMapSearchTerm] = useState("");
@@ -236,6 +239,16 @@ const Sidebar = ({
 
       <button onClick={handleSaveMap} className="btn btn-success w-100 mt-4">
         Save Process Map
+      </button>
+
+      {/* Delete Button */}
+      <button
+        onClick={deleteSelectedElements}
+        className="btn btn-danger w-100 mt-2"
+        disabled={!selectedNodes || !selectedEdges || (selectedNodes.length === 0 && selectedEdges.length === 0)}
+        title={`Delete ${selectedNodes?.length || 0} node(s) and ${selectedEdges?.length || 0} edge(s)`}
+      >
+        🗑️ Delete Selected ({(selectedNodes?.length || 0) + (selectedEdges?.length || 0)})
       </button>
 
       <hr className="my-4" />
