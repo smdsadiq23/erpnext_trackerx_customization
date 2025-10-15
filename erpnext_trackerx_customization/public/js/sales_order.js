@@ -283,6 +283,7 @@ function load_table_to_tree(frm) {
             grouped_items[key] = {
                 id: frappe.utils.get_random(8),
                 item_code: item.item_code,
+                custom_style: item.custom_style,
                 custom_color: item.custom_color,
                 custom_lineitem: item.custom_lineitem,
                 delivery_date: item.delivery_date,
@@ -459,6 +460,12 @@ function render_tree_view(frm) {
                             <option value="">Select Item</option>
                         </select>
                     </div>
+
+                    <div class="header-field">
+                        <label>Style:</label>
+                        <input type="text" class="form-control style-display" style="width: 120px;" 
+                            value="${item.custom_style || ''}" data-item-index="${item_index}" readonly>
+                    </div>                    
                     
                     <div class="header-field">
                         <label>Color:</label>
