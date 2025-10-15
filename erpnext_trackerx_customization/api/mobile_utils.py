@@ -423,24 +423,24 @@ def get_tax_accounts(company=None):
     """
     try:
         conditions = ["disabled = 0", "is_group = 0"]
-        values = {}
+        values = {"tax_pattern": "%Tax%"}
 
         if company:
             conditions.append("company = %(company)s")
             values["company"] = company
 
         # Get tax accounts
-        accounts = frappe.db.sql(f"""
+        accounts = frappe.db.sql("""
             SELECT
                 name,
                 account_name,
                 account_type,
                 company
             FROM `tabAccount`
-            WHERE {' AND '.join(conditions)}
-            AND (account_type LIKE '%Tax%' OR account_type IN ('Chargeable', 'Expense Account'))
+            WHERE {}
+            AND (account_type LIKE %(tax_pattern)s OR account_type IN ('Chargeable', 'Expense Account'))
             ORDER BY account_name
-        """, values, as_dict=True)
+        """.format(' AND '.join(conditions)), values, as_dict=True)
 
         formatted_accounts = []
         for account in accounts:
@@ -458,7 +458,7 @@ def get_tax_accounts(company=None):
         }
 
     except Exception as e:
-        frappe.log_error("Mobile Utils Tax Accounts Error", frappe.get_traceback())
+        frappe.log_error("Error in get_tax_accounts", frappe.get_traceback())
         return {"success": False, "error": {"message": "Failed to get tax accounts", "code": "API_ERROR"}}
 
 
@@ -519,14 +519,8 @@ def get_document_status_summary(doctype):
         }
 
     except Exception as e:
-        frappe.log_error(f"Error in get_document_status_summary for {doctype}: {str(e)}", "Mobile Utils Status Summary Error")
-        return {
-            "success": False,
-            "error": {
-                "message": str(e),
-                "code": "DOCUMENT_STATUS_SUMMARY_ERROR"
-            }
-        }
+        frappe.log_error("Mobile Utils Status Summary Error", frappe.get_traceback())
+        return {"success": False, "error": {"message": "Failed to get document status summary", "code": "API_ERROR"}}
 
 
 @frappe.whitelist()
@@ -572,7 +566,7 @@ def get_naming_series(doctype):
         }
 
     except Exception as e:
-        frappe.log_error(f"Error getting naming series for {doctype}: {str(e)}", "Mobile Utils Naming Series Error")
+        frappe.log_error("Mobile Utils Naming Series Error", frappe.get_traceback())
         return {
             "success": False,
             "error": {
@@ -713,14 +707,10 @@ def get_document_items(doctype, doc_id):
                 pri.stock_uom,
                 pri.stock_qty,
                 pri.custom_color,
-                pri.custom_roll_box_no,
-                pri.custom_composition,
-                pri.custom_no_of_boxes,
                 i.item_group,
                 i.stock_uom as item_stock_uom,
                 i.has_batch_no,
-                i.has_serial_no,
-                i.maintain_stock
+                i.has_serial_no
             FROM {child_table} pri
             LEFT JOIN `tabItem` i ON pri.item_code = i.name
             WHERE pri.parent = %(doc_id)s
@@ -749,12 +739,10 @@ def get_document_items(doctype, doc_id):
                 "custom_color": item.custom_color,
                 "custom_roll_box_no": item.custom_roll_box_no,
                 "custom_composition": item.custom_composition,
-                "custom_no_of_boxes": flt(item.custom_no_of_boxes),
                 "item_group": item.item_group,
                 "item_stock_uom": item.item_stock_uom,
                 "has_batch_no": item.has_batch_no,
                 "has_serial_no": item.has_serial_no,
-                "maintain_stock": item.maintain_stock,
                 "display_name": f"{item.item_code} - {item.item_name}",
                 "amount_display": f"{flt(item.amount):,.2f}",
                 "rate_display": f"{flt(item.rate):,.2f}"
@@ -769,7 +757,7 @@ def get_document_items(doctype, doc_id):
         }
 
     except Exception as e:
-        frappe.log_error(f"Error getting {doctype} items: {str(e)}", "Mobile Utils Get Items Error")
+        frappe.log_error("Mobile Utils Get Items Error", frappe.get_traceback())
         return {"success": False, "error": {"message": "Failed to get items", "code": "API_ERROR"}}
 
 
@@ -862,7 +850,7 @@ def add_document_item(doctype, doc_id, item_code, warehouse, qty=1, received_qty
         }
 
     except Exception as e:
-        frappe.log_error(f"Error adding item to {doctype}: {str(e)}", "Mobile Utils Add Item Error")
+        frappe.log_error("Mobile Utils Add Item Error", frappe.get_traceback())
         return {"success": False, "error": {"message": "Failed to add item", "code": "API_ERROR"}}
 
 
@@ -931,7 +919,7 @@ def update_document_item(doctype, item_id, **kwargs):
         }
 
     except Exception as e:
-        frappe.log_error(f"Error updating item in {doctype}: {str(e)}", "Mobile Utils Update Item Error")
+        frappe.log_error("Mobile Utils Update Item Error", frappe.get_traceback())
         return {"success": False, "error": {"message": "Failed to update item", "code": "API_ERROR"}}
 
 
@@ -978,7 +966,7 @@ def delete_document_item(doctype, item_id):
         }
 
     except Exception as e:
-        frappe.log_error(f"Error deleting item from {doctype}: {str(e)}", "Mobile Utils Delete Item Error")
+        frappe.log_error("Mobile Utils Delete Item Error", frappe.get_traceback())
         return {"success": False, "error": {"message": "Failed to delete item", "code": "API_ERROR"}}
 
 
@@ -1035,5 +1023,5 @@ def validate_document_items(doctype, doc_id):
         return {"success": True, "data": validation_results, "message": message}
 
     except Exception as e:
-        frappe.log_error(f"Error validating {doctype} items: {str(e)}", "Mobile Utils Validate Items Error")
+        frappe.log_error("Mobile Utils Validate Items Error", frappe.get_traceback())
         return {"success": False, "error": {"message": "Items validation failed", "code": "VALIDATION_ERROR"}}

@@ -305,11 +305,17 @@ def validate_pr(pr_id):
 @frappe.whitelist()
 def submit_pr(pr_id):
     """
-    Submit PR after validation
+    Submit Purchase Receipt after validation
+
+    Args:
+        pr_id (str): Purchase Receipt document ID
+
+    Returns:
+        dict: Submission result
     """
     try:
-        # First validate the PR
-        validation_response = validate_pr(pr_id)
+        # First validate the Purchase Receipt
+        validation_response = validate_pr_for_submission(pr_id)
         if not validation_response["success"]:
             return validation_response
 
@@ -317,25 +323,25 @@ def submit_pr(pr_id):
             return {
                 "success": False,
                 "error": {
-                    "message": "PR validation failed",
+                    "message": "Purchase Receipt validation failed",
                     "code": "VALIDATION_FAILED",
                     "details": validation_response["data"]["validation_results"]["issues"]
                 }
             }
 
-        # Get and submit the PR
+        # Get and submit the Purchase Receipt
         pr = frappe.get_doc(DOCTYPE, pr_id)
 
         if pr.docstatus == 1:
-            return {"success": False, "error": {"message": "PR is already submitted", "code": "ALREADY_SUBMITTED"}}
+            return {"success": False, "error": {"message": "Purchase Receipt is already submitted", "code": "ALREADY_SUBMITTED"}}
 
         if pr.docstatus == 2:
-            return {"success": False, "error": {"message": "PR is cancelled", "code": "CANCELLED_DOCUMENT"}}
+            return {"success": False, "error": {"message": "Purchase Receipt is cancelled", "code": "CANCELLED_DOCUMENT"}}
 
         # Submit the document
         pr.submit()
 
-        # Get final PR details
+        # Get final Purchase Receipt details
         submitted_pr = {
             "pr_id": pr.name,
             "status": "Submitted",
@@ -360,7 +366,115 @@ def submit_pr(pr_id):
         return {"success": False, "error": {"message": str(e), "code": "VALIDATION_ERROR"}}
     except Exception as e:
         frappe.log_error("Mobile PR API", frappe.get_traceback())
-        return {"success": False, "error": {"message": "Failed to submit PR", "code": "SUBMISSION_ERROR"}}
+        return {"success": False, "error": {"message": "Failed to submit Purchase Receipt", "code": "SUBMISSION_ERROR"}}
+
+@frappe.whitelist()
+def validate_pr_for_submission(pr_id):
+    """
+    Validate Purchase Receipt for final submission
+
+    Args:
+        pr_id (str): Purchase Receipt document ID
+
+    Returns:
+        dict: Validation results and submission readiness
+    """
+    try:
+        pr = frappe.get_doc(DOCTYPE, pr_id)
+
+        validation_results = {
+            "is_valid": True,
+            "can_submit": True,
+            "issues": [],
+            "warnings": []
+        }
+
+        # Header validation
+        if not pr.supplier:
+            validation_results["issues"].append("Supplier is required")
+        if not pr.company:
+            validation_results["issues"].append("Company is required")
+        if not pr.posting_date:
+            validation_results["issues"].append("Posting date is required")
+
+        # Items validation
+        if not pr.items:
+            validation_results["issues"].append("At least one item is required")
+        else:
+            for item in pr.items:
+                if not item.item_code:
+                    validation_results["issues"].append("All items must have item codes")
+                if flt(item.received_qty) <= 0:
+                    validation_results["issues"].append("All items must have received quantity greater than 0")
+
+                # Check batch requirements
+                if item.item_code:
+                    has_batch = frappe.db.get_value("Item", item.item_code, "has_batch_no")
+                    if has_batch and not item.batch_no:
+                        validation_results["issues"].append(f"Batch number required for item {item.item_code}")
+
+        # Checklist validation (only if checklist feature is available)
+        checklist_response = None
+        if hasattr(pr, 'document_checklist'):
+            checklist_response = get_pr_checklist(pr_id)
+            if checklist_response["success"]:
+                checklist_data = checklist_response["data"]
+                if not checklist_data["summary"]["can_submit"]:
+                    validation_results["issues"].append("All required checklist items must be completed")
+                    validation_results["warnings"].append(f"Required checklist completion: {checklist_data['summary']['required_completed']}/{checklist_data['summary']['required_items']}")
+
+        # Total validation
+        if flt(pr.grand_total) <= 0:
+            validation_results["warnings"].append("Grand total is zero - please verify calculations")
+
+        # Set final validation status
+        if validation_results["issues"]:
+            validation_results["is_valid"] = False
+            validation_results["can_submit"] = False
+
+        # Submission checklist
+        submission_checklist = [
+            {
+                "item": "Header Information",
+                "status": "Complete" if pr.supplier and pr.company and pr.posting_date else "Incomplete",
+                "required": True
+            },
+            {
+                "item": "Items Added",
+                "status": "Complete" if pr.items and len(pr.items) > 0 else "Incomplete",
+                "required": True
+            },
+            {
+                "item": "Quantities Entered",
+                "status": "Complete" if all(flt(item.received_qty) > 0 for item in pr.items) else "Incomplete",
+                "required": True
+            },
+            {
+                "item": "Document Checklist",
+                "status": checklist_response["data"]["summary"]["status"] if checklist_response and checklist_response["success"] else "Not Available",
+                "required": hasattr(pr, 'document_checklist')
+            },
+            {
+                "item": "Tax Calculations",
+                "status": "Complete" if flt(pr.grand_total) > 0 else "Incomplete",
+                "required": False
+            }
+        ]
+
+        return {
+            "success": True,
+            "data": {
+                "pr_id": pr_id,
+                "validation_results": validation_results,
+                "submission_checklist": submission_checklist,
+                "ready_for_submission": validation_results["can_submit"]
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        frappe.log_error("Mobile PR API", frappe.get_traceback())
+        return {"success": False, "error": {"message": "Validation failed", "code": "VALIDATION_ERROR"}}
 
 # ===========================
 # HELPER APIs (Reused from mobile_utils)
@@ -563,3 +677,639 @@ def validate_pr_items(pr_id):
     Validate Purchase Receipt items before moving to next tab
     """
     return validate_document_items_utils(DOCTYPE, pr_id)
+
+
+# ===========================
+# TAX MANAGEMENT APIs
+# ===========================
+
+@frappe.whitelist()
+def add_tax_charge(pr_id, charge_type, account_head, rate=0, tax_amount=0, description=None):
+    """
+    Add individual tax/charge to Purchase Receipt
+
+    Args:
+        pr_id (str): Purchase Receipt document ID
+        charge_type (str): Type of charge (On Net Total, Actual, etc.)
+        account_head (str): Account head for the charge
+        rate (float): Tax rate percentage
+        tax_amount (float): Fixed tax amount
+        description (str): Description of the charge
+
+    Returns:
+        dict: Added tax charge details
+    """
+    try:
+        pr = frappe.get_doc(DOCTYPE, pr_id)
+        
+        # Use reusable validation
+        state_error = _validate_document_state(pr, "modify")
+        if state_error:
+            return state_error
+        
+        # Validate required fields
+        if not charge_type or not account_head:
+            return {"success": False, "error": {"message": "Charge type and account head are required", "code": "MISSING_REQUIRED_FIELDS"}}
+
+        # Add new tax row
+        tax_row = pr.append("taxes", {})
+        tax_row.charge_type = charge_type
+        tax_row.account_head = account_head
+        tax_row.rate = flt(rate)
+        tax_row.tax_amount = flt(tax_amount)
+        tax_row.description = description or frappe.db.get_value("Account", account_head, "account_name")
+
+        # Save and calculate
+        pr.save()
+
+        # Return the added tax details
+        added_tax = {
+            "id": tax_row.name,
+            "charge_type": tax_row.charge_type,
+            "account_head": tax_row.account_head,
+            "description": tax_row.description,
+            "rate": flt(tax_row.rate),
+            "tax_amount": flt(tax_row.tax_amount),
+            "total": flt(tax_row.total)
+        }
+
+        return {
+            "success": True,
+            "data": added_tax,
+            "message": "Tax charge added successfully",
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        frappe.log_error("Mobile PR API", frappe.get_traceback())
+        return {"success": False, "error": {"message": "Failed to add tax charge", "code": "API_ERROR"}}
+
+
+@frappe.whitelist()
+def apply_tax_template(pr_id, template_name):
+    """
+    Apply tax template to Purchase Receipt
+
+    Args:
+        pr_id (str): Purchase Receipt document ID
+        template_name (str): Tax template name
+
+    Returns:
+        dict: Updated tax information
+    """
+    try:
+        pr = frappe.get_doc(DOCTYPE, pr_id)
+        
+        # Use reusable validation
+        state_error = _validate_document_state(pr, "modify")
+        if state_error:
+            return state_error
+
+        # Clear existing taxes
+        pr.taxes = []
+
+        # Set the template
+        pr.taxes_and_charges = template_name
+
+        if template_name:
+            # Get template taxes
+            template = frappe.get_doc("Purchase Taxes and Charges Template", template_name)
+
+            # Add template taxes to Purchase Receipt
+            for template_tax in template.taxes:
+                tax_row = pr.append("taxes", {})
+                tax_row.charge_type = template_tax.charge_type
+                tax_row.account_head = template_tax.account_head
+                tax_row.description = template_tax.description
+                tax_row.rate = template_tax.rate
+                tax_row.cost_center = template_tax.cost_center
+
+        # Save and calculate
+        pr.save()
+
+        # Return updated tax information
+        return get_pr_taxes_and_charges(pr_id)
+
+    except Exception as e:
+        frappe.log_error("Mobile PR API", frappe.get_traceback())
+        return {"success": False, "error": {"message": "Failed to apply tax template", "code": "API_ERROR"}}
+
+
+@frappe.whitelist()
+def get_pr_taxes_and_charges(pr_id):
+    """
+    Get taxes and charges for a Purchase Receipt
+
+    Args:
+        pr_id (str): Purchase Receipt document ID
+
+    Returns:
+        dict: Tax and charge details
+    """
+    try:
+        if not frappe.db.exists(DOCTYPE, pr_id):
+            return {"success": False, "error": {"message": "Purchase Receipt not found", "code": "PR_NOT_FOUND"}}
+
+        pr = frappe.get_doc(DOCTYPE, pr_id)
+
+        # Get tax details
+        taxes_and_charges = []
+        for tax in pr.taxes:
+            tax_detail = {
+                "id": tax.name,
+                "charge_type": tax.charge_type,
+                "account_head": tax.account_head,
+                "description": tax.description,
+                "rate": flt(tax.rate),
+                "tax_amount": flt(tax.tax_amount),
+                "total": flt(tax.total),
+                "base_tax_amount": flt(tax.base_tax_amount),
+                "base_total": flt(tax.base_total),
+                "cost_center": tax.cost_center
+            }
+            taxes_and_charges.append(tax_detail)
+
+        # Get header tax information
+        tax_info = {
+            "tax_category": getattr(pr, "tax_category", ""),
+            "shipping_rule": getattr(pr, "shipping_rule", ""),
+            "incoterm": getattr(pr, "incoterm", ""),
+            "taxes_and_charges_template": getattr(pr, "taxes_and_charges", ""),
+            "taxes_and_charges": taxes_and_charges,
+            "net_total": flt(pr.net_total),
+            "total_taxes_and_charges": flt(pr.total_taxes_and_charges),
+            "grand_total": flt(pr.grand_total),
+            "rounded_total": flt(getattr(pr, "rounded_total", 0)),
+            "rounding_adjustment": flt(getattr(pr, "rounding_adjustment", 0)),
+            "disable_rounded_total": getattr(pr, "disable_rounded_total", 0) or 0,
+            "additional_discount_percentage": flt(getattr(pr, "additional_discount_percentage", 0)),
+            "discount_amount": flt(getattr(pr, "discount_amount", 0))
+        }
+
+        return {
+            "success": True,
+            "data": tax_info,
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        frappe.log_error("Mobile PR API", frappe.get_traceback())
+        return {"success": False, "error": {"message": "Failed to get tax details", "code": "API_ERROR"}}
+
+
+@frappe.whitelist()
+def update_tax_charge(tax_id, **kwargs):
+    """
+    Update existing tax charge
+
+    Args:
+        tax_id (str): Purchase Receipt Tax ID
+        **kwargs: Fields to update
+
+    Returns:
+        dict: Updated tax details
+    """
+    try:
+        if not frappe.db.exists("Purchase Taxes and Charges", tax_id):
+            return {"success": False, "error": {"message": "Tax charge not found", "code": "TAX_NOT_FOUND"}}
+
+        tax_doc = frappe.get_doc("Purchase Taxes and Charges", tax_id)
+        pr = frappe.get_doc(DOCTYPE, tax_doc.parent)
+
+        state_error = _validate_document_state(pr, "modify")
+        if state_error:
+            return state_error
+
+        # Update allowed fields
+        allowed_fields = ['rate', 'tax_amount', 'description', 'cost_center']
+        updated_fields = []
+
+        for field, value in kwargs.items():
+            if field in allowed_fields and value is not None:
+                if field in ['rate', 'tax_amount']:
+                    setattr(tax_doc, field, flt(value))
+                else:
+                    setattr(tax_doc, field, value)
+                updated_fields.append(field)
+
+        # Save and recalculate
+        pr.save()
+
+        return {
+            "success": True,
+            "data": {
+                "id": tax_id,
+                "updated_fields": updated_fields,
+                "rate": tax_doc.rate,
+                "tax_amount": tax_doc.tax_amount,
+                "total": tax_doc.total,
+                "description": tax_doc.description
+            },
+            "message": "Tax charge updated successfully",
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        frappe.log_error("Mobile PR API", frappe.get_traceback())
+        return {"success": False, "error": {"message": "Failed to update tax charge", "code": "API_ERROR"}}
+
+
+@frappe.whitelist()
+def update_pr_tax_settings(pr_id, **kwargs):
+    """
+    Update Purchase Receipt tax-related settings
+
+    Args:
+        pr_id (str): Purchase Receipt document ID
+        **kwargs: Tax settings to update
+
+    Returns:
+        dict: Updated settings
+    """
+    try:
+        pr = frappe.get_doc(DOCTYPE, pr_id)
+        
+        state_error = _validate_document_state(pr, "modify")
+        if state_error:
+            return state_error
+
+        # Update allowed tax settings
+        allowed_fields = [
+            'tax_category', 'shipping_rule', 'incoterm', 'disable_rounded_total',
+            'additional_discount_percentage', 'discount_amount'
+        ]
+        updated_fields = []
+
+        for field, value in kwargs.items():
+            if field in allowed_fields and value is not None:
+                if field in ['additional_discount_percentage', 'discount_amount']:
+                    setattr(pr, field, flt(value))
+                elif field == 'disable_rounded_total':
+                    setattr(pr, field, cint(value))
+                else:
+                    setattr(pr, field, value)
+                updated_fields.append(field)
+
+        # Save and recalculate totals
+        pr.save()
+
+        return {
+            "success": True,
+            "data": {
+                "pr_id": pr.name,
+                "updated_fields": updated_fields,
+                "net_total": flt(pr.net_total),
+                "total_taxes_and_charges": flt(pr.total_taxes_and_charges),
+                "grand_total": flt(pr.grand_total),
+                "rounded_total": flt(getattr(pr, "rounded_total", 0))
+            },
+            "message": "Tax settings updated successfully",
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        frappe.log_error("Mobile PR API", frappe.get_traceback())
+        return {"success": False, "error": {"message": "Failed to update tax settings", "code": "API_ERROR"}}
+
+
+@frappe.whitelist()
+def calculate_pr_totals(pr_id):
+    """
+    Calculate and return Purchase Receipt totals
+
+    Args:
+        pr_id (str): Purchase Receipt document ID
+
+    Returns:
+        dict: Calculated totals
+    """
+    try:
+        pr = frappe.get_doc(DOCTYPE, pr_id)
+
+        # Force recalculation
+        pr.save()
+
+        totals = {
+            "net_total": flt(pr.net_total),
+            "total_taxes_and_charges": flt(pr.total_taxes_and_charges),
+            "grand_total": flt(pr.grand_total),
+            "rounded_total": flt(getattr(pr, "rounded_total", 0)),
+            "rounding_adjustment": flt(getattr(pr, "rounding_adjustment", 0)),
+            "discount_amount": flt(getattr(pr, "discount_amount", 0)),
+            "additional_discount_percentage": flt(getattr(pr, "additional_discount_percentage", 0)),
+            "currency": pr.currency,
+
+            # Breakdown for display
+            "totals_breakdown": {
+                "items_total": flt(pr.net_total),
+                "taxes_total": flt(pr.total_taxes_and_charges),
+                "discount": flt(getattr(pr, "discount_amount", 0)),
+                "final_total": flt(getattr(pr, "rounded_total", 0)) if not getattr(pr, "disable_rounded_total", 0) else flt(pr.grand_total)
+            }
+        }
+
+        return {
+            "success": True,
+            "data": totals,
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        frappe.log_error("Mobile PR API", frappe.get_traceback())
+        return {"success": False, "error": {"message": "Failed to calculate totals", "code": "API_ERROR"}}
+
+@frappe.whitelist()
+def get_pr_checklist(pr_id):
+    """
+    Get document checklist for Purchase Receipt
+
+    Args:
+        pr_id (str): Purchase Receipt document ID
+
+    Returns:
+        dict: Checklist items and status
+    """
+    try:
+        if not frappe.db.exists(DOCTYPE, pr_id):
+            return {"success": False, "error": {"message": "Purchase Receipt not found", "code": "PR_NOT_FOUND"}}
+
+        pr = frappe.get_doc(DOCTYPE, pr_id)
+
+        # Check if Purchase Receipt has document_checklist field
+        if not hasattr(pr, 'document_checklist'):
+            return {"success": False, "error": {"message": "Purchase Receipt does not support document checklist", "code": "FEATURE_NOT_AVAILABLE"}}
+
+        # Default checklist items for Purchase Receipt
+        default_checklist = [
+            {
+                "item_name": "Delivery Challan / Invoice",
+                "description": "Invoice or delivery challan received from supplier",
+                "is_required": 1,
+                "priority": 1
+            },
+            {
+                "item_name": "Packing List",
+                "description": "Detailed packing list with item descriptions",
+                "is_required": 1,
+                "priority": 2
+            },
+            {
+                "item_name": "Material Test Certificate (MTC)",
+                "description": "Test certificate for material quality validation",
+                "is_required": 0,
+                "priority": 3
+            }
+        ]
+
+        # Get existing checklist items from custom field or table
+        checklist_items = []
+
+        # Check if Purchase Receipt has document checklist field
+        if pr.document_checklist:
+            for item in pr.document_checklist:
+                checklist_item = {
+                    "id": item.name,
+                    "item_name": item.document_type,
+                    "description": item.document_type,
+                    "status": "Received" if item.received else "Not Received",
+                    "received_date": item.received_date,
+                    "remarks": item.remarks,
+                    "is_required": 1 if item.document_type in ["Purchase Order", "Delivery Challan / Invoice", "Packing List"] else 0,
+                    "priority": 99
+                }
+                checklist_items.append(checklist_item)
+        else:
+            # Create default checklist items
+            for i, default_item in enumerate(default_checklist, 1):
+                checklist_item = {
+                    "id": f"default_{i}",
+                    "item_name": default_item["item_name"],
+                    "description": default_item["description"],
+                    "status": "Not Received",
+                    "received_date": None,
+                    "remarks": "",
+                    "is_required": default_item["is_required"],
+                    "priority": default_item["priority"]
+                }
+                checklist_items.append(checklist_item)
+
+        # Sort by priority
+        checklist_items.sort(key=lambda x: x["priority"])
+
+        # Calculate completion status
+        total_items = len(checklist_items)
+        completed_items = len([item for item in checklist_items if item["status"] == "Received"])
+        required_items = len([item for item in checklist_items if item["is_required"]])
+        required_completed = len([item for item in checklist_items if item["is_required"] and item["status"] == "Received"])
+
+        checklist_summary = {
+            "total_items": total_items,
+            "completed_items": completed_items,
+            "required_items": required_items,
+            "required_completed": required_completed,
+            "completion_percentage": (completed_items / total_items * 100) if total_items > 0 else 0,
+            "required_completion_percentage": (required_completed / required_items * 100) if required_items > 0 else 0,
+            "can_submit": required_completed == required_items,
+            "status": "Complete" if required_completed == required_items else "Pending"
+        }
+
+        return {
+            "success": True,
+            "data": {
+                "pr_id": pr_id,
+                "checklist_items": checklist_items,
+                "summary": checklist_summary
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        frappe.log_error("Mobile PR API", frappe.get_traceback())
+        return {"success": False, "error": {"message": "Failed to get checklist", "code": "API_ERROR"}}
+
+@frappe.whitelist()
+def update_checklist_item(pr_id, item_id, status=None, received_date=None, remarks=None):
+    """
+    Update checklist item status
+
+    Args:
+        pr_id (str): Purchase Receipt document ID
+        item_id (str): Checklist item ID
+        status (str): Received/Not Received
+        received_date (str): Date when document was received
+        remarks (str): Additional remarks
+
+    Returns:
+        dict: Updated item details
+    """
+    try:
+        pr = frappe.get_doc(DOCTYPE, pr_id)
+        
+        state_error = _validate_document_state(pr, "modify")
+        if state_error:
+            return state_error
+
+        # Check if Purchase Receipt has document_checklist field
+        if not hasattr(pr, 'document_checklist'):
+            return {"success": False, "error": {"message": "Purchase Receipt does not support document checklist", "code": "FEATURE_NOT_AVAILABLE"}}
+
+        # Initialize checklist if not exists
+        if not pr.document_checklist:
+            _initialize_default_checklist(pr)
+
+        # Find and update the checklist item
+        item_updated = False
+        for item in pr.document_checklist:
+            if item.name == item_id or str(item.idx) == str(item_id):
+                if status:
+                    item.received = 1 if status == "Received" else 0
+                if received_date:
+                    item.received_date = getdate(received_date)
+                if remarks is not None:
+                    item.remarks = remarks
+                item_updated = True
+                break
+
+        if not item_updated and item_id.startswith('default_'):
+            # Handle default items by creating them
+            default_items = [
+                "Delivery Challan / Invoice",
+                "Packing List",
+                "Material Test Certificate (MTC)"
+            ]
+
+            item_index = int(item_id.split('_')[1]) - 1
+            if 0 <= item_index < len(default_items):
+                new_item = pr.append("document_checklist", {})
+                new_item.document_type = default_items[item_index]
+                new_item.received = 1 if status == "Received" else 0
+                new_item.received_date = getdate(received_date) if received_date else None
+                new_item.remarks = remarks or ""
+                item_updated = True
+
+        if not item_updated:
+            return {"success": False, "error": {"message": "Checklist item not found", "code": "ITEM_NOT_FOUND"}}
+
+        # Save the Purchase Receipt
+        pr.save()
+
+        # Return updated item
+        updated_item = {
+            "id": item_id,
+            "status": status,
+            "received_date": received_date,
+            "remarks": remarks,
+            "updated": True
+        }
+
+        return {
+            "success": True,
+            "data": updated_item,
+            "message": "Checklist item updated successfully",
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        frappe.log_error("Mobile PR API", frappe.get_traceback())
+        return {"success": False, "error": {"message": "Failed to update checklist item", "code": "API_ERROR"}}
+
+@frappe.whitelist()
+def add_checklist_item(pr_id, item_name, description=None, is_required=0):
+    """
+    Add new checklist item to Purchase Receipt
+
+    Args:
+        pr_id (str): Purchase Receipt document ID
+        item_name (str): Name of the checklist item
+        description (str): Description of the item
+        is_required (int): Whether item is required (1) or optional (0)
+
+    Returns:
+        dict: Added item details
+    """
+    try:
+        pr = frappe.get_doc(DOCTYPE, pr_id)
+        
+        state_error = _validate_document_state(pr, "modify")
+        if state_error:
+            return state_error
+
+        if not item_name:
+            return {"success": False, "error": {"message": "Item name is required", "code": "MISSING_REQUIRED_FIELDS"}}
+
+        # Check if Purchase Receipt has document_checklist field
+        if not hasattr(pr, 'document_checklist'):
+            return {"success": False, "error": {"message": "Purchase Receipt does not support document checklist", "code": "FEATURE_NOT_AVAILABLE"}}
+
+        # Initialize checklist if not exists
+        if not pr.document_checklist:
+            _initialize_default_checklist(pr)
+
+        # Add new checklist item
+        new_item = pr.append("document_checklist", {})
+        new_item.document_type = item_name
+        new_item.received = 0
+        new_item.remarks = description or ""
+
+        # Save the Purchase Receipt
+        pr.save()
+
+        # Return added item
+        added_item = {
+            "id": new_item.name,
+            "item_name": item_name,
+            "description": item_name,
+            "status": "Not Received",
+            "received_date": None,
+            "remarks": description or "",
+            "is_required": cint(is_required),
+            "priority": 99
+        }
+
+        return {
+            "success": True,
+            "data": added_item,
+            "message": "Checklist item added successfully",
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        frappe.log_error("Mobile PR API", frappe.get_traceback())
+        return {"success": False, "error": {"message": "Failed to add checklist item", "code": "API_ERROR"}}
+
+def _validate_document_state(pr, action="modify"):
+    """
+    Validate document state for modifications
+    
+    Args:
+        pr: Purchase Receipt document
+        action (str): Action being performed (modify, submit, etc.)
+    
+    Returns:
+        dict or None: Error response if validation fails, None if valid
+    """
+    if pr.docstatus == 1:
+        return {"success": False, "error": {"message": f"Cannot {action} submitted Purchase Receipt", "code": "INVALID_STATE"}}
+    if pr.docstatus == 2:
+        return {"success": False, "error": {"message": f"Cannot {action} cancelled Purchase Receipt", "code": "CANCELLED_DOCUMENT"}}
+    return None
+
+def _initialize_default_checklist(pr):
+    """
+    Initialize default checklist items for Purchase Receipt
+    
+    Args:
+        pr: Purchase Receipt document
+    """
+    default_items = [
+        "Delivery Challan / Invoice",
+        "Packing List", 
+        "Material Test Certificate (MTC)"
+    ]
+    
+    for item_name in default_items:
+        checklist_item = pr.append("document_checklist", {})
+        checklist_item.document_type = item_name
+        checklist_item.received = 0
+        checklist_item.received_date = None
+        checklist_item.remarks = ""
