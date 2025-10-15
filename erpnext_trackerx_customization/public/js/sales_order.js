@@ -46,7 +46,7 @@ frappe.ui.form.on('Sales Order', {
     before_save(frm) {
         // Convert tree data to child table before saving
         convert_tree_to_table(frm);
-    }
+    }  
 });
 
 function update_total_qty(frm){
@@ -283,6 +283,7 @@ function load_table_to_tree(frm) {
             grouped_items[key] = {
                 id: frappe.utils.get_random(8),
                 item_code: item.item_code,
+                custom_style: item.custom_style,
                 custom_color: item.custom_color,
                 custom_lineitem: item.custom_lineitem,
                 delivery_date: item.delivery_date,
@@ -340,6 +341,7 @@ function convert_tree_to_table(frm) {
                 item_code: item.item_code || '',
                 custom_color: item.custom_color || '',
                 custom_colour: item.custom_color || '',
+                custom_style: item.custom_style || '',
                 custom_lineitem: item.custom_lineitem || '',
                 delivery_date: item.delivery_date || '',
                 custom_ex_fty_date: item.custom_ex_fty_date || '',
@@ -458,6 +460,12 @@ function render_tree_view(frm) {
                             <option value="">Select Item</option>
                         </select>
                     </div>
+
+                    <div class="header-field">
+                        <label>Style:</label>
+                        <input type="text" class="form-control style-display" style="width: 120px;" 
+                            value="${item.custom_style || ''}" data-item-index="${item_index}" readonly>
+                    </div>                    
                     
                     <div class="header-field">
                         <label>Color:</label>
@@ -503,7 +511,7 @@ function render_tree_view(frm) {
 
                     <div class="header-field">
                         <label>UOM:</label>
-                        <input type="text" class="form-control uom-display" style="width: 100px;" 
+                        <input id="uom-input" type="text" class="form-control uom-display" style="width: 100px;" 
                                value="${item.uom}" data-item-index="${item_index}" readonly>
                     </div>
 
@@ -656,23 +664,39 @@ function bind_tree_events(frm) {
     $('.item-code-select').off('change').on('change', async function() {
         const item_index = $(this).data('item-index');
         const item_code = $(this).val();
-        frm.tree_data[item_index].item_code = item_code;
-        frm.tree_data[item_index].sizes = [];
-        render_tree_view(frm);
         
-        // Get item attributes asynchronously
+        // Reset fields
+        frm.tree_data[item_index].item_code = item_code;
+        frm.tree_data[item_index].custom_style = '';
+        frm.tree_data[item_index].custom_color = '';
+        frm.tree_data[item_index].sizes = [];
+
         if (item_code) {
+            // Fetch UOM, style, and color in parallel
             try {
+                // Fetch UOM/conversion
                 const attributes = await get_item_attributes(item_code);
                 frm.tree_data[item_index].uom = attributes.uom;
                 frm.tree_data[item_index].conversion_factor = attributes.conversion_factor;
+
+                // Fetch style and color from Item
+                const item_data = await frappe.db.get_value('Item', item_code, 
+                    ['custom_style_master', 'custom_colour_name']
+                );
+                if (item_data.message) {
+                    frm.tree_data[item_index].custom_style = item_data.message.custom_style_master || '';
+                    frm.tree_data[item_index].custom_color = item_data.message.custom_colour_name || '';
+                }
             } catch (error) {
-                console.warn('Failed to fetch item attributes:', error);
+                console.warn('Failed to fetch item details:', error);
                 frm.tree_data[item_index].uom = 'Nos';
                 frm.tree_data[item_index].conversion_factor = 1;
+                frm.tree_data[item_index].custom_style = '';
+                frm.tree_data[item_index].custom_color = '';
             }
         }
-        
+
+        render_tree_view(frm);
         frm.dirty();
     });
     
@@ -712,6 +736,8 @@ function bind_tree_events(frm) {
     $('.order-qty-input, .tolerance-input').off('input').on('input', function() {
         const item_index = $(this).data('item-index');
         const size_index = $(this).data('size-index');
+        uom = $('#uom-input').val()
+        console.log(uom)
         
         const size_obj = frm.tree_data[item_index].sizes[size_index];
         
@@ -722,8 +748,13 @@ function bind_tree_events(frm) {
         }
         
         // Calculate final qty
-        const final_qty = size_obj.custom_order_qty + (size_obj.custom_order_qty * size_obj.custom_tolerance_percentage / 100);
+        final_qty = size_obj.custom_order_qty + (size_obj.custom_order_qty * size_obj.custom_tolerance_percentage / 100);
+        if(uom === "Nos")
+        {
+            final_qty = Math.ceil(final_qty)
+        }
         size_obj.qty = final_qty;
+        
         
         // Update display
         $(this).closest('.size-item').find('.qty-display').val(final_qty.toFixed(2));
