@@ -21,6 +21,9 @@ frappe.ui.form.on('Style Group', {
 
         // Set filters for company field
         set_company_filter(frm);
+
+        // Setup process map integration
+        setup_process_map_integration(frm);
     },
 
     company: function(frm) {
@@ -46,6 +49,149 @@ frappe.ui.form.on('Style Group', {
     }
 });
 
+// Process Map Integration Helper Functions
+
+function setup_process_map_integration(frm) {
+    /**
+     * Setup Process Map integration buttons and functionality
+     */
+    if (!frm.is_new() && frm.doc.name) {
+        // Add Process Map button group
+        frm.add_custom_button(__('Create Process Map'), function() {
+            create_style_group_process_map(frm);
+        }, __('Process Map'));
+
+        frm.add_custom_button(__('View Process Maps'), function() {
+            view_style_group_process_maps(frm);
+        }, __('Process Map'));
+
+        // Load and display process map count
+        load_process_map_count(frm);
+    }
+}
+
+function create_style_group_process_map(frm) {
+    /**
+     * Create a new process map for the style group
+     */
+    if (!frm.doc.name) {
+        frappe.msgprint({
+            title: __('Style Group Required'),
+            message: __('Please save the Style Group first before creating a process map'),
+            indicator: 'yellow'
+        });
+        return;
+    }
+
+    // Prompt for process map details
+    frappe.prompt([
+        {
+            label: __('Process Map Name'),
+            fieldname: 'map_name',
+            fieldtype: 'Data',
+            reqd: 1,
+            description: __('Enter a descriptive name for the process map')
+        },
+        {
+            label: __('Process Map Number'),
+            fieldname: 'process_map_number',
+            fieldtype: 'Data',
+            reqd: 1,
+            description: __('Enter a unique number for this process map')
+        },
+        {
+            label: __('Description'),
+            fieldname: 'description',
+            fieldtype: 'Small Text',
+            description: __('Optional description for the process map')
+        }
+    ], function(values) {
+        // Create process map with provided details
+        frappe.call({
+            method: 'erpnext_trackerx_customization.api.process_map.save_process_map',
+            args: {
+                map_name: values.map_name,
+                process_map_number: values.process_map_number,
+                style_group: frm.doc.name,
+                nodes: JSON.stringify([]),
+                edges: JSON.stringify([]),
+                description: values.description || ''
+            },
+            callback: function(r) {
+                if (r.message && r.message.success) {
+                    frappe.show_alert({
+                        message: __('Process Map created successfully'),
+                        indicator: 'green'
+                    });
+
+                    // Open process map builder
+                    const baseUrl = window.location.origin + "/app/process-map-builder/";
+                    const url = `${baseUrl}?style_group=${encodeURIComponent(frm.doc.name)}&map_name=${encodeURIComponent(values.map_name)}&map_number=${encodeURIComponent(values.process_map_number)}`;
+                    window.open(url, '_blank');
+
+                    // Refresh process map count
+                    setTimeout(() => {
+                        load_process_map_count(frm);
+                    }, 1000);
+                } else {
+                    frappe.msgprint({
+                        title: __('Error'),
+                        message: r.message ? r.message.message : __('Failed to create process map'),
+                        indicator: 'red'
+                    });
+                }
+            }
+        });
+    }, __('Create Process Map'), __('Create'));
+}
+
+function view_style_group_process_maps(frm) {
+    /**
+     * View all process maps for this style group
+     */
+    if (!frm.doc.name) {
+        frappe.msgprint(__('Style Group not found'));
+        return;
+    }
+
+    // Navigate to Process Map list filtered by style group
+    frappe.set_route('List', 'Process Map', {
+        'style_group': frm.doc.name
+    });
+}
+
+function load_process_map_count(frm) {
+    /**
+     * Load and display process map count for this style group
+     */
+    if (!frm.doc.name) return;
+
+    frappe.call({
+        method: 'erpnext_trackerx_customization.api.process_map.get_style_group_process_maps',
+        args: {
+            style_group_name: frm.doc.name
+        },
+        callback: function(r) {
+            if (r.message && r.message.success) {
+                const count = r.message.total || 0;
+
+                // Update button label with count
+                if (count > 0) {
+                    frm.custom_buttons[__('Process Map')][__('View Process Maps')].html(
+                        __('View Process Maps ({0})', [count])
+                    );
+
+                    // Add info to form
+                    if (!frm.process_map_info_added) {
+                        frm.dashboard.add_indicator(__('Process Maps: {0}', [count]), 'blue');
+                        frm.process_map_info_added = true;
+                    }
+                }
+            }
+        }
+    });
+}
+
 // Child table events for Style Group Component
 frappe.ui.form.on('Style Group Component', {
     component_name: function(frm, cdt, cdn) {
@@ -61,7 +207,7 @@ frappe.ui.form.on('Style Group Component', {
         }
     },
 
-    components_add: function(frm, cdt, cdn) {
+    components_add: function(frm) {
         // Set focus to component name when new row is added
         try {
             setTimeout(() => {
@@ -118,12 +264,12 @@ function set_default_company(frm) {
 
 function set_company_filter(frm) {
     /**
-     * Set filters for company field to show only active companies
+     * Set filters for company field to show only non-group companies
      */
     frm.set_query('company', function() {
         return {
             filters: {
-                'disabled': 0
+                'is_group': 0  // Show only leaf companies, not group companies
             }
         };
     });

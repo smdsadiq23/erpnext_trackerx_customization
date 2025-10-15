@@ -34,7 +34,7 @@ const FlowCanvas = ({
   operationGroups,
   defaultComponents,
   processMapNumber,
-  selectedItem,
+  selectedStyleGroup,
   description,
   processMapName,
   initialNodes = [],
@@ -299,8 +299,8 @@ const FlowCanvas = ({
 
   // --- Save map ---
   const handleSaveMap = async () => {
-    if (!processMapName || !processMapNumber || !selectedItem) {
-      return alert("Process Map Name, Number, and FG Item are required.");
+    if (!processMapName || !processMapNumber || !selectedStyleGroup) {
+      return alert("Process Map Name, Number, and Style Group are required.");
     }
 
     const nodePayload = nodes.map((node) => ({
@@ -332,7 +332,7 @@ const FlowCanvas = ({
       edges: JSON.stringify(edgePayload),
       description,
       process_map_number: processMapNumber,
-      select_fg: selectedItem,
+      style_group: selectedStyleGroup,
     };
 
     try {
