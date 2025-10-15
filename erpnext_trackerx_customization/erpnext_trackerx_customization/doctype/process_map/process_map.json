@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:{map_name}-{process_map_number}",
+ "autoname": "format:{style_group}-{map_name}-{process_map_number}",
  "creation": "2025-08-22 16:17:11.711063",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -9,7 +9,9 @@
  "field_order": [
   "process_map_number",
   "map_name",
-  "select_fg",
+  "style_group",
+  "style_group_name",
+  "style_group_number",
   "description",
   "nodes",
   "edges",
@@ -46,14 +48,27 @@
   },
   {
    "allow_in_quick_entry": 1,
-   "fieldname": "select_fg",
+   "fieldname": "style_group",
    "fieldtype": "Link",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Select FG",
-   "link_filters": "[[\"Item\",\"custom_select_master\",\"=\",\"Finished Goods\"]]",
-   "options": "Item",
+   "label": "Style Group",
+   "options": "Style Group",
    "reqd": 1
+  },
+  {
+   "fieldname": "style_group_name",
+   "fieldtype": "Data",
+   "label": "Style Group Name",
+   "read_only": 1,
+   "fetch_from": "style_group.name"
+  },
+  {
+   "fieldname": "style_group_number",
+   "fieldtype": "Data",
+   "label": "Style Group Number",
+   "read_only": 1,
+   "fetch_from": "style_group.style_group_number"
   },
   {
    "fieldname": "amended_from",

@@ -7,6 +7,7 @@ import {
   useEdgesState,
   addEdge,
   Background,
+  useKeyPress,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -34,7 +35,7 @@ const FlowCanvas = ({
   operationGroups,
   defaultComponents,
   processMapNumber,
-  selectedItem,
+  selectedStyleGroup,
   description,
   processMapName,
   initialNodes = [],
@@ -54,6 +55,8 @@ const FlowCanvas = ({
   const [targetNode, setTargetNode] = useState(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState(null);
   const [csrfToken, setCsrfToken] = useState("");
+  const [selectedNodes, setSelectedNodes] = useState([]);
+  const [selectedEdges, setSelectedEdges] = useState([]);
 
   // Grab CSRF token
   useEffect(() => {
@@ -99,6 +102,117 @@ const FlowCanvas = ({
     setEdgeComponents(rebuilt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialEdges, setEdgeComponents]);
+
+  // Handle selection changes
+  const onSelectionChange = useCallback(({ nodes, edges }) => {
+    setSelectedNodes(nodes);
+    setSelectedEdges(edges);
+  }, []);
+
+  // Delete selected elements
+  const deleteSelectedElements = useCallback(() => {
+    if (selectedNodes.length === 0 && selectedEdges.length === 0) {
+      alert("No elements selected for deletion");
+      return;
+    }
+
+    const confirmMessage = `Are you sure you want to delete ${selectedNodes.length} node(s) and ${selectedEdges.length} edge(s)?`;
+    if (window.confirm(confirmMessage)) {
+      // Delete selected nodes
+      if (selectedNodes.length > 0) {
+        const nodeIdsToDelete = selectedNodes.map(node => node.id);
+        setNodes(currentNodes => currentNodes.filter(node => !nodeIdsToDelete.includes(node.id)));
+
+        // Remove edges connected to deleted nodes
+        setEdges(currentEdges => currentEdges.filter(edge =>
+          !nodeIdsToDelete.includes(edge.source) && !nodeIdsToDelete.includes(edge.target)
+        ));
+
+        // Clean up edgeComponents for deleted edges
+        setEdgeComponents(currentEdgeComponents => {
+          const newEdgeComponents = { ...currentEdgeComponents };
+          Object.keys(newEdgeComponents).forEach(edgeId => {
+            const edge = edges.find(e => e.id === edgeId);
+            if (!edge || nodeIdsToDelete.includes(edge.source) || nodeIdsToDelete.includes(edge.target)) {
+              delete newEdgeComponents[edgeId];
+            }
+          });
+          return newEdgeComponents;
+        });
+      }
+
+      // Delete selected edges
+      if (selectedEdges.length > 0) {
+        const edgeIdsToDelete = selectedEdges.map(edge => edge.id);
+        setEdges(currentEdges => currentEdges.filter(edge => !edgeIdsToDelete.includes(edge.id)));
+
+        // Clean up edgeComponents for deleted edges
+        setEdgeComponents(currentEdgeComponents => {
+          const newEdgeComponents = { ...currentEdgeComponents };
+          edgeIdsToDelete.forEach(edgeId => {
+            delete newEdgeComponents[edgeId];
+          });
+          return newEdgeComponents;
+        });
+      }
+
+      // Clear selection
+      setSelectedNodes([]);
+      setSelectedEdges([]);
+
+      alert("Selected elements deleted successfully!");
+    }
+  }, [selectedNodes, selectedEdges, setNodes, setEdges, edges]);
+
+  // Handle keyboard delete
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault();
+        deleteSelectedElements();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [deleteSelectedElements]);
+
+  // React Flow delete handlers
+  const onNodesDelete = useCallback((nodesToDelete) => {
+    const nodeIdsToDelete = nodesToDelete.map(node => node.id);
+
+    // Remove edges connected to deleted nodes
+    setEdges(currentEdges => currentEdges.filter(edge =>
+      !nodeIdsToDelete.includes(edge.source) && !nodeIdsToDelete.includes(edge.target)
+    ));
+
+    // Clean up edgeComponents for deleted edges
+    setEdgeComponents(currentEdgeComponents => {
+      const newEdgeComponents = { ...currentEdgeComponents };
+      Object.keys(newEdgeComponents).forEach(edgeId => {
+        const edge = edges.find(e => e.id === edgeId);
+        if (!edge || nodeIdsToDelete.includes(edge.source) || nodeIdsToDelete.includes(edge.target)) {
+          delete newEdgeComponents[edgeId];
+        }
+      });
+      return newEdgeComponents;
+    });
+  }, [setEdges, edges]);
+
+  const onEdgesDelete = useCallback((edgesToDelete) => {
+    const edgeIdsToDelete = edgesToDelete.map(edge => edge.id);
+
+    // Clean up edgeComponents for deleted edges
+    setEdgeComponents(currentEdgeComponents => {
+      const newEdgeComponents = { ...currentEdgeComponents };
+      edgeIdsToDelete.forEach(edgeId => {
+        delete newEdgeComponents[edgeId];
+      });
+      return newEdgeComponents;
+    });
+  }, []);
 
   // --- Utility to check available components ---
   const getAvailableComponentsFromSource = (sourceNodeId) => {
@@ -299,8 +413,8 @@ const FlowCanvas = ({
 
   // --- Save map ---
   const handleSaveMap = async () => {
-    if (!processMapName || !processMapNumber || !selectedItem) {
-      return alert("Process Map Name, Number, and FG Item are required.");
+    if (!processMapName || !processMapNumber || !selectedStyleGroup) {
+      return alert("Process Map Name, Number, and Style Group are required.");
     }
 
     const nodePayload = nodes.map((node) => ({
@@ -332,7 +446,7 @@ const FlowCanvas = ({
       edges: JSON.stringify(edgePayload),
       description,
       process_map_number: processMapNumber,
-      select_fg: selectedItem,
+      style_group: selectedStyleGroup,
     };
 
     try {
@@ -412,6 +526,9 @@ const FlowCanvas = ({
           operationGroups={operationGroups}
           handleSaveMap={handleSaveMap}
           handleLoadMap={handleLoadMap}
+          deleteSelectedElements={deleteSelectedElements}
+          selectedNodes={selectedNodes}
+          selectedEdges={selectedEdges}
         />
         <div className="col-9 p-0">
           <ReactFlow
@@ -425,6 +542,11 @@ const FlowCanvas = ({
             onConnect={onConnect}
             onNodeContextMenu={onNodeContextMenu}
             onEdgeContextMenu={onEdgeContextMenu}
+            onSelectionChange={onSelectionChange}
+            onNodesDelete={onNodesDelete}
+            onEdgesDelete={onEdgesDelete}
+            deleteKeyCode="Delete"
+            multiSelectionKeyCode="Shift"
             fitView
           >
             <Background />
