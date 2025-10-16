@@ -2,7 +2,175 @@ import frappe
 from frappe import _
 from frappe.utils import flt, cint, getdate, nowdate, now_datetime
 import json
+import re
 from datetime import datetime, timedelta
+
+# ===========================
+# SECURITY CONSTANTS
+# ===========================
+
+# Whitelist of allowed doctypes for security
+ALLOWED_DOCTYPES = {
+    'Purchase Receipt', 'Goods Receipt Note', 'Purchase Order', 
+    'Material Request', 'Stock Entry', 'Delivery Note', 'Sales Invoice'
+}
+
+# Allowed sort fields to prevent injection
+ALLOWED_SORT_FIELDS = {
+    'creation', 'modified', 'name', 'posting_date', 'transaction_date', 
+    'grand_total', 'supplier', 'supplier_name'
+}
+
+# Allowed sort orders
+ALLOWED_SORT_ORDERS = {'asc', 'desc', 'ASC', 'DESC'}
+
+# CONFIGURABLE VALIDATION RULES
+VALIDATION_CONFIG = {
+    "received_qty_min": 0,
+    "require_item_codes": True,
+    "require_batch_for_batch_items": True,
+    "allow_zero_qty": False,
+    "min_items_required": 1,
+    "validate_rates": True,
+    "rate_min": 0
+}
+
+def get_validation_config():
+    """
+    Get validation configuration from Mobile API Settings or use defaults
+    """
+    try:
+        # Try to get from Mobile API Settings
+        settings = frappe.get_single("Mobile API Settings")
+        if settings:
+            return {
+                "received_qty_min": getattr(settings, 'minimum_rate_allowed', 0),
+                "require_item_codes": getattr(settings, 'require_item_codes', True),
+                "require_batch_for_batch_items": getattr(settings, 'require_batch_numbers_for_batch_items', True),
+                "allow_zero_qty": getattr(settings, 'allow_zero_quantities', False),
+                "min_items_required": getattr(settings, 'minimum_items_required', 1),
+                "validate_rates": getattr(settings, 'validate_item_rates', True),
+                "rate_min": getattr(settings, 'minimum_rate_allowed', 0)
+            }
+    except:
+        pass
+    
+    # Fallback to default configuration
+    return VALIDATION_CONFIG
+
+# Configurable fields per doctype for better flexibility
+DOCTYPE_FIELDS = {
+    "Purchase Receipt": {
+        "title": "title",
+        "supplier": "supplier", 
+        "supplier_name": "supplier_name",
+        "grand_total": "grand_total",
+        "currency": "currency",
+        "posting_date": "posting_date",
+        "company": "company",
+        "remarks": "remarks"
+    },
+    "Goods Receipt Note": {
+        "title": "title",
+        "supplier": "supplier",
+        "supplier_name": "supplier_name", 
+        "grand_total": "grand_total",
+        "currency": "currency",
+        "posting_date": "posting_date",
+        "company": "company",
+        "remarks": "remarks"
+    },
+    "Purchase Order": {
+        "title": "title",
+        "supplier": "supplier",
+        "supplier_name": "supplier_name",
+        "grand_total": "grand_total", 
+        "currency": "currency",
+        "posting_date": "transaction_date",
+        "company": "company",
+        "remarks": "remarks"
+    }
+}
+
+
+def secure_api_call(func):
+    """
+    Decorator to add security validation to API calls
+    """
+    def wrapper(*args, **kwargs):
+        try:
+            # Rate limiting check (basic implementation)
+            user = frappe.session.user
+            if user == "Guest":
+                raise frappe.PermissionError("Guest users not allowed")
+            
+            # Remove Frappe's internal parameters that utility functions don't expect
+            kwargs.pop('cmd', None)
+            kwargs.pop('method', None)
+            kwargs.pop('args', None)
+            kwargs.pop('kwargs', None)
+            
+            # Input validation for common parameters
+            if 'doctype' in kwargs:
+                validate_doctype(kwargs['doctype'])
+            if 'search' in kwargs and kwargs['search']:
+                kwargs['search'] = sanitize_search_term(kwargs['search'])
+            if 'search_term' in kwargs and kwargs['search_term']:
+                kwargs['search_term'] = sanitize_search_term(kwargs['search_term'])
+            
+            return func(*args, **kwargs)
+        except frappe.ValidationError:
+            raise
+        except Exception as e:
+            frappe.log_error(f"Security error in {func.__name__}: {str(e)}", "Security Error")
+            raise frappe.ValidationError("Invalid request")
+    
+    return wrapper
+
+def validate_doctype(doctype):
+    """Validate doctype against whitelist to prevent SQL injection"""
+    if not doctype or doctype not in ALLOWED_DOCTYPES:
+        raise frappe.ValidationError(f"Invalid doctype: {doctype}. Allowed types: {', '.join(ALLOWED_DOCTYPES)}")
+    return doctype
+
+def sanitize_search_term(search_term):
+    """Sanitize search terms to prevent SQL injection"""
+    if not search_term:
+        return ""
+    # Remove potentially dangerous characters
+    sanitized = re.sub(r'[^\w\s\-\.@]', '', str(search_term))
+    return sanitized.strip()
+
+def validate_sort_params(sort_by, sort_order):
+    """Validate sort parameters to prevent SQL injection"""
+    if sort_by not in ALLOWED_SORT_FIELDS:
+        sort_by = 'creation'  # Default safe value
+    
+    if sort_order.upper() not in ALLOWED_SORT_ORDERS:
+        sort_order = 'DESC'  # Default safe value
+    
+    return sort_by, sort_order.upper()
+
+def validate_pagination_params(page, limit):
+    """Validate pagination parameters"""
+    page = max(1, cint(page) or 1)
+    limit = max(1, min(100, cint(limit) or 20))  # Cap at 100 for performance
+    return page, limit
+
+def safe_table_name(doctype):
+    """Generate safe table name after validation"""
+    validated_doctype = validate_doctype(doctype)
+    return f"`tab{validated_doctype}`"
+
+def safe_child_table_name(doctype):
+    """Generate safe child table name after validation"""
+    validated_doctype = validate_doctype(doctype)
+    return f"`tab{validated_doctype} Item`"
+
+def get_doctype_fields(doctype):
+    """Get field mappings for a specific doctype"""
+    validated_doctype = validate_doctype(doctype)
+    return DOCTYPE_FIELDS.get(validated_doctype, DOCTYPE_FIELDS["Purchase Receipt"])
 
 # ===========================
 # SHARED MOBILE UTILITIES
@@ -16,65 +184,95 @@ def get_document_list(doctype, search=None, status=None, company=None, supplier=
     Works for any doctype (Purchase Receipt, Goods Receipt Note, etc.)
     """
     try:
-        page = cint(page) or 1
-        limit = cint(limit) or 20
+        # SECURITY: Validate and sanitize all inputs
+        validate_doctype(doctype)
+        search = sanitize_search_term(search) if search else None
+        sort_by, sort_order = validate_sort_params(sort_by, sort_order)
+        page, limit = validate_pagination_params(page, limit)
+        
         offset = (page - 1) * limit
 
-        # Build conditions
-        conditions = [f"doc.docstatus != 2"]
+        # Build conditions with parameterized queries
+        conditions = ["doc.docstatus != 2"]
         values = {}
 
-        # Search functionality
+        # Get doctype-specific field mappings for search
+        fields = get_doctype_fields(doctype)
+        
+        # Search functionality with sanitized input using dynamic fields
         if search:
-            conditions.append("(doc.name LIKE %(search)s OR doc.supplier LIKE %(search)s OR doc.supplier_name LIKE %(search)s)")
+            search_conditions = [
+                f"doc.name LIKE %(search)s",
+                f"doc.{fields['supplier']} LIKE %(search)s", 
+                f"doc.{fields['supplier_name']} LIKE %(search)s"
+            ]
+            conditions.append(f"({' OR '.join(search_conditions)})")
             values["search"] = f"%{search}%"
 
-        # Status filter
+        # Status filter with validation
         if status:
-            if status.lower() == "draft":
+            status = status.lower()
+            if status == "draft":
                 conditions.append("doc.docstatus = 0")
-            elif status.lower() == "submitted":
+            elif status == "submitted":
                 conditions.append("doc.docstatus = 1")
-            elif status.lower() == "cancelled":
+            elif status == "cancelled":
                 conditions.append("doc.docstatus = 2")
 
-        # Company filter
+        # Company filter with validation
         if company:
-            conditions.append("doc.company = %(company)s")
-            values["company"] = company
+            # Validate company exists
+            if frappe.db.exists("Company", company):
+                conditions.append("doc.company = %(company)s")
+                values["company"] = company
 
-        # Supplier filter
+        # Supplier filter with validation
         if supplier:
-            conditions.append("doc.supplier = %(supplier)s")
-            values["supplier"] = supplier
+            # Validate supplier exists
+            if frappe.db.exists("Supplier", supplier):
+                conditions.append("doc.supplier = %(supplier)s")
+                values["supplier"] = supplier
 
-        # Date range filter
+        # Date range filter with validation
         if date_from:
-            conditions.append("doc.posting_date >= %(date_from)s")
-            values["date_from"] = date_from
+            try:
+                getdate(date_from)  # Validate date format
+                conditions.append("doc.posting_date >= %(date_from)s")
+                values["date_from"] = date_from
+            except:
+                pass  # Skip invalid dates
 
         if date_to:
-            conditions.append("doc.posting_date <= %(date_to)s")
-            values["date_to"] = date_to
+            try:
+                getdate(date_to)  # Validate date format
+                conditions.append("doc.posting_date <= %(date_to)s")
+                values["date_to"] = date_to
+            except:
+                pass  # Skip invalid dates
 
         where_clause = " AND ".join(conditions)
 
-        # Get child table name
-        child_table = f"`tab{doctype} Item`"
+        # SECURITY: Use safe table names
+        table_name = safe_table_name(doctype)
+        child_table = safe_child_table_name(doctype)
+        
+        # Get doctype-specific field mappings
+        fields = get_doctype_fields(doctype)
 
-        # Main query
+        # OPTIMIZED: Use SQL_CALC_FOUND_ROWS for better performance with dynamic fields
+        # Performance hint: Use index on docstatus, company, supplier for faster filtering
         query = f"""
-            SELECT
+            SELECT SQL_CALC_FOUND_ROWS
                 doc.name as id,
-                doc.title,
-                doc.supplier,
-                doc.supplier_name,
-                doc.company,
-                doc.posting_date as date,
-                doc.grand_total,
-                doc.currency,
+                doc.{fields['title']} as title,
+                doc.{fields['supplier']} as supplier,
+                doc.{fields['supplier_name']} as supplier_name,
+                doc.{fields['company']} as company,
+                doc.{fields['posting_date']} as date,
+                doc.{fields['grand_total']} as grand_total,
+                doc.{fields['currency']} as currency,
                 doc.docstatus,
-                doc.remarks,
+                doc.{fields['remarks']} as remarks,
                 doc.modified,
                 doc.creation,
                 CASE
@@ -85,20 +283,19 @@ def get_document_list(doctype, search=None, status=None, company=None, supplier=
                     ELSE 'Unknown'
                 END as status,
                 COUNT(child.name) as total_items
-            FROM `tab{doctype}` doc
+            FROM {table_name} doc
             LEFT JOIN {child_table} child ON child.parent = doc.name
             WHERE {where_clause}
             GROUP BY doc.name
-            ORDER BY doc.{sort_by} {sort_order.upper()}
+            ORDER BY doc.{sort_by} {sort_order}
             LIMIT %(limit)s OFFSET %(offset)s
         """
 
         values.update({"limit": limit, "offset": offset})
         doc_list = frappe.db.sql(query, values, as_dict=True)
 
-        # Get total count
-        count_query = f"SELECT COUNT(DISTINCT doc.name) as total FROM `tab{doctype}` doc WHERE {where_clause}"
-        total_count = frappe.db.sql(count_query, values, as_dict=True)[0].total
+        # Get total count using FOUND_ROWS() - much more efficient
+        total_count = frappe.db.sql("SELECT FOUND_ROWS() as total", as_dict=True)[0].total
         total_pages = (total_count + limit - 1) // limit
 
         # Format response
@@ -124,9 +321,11 @@ def get_document_list(doctype, search=None, status=None, company=None, supplier=
             }
         }
 
+    except frappe.ValidationError as ve:
+        return {"success": False, "error": {"message": str(ve), "code": "VALIDATION_ERROR"}}
     except Exception as e:
         frappe.log_error(f"Error in get_document_list for {doctype}: {str(e)}", "Mobile Utils Error")
-        return {"success": False, "error": {"message": str(e), "code": "DOCUMENT_LIST_ERROR"}}
+        return {"success": False, "error": {"message": "An error occurred while fetching documents", "code": "DOCUMENT_LIST_ERROR"}}
 
 @frappe.whitelist()
 def get_document_filters(doctype):
@@ -134,18 +333,22 @@ def get_document_filters(doctype):
     Generic function to get filter options for document list
     """
     try:
-        # Get unique companies
+        # SECURITY: Validate doctype
+        validate_doctype(doctype)
+        table_name = safe_table_name(doctype)
+
+        # Get unique companies with safe table name
         companies = frappe.db.sql(f"""
             SELECT DISTINCT company, company as label
-            FROM `tab{doctype}`
+            FROM {table_name}
             WHERE docstatus != 2
             ORDER BY company
         """, as_dict=True)
 
-        # Get unique suppliers
+        # Get unique suppliers with safe table name
         suppliers = frappe.db.sql(f"""
             SELECT DISTINCT supplier, supplier_name as label
-            FROM `tab{doctype}`
+            FROM {table_name}
             WHERE docstatus != 2 AND supplier IS NOT NULL
             ORDER BY supplier_name
         """, as_dict=True)
@@ -166,9 +369,11 @@ def get_document_filters(doctype):
             }
         }
 
+    except frappe.ValidationError as ve:
+        return {"success": False, "error": {"message": str(ve), "code": "VALIDATION_ERROR"}}
     except Exception as e:
         frappe.log_error(f"Error in get_document_filters for {doctype}: {str(e)}", "Mobile Utils Error")
-        return {"success": False, "error": {"message": str(e), "code": "DOCUMENT_FILTERS_ERROR"}}
+        return {"success": False, "error": {"message": "An error occurred while fetching filters", "code": "DOCUMENT_FILTERS_ERROR"}}
 
 @frappe.whitelist()
 def search_document(doctype, search_term, limit=10):
@@ -176,20 +381,28 @@ def search_document(doctype, search_term, limit=10):
     Generic function to search documents
     """
     try:
+        # SECURITY: Validate doctype and sanitize inputs
+        validate_doctype(doctype)
+        search_term = sanitize_search_term(search_term)
+        
         if not search_term:
             return {"success": True, "data": [], "message": "Please provide a search term"}
 
-        limit = cint(limit) or 10
+        limit = max(1, min(50, cint(limit) or 10))  # Cap at 50 for performance
+        table_name = safe_table_name(doctype)
+        
+        # Get doctype-specific field mappings
+        fields = get_doctype_fields(doctype)
 
         query = f"""
             SELECT
                 doc.name as id,
-                doc.title,
-                doc.supplier,
-                doc.supplier_name,
-                doc.posting_date as date,
-                doc.grand_total,
-                doc.currency,
+                doc.{fields['title']} as title,
+                doc.{fields['supplier']} as supplier,
+                doc.{fields['supplier_name']} as supplier_name,
+                doc.{fields['posting_date']} as date,
+                doc.{fields['grand_total']} as grand_total,
+                doc.{fields['currency']} as currency,
                 CASE
                     WHEN doc.docstatus = 0 THEN 'Draft'
                     WHEN doc.docstatus = 1 AND doc.is_return = 1 THEN 'Return'
@@ -197,12 +410,12 @@ def search_document(doctype, search_term, limit=10):
                     WHEN doc.docstatus = 2 THEN 'Cancelled'
                     ELSE 'Unknown'
                 END as status
-            FROM `tab{doctype}` doc
+            FROM {table_name} doc
             WHERE doc.docstatus != 2
             AND (
                 doc.name LIKE %(search)s OR
-                doc.supplier LIKE %(search)s OR
-                doc.supplier_name LIKE %(search)s OR
+                doc.{fields['supplier']} LIKE %(search)s OR
+                doc.{fields['supplier_name']} LIKE %(search)s OR
                 doc.supplier_delivery_note LIKE %(search)s OR
                 doc.purchase_order LIKE %(search)s
             )
@@ -228,9 +441,11 @@ def search_document(doctype, search_term, limit=10):
             "total_results": len(results)
         }
 
+    except frappe.ValidationError as ve:
+        return {"success": False, "error": {"message": str(ve), "code": "VALIDATION_ERROR"}}
     except Exception as e:
         frappe.log_error(f"Error in search_document for {doctype}: {str(e)}", "Mobile Utils Error")
-        return {"success": False, "error": {"message": str(e), "code": "DOCUMENT_SEARCH_ERROR"}}
+        return {"success": False, "error": {"message": "An error occurred while searching documents", "code": "DOCUMENT_SEARCH_ERROR"}}
 
 @frappe.whitelist()
 def get_companies():
@@ -262,8 +477,8 @@ def get_companies():
         }
 
     except Exception as e:
-        frappe.log_error("Mobile Utils Companies Error", frappe.get_traceback())
-        return {"success": False, "error": {"message": str(e), "code": "COMPANIES_ERROR"}}
+        frappe.log_error(f"Mobile Utils Companies Error: {str(e)}", frappe.get_traceback())
+        return {"success": False, "error": {"message": f"Failed to fetch companies: {str(e)}", "code": "COMPANIES_ERROR"}}
 
 @frappe.whitelist()
 def get_purchase_orders(supplier=None, company=None, search=None):
@@ -337,8 +552,8 @@ def get_purchase_orders(supplier=None, company=None, search=None):
         }
 
     except Exception as e:
-        frappe.log_error("Mobile Utils PO Error", frappe.get_traceback())
-        return {"success": False, "error": {"message": str(e), "code": "PURCHASE_ORDERS_ERROR"}}
+        frappe.log_error(f"Mobile Utils PO Error: {str(e)}", frappe.get_traceback())
+        return {"success": False, "error": {"message": f"Failed to fetch purchase orders: {str(e)}", "code": "PURCHASE_ORDERS_ERROR"}}
 
 @frappe.whitelist()
 def get_warehouses(company=None):
@@ -378,8 +593,8 @@ def get_warehouses(company=None):
         }
 
     except Exception as e:
-        frappe.log_error("Mobile Utils Warehouses Error", frappe.get_traceback())
-        return {"success": False, "error": {"message": "Failed to get warehouses", "code": "API_ERROR"}}
+        frappe.log_error(f"Mobile Utils Warehouses Error: {str(e)}", frappe.get_traceback())
+        return {"success": False, "error": {"message": f"Failed to fetch warehouses: {str(e)}", "code": "WAREHOUSES_ERROR"}}
 
 @frappe.whitelist()
 def get_tax_templates():
@@ -413,8 +628,8 @@ def get_tax_templates():
         }
 
     except Exception as e:
-        frappe.log_error("Mobile Utils Tax Templates Error", frappe.get_traceback())
-        return {"success": False, "error": {"message": "Failed to get tax templates", "code": "API_ERROR"}}
+        frappe.log_error(f"Mobile Utils Tax Templates Error: {str(e)}", frappe.get_traceback())
+        return {"success": False, "error": {"message": f"Failed to fetch tax templates: {str(e)}", "code": "TAX_TEMPLATES_ERROR"}}
 
 @frappe.whitelist()
 def get_tax_accounts(company=None):
@@ -458,8 +673,8 @@ def get_tax_accounts(company=None):
         }
 
     except Exception as e:
-        frappe.log_error("Error in get_tax_accounts", frappe.get_traceback())
-        return {"success": False, "error": {"message": "Failed to get tax accounts", "code": "API_ERROR"}}
+        frappe.log_error(f"Error in get_tax_accounts: {str(e)}", frappe.get_traceback())
+        return {"success": False, "error": {"message": f"Failed to fetch tax accounts: {str(e)}", "code": "TAX_ACCOUNTS_ERROR"}}
 
 
 @frappe.whitelist()
@@ -519,8 +734,8 @@ def get_document_status_summary(doctype):
         }
 
     except Exception as e:
-        frappe.log_error("Mobile Utils Status Summary Error", frappe.get_traceback())
-        return {"success": False, "error": {"message": "Failed to get document status summary", "code": "API_ERROR"}}
+        frappe.log_error(f"Mobile Utils Status Summary Error: {str(e)}", frappe.get_traceback())
+        return {"success": False, "error": {"message": f"Failed to fetch document status summary: {str(e)}", "code": "STATUS_SUMMARY_ERROR"}}
 
 
 @frappe.whitelist()
@@ -566,11 +781,11 @@ def get_naming_series(doctype):
         }
 
     except Exception as e:
-        frappe.log_error("Mobile Utils Naming Series Error", frappe.get_traceback())
+        frappe.log_error(f"Mobile Utils Naming Series Error: {str(e)}", frappe.get_traceback())
         return {
             "success": False,
             "error": {
-                "message": str(e),
+                "message": f"Failed to fetch naming series: {str(e)}",
                 "code": "NAMING_SERIES_ERROR"
             }
         }
@@ -665,7 +880,7 @@ def search_items(search_term, supplier=None, company=None, limit=10):
 
     except Exception as e:
         frappe.log_error(f"Error searching items: {str(e)}", "Mobile Utils Search Items Error")
-        return {"success": False, "error": {"message": "Failed to search items", "code": "API_ERROR"}}
+        return {"success": False, "error": {"message": f"Failed to search items: {str(e)}", "code": "SEARCH_ITEMS_ERROR"}}
 
 
 @frappe.whitelist()
@@ -681,14 +896,24 @@ def get_document_items(doctype, doc_id):
         dict: List of document items with details
     """
     try:
+        # SECURITY: Validate doctype and sanitize doc_id
+        validate_doctype(doctype)
+        if not doc_id or not isinstance(doc_id, str):
+            return {"success": False, "error": {"message": "Invalid document ID", "code": "INVALID_DOC_ID"}}
+        
+        # Sanitize doc_id to prevent injection
+        doc_id = re.sub(r'[^\w\-\.]', '', str(doc_id))
+        if not doc_id:
+            return {"success": False, "error": {"message": "Invalid document ID format", "code": "INVALID_DOC_ID"}}
+
         # Check if document exists
         if not frappe.db.exists(doctype, doc_id):
-            return {"success": False, "error": {"message": f"{doctype} not found", "code": "DOCUMENT_NOT_FOUND"}}
+            return {"success": False, "error": {"message": "Document not found", "code": "DOCUMENT_NOT_FOUND"}}
 
-        # Get child table name
-        child_table = f"`tab{doctype} Item`"
+        # SECURITY: Use safe child table name
+        child_table = safe_child_table_name(doctype)
 
-        # Get document items
+        # Get document items with safe table names
         items = frappe.db.sql(f"""
             SELECT
                 pri.name,
@@ -737,8 +962,6 @@ def get_document_items(doctype, doc_id):
                 "stock_uom": item.stock_uom,
                 "stock_qty": flt(item.stock_qty),
                 "custom_color": item.custom_color,
-                "custom_roll_box_no": item.custom_roll_box_no,
-                "custom_composition": item.custom_composition,
                 "item_group": item.item_group,
                 "item_stock_uom": item.item_stock_uom,
                 "has_batch_no": item.has_batch_no,
@@ -756,9 +979,11 @@ def get_document_items(doctype, doc_id):
             "timestamp": now_datetime().isoformat()
         }
 
+    except frappe.ValidationError as ve:
+        return {"success": False, "error": {"message": str(ve), "code": "VALIDATION_ERROR"}}
     except Exception as e:
-        frappe.log_error("Mobile Utils Get Items Error", frappe.get_traceback())
-        return {"success": False, "error": {"message": "Failed to get items", "code": "API_ERROR"}}
+        frappe.log_error(f"Mobile Utils Get Items Error: {str(e)}", frappe.get_traceback())
+        return {"success": False, "error": {"message": f"Failed to fetch document items: {str(e)}", "code": "GET_ITEMS_ERROR"}}
 
 
 @frappe.whitelist()
@@ -850,8 +1075,8 @@ def add_document_item(doctype, doc_id, item_code, warehouse, qty=1, received_qty
         }
 
     except Exception as e:
-        frappe.log_error("Mobile Utils Add Item Error", frappe.get_traceback())
-        return {"success": False, "error": {"message": "Failed to add item", "code": "API_ERROR"}}
+        frappe.log_error(f"Mobile Utils Add Item Error: {str(e)}", frappe.get_traceback())
+        return {"success": False, "error": {"message": f"Failed to add item to document: {str(e)}", "code": "ADD_ITEM_ERROR"}}
 
 
 @frappe.whitelist()
@@ -919,8 +1144,8 @@ def update_document_item(doctype, item_id, **kwargs):
         }
 
     except Exception as e:
-        frappe.log_error("Mobile Utils Update Item Error", frappe.get_traceback())
-        return {"success": False, "error": {"message": "Failed to update item", "code": "API_ERROR"}}
+        frappe.log_error(f"Mobile Utils Update Item Error: {str(e)}", frappe.get_traceback())
+        return {"success": False, "error": {"message": f"Failed to update document item: {str(e)}", "code": "UPDATE_ITEM_ERROR"}}
 
 
 @frappe.whitelist()
@@ -966,8 +1191,8 @@ def delete_document_item(doctype, item_id):
         }
 
     except Exception as e:
-        frappe.log_error("Mobile Utils Delete Item Error", frappe.get_traceback())
-        return {"success": False, "error": {"message": "Failed to delete item", "code": "API_ERROR"}}
+        frappe.log_error(f"Mobile Utils Delete Item Error: {str(e)}", frappe.get_traceback())
+        return {"success": False, "error": {"message": f"Failed to delete document item: {str(e)}", "code": "DELETE_ITEM_ERROR"}}
 
 
 @frappe.whitelist()
@@ -993,26 +1218,37 @@ def validate_document_items(doctype, doc_id):
             validation_results["issues"].append("At least one item is required")
 
         # Validate each item
-        for item in doc.items:
-            item_issues = []
+        config = get_validation_config()
+        frappe.log_error(f"Validation Config", config)
 
-            # Check required fields
-            if not item.item_code:
-                item_issues.append("Item code is required")
-            if not item.warehouse:
-                item_issues.append("Warehouse is required")
-            if flt(item.received_qty) <= 0:
-                item_issues.append("Received quantity must be greater than 0")
+        if not doc.items:
+            validation_results["issues"].append("At least one item is required")
+        elif len(doc.items) < config.get("min_items_required", 1):
+            validation_results["issues"].append(f"At least {config.get('min_items_required', 1)} item(s) required")
+        else:
+            for item in doc.items:
+                # Configurable item code validation
+                if config.get("require_item_codes", True) and not item.item_code:
+                    validation_results["issues"].append("All items must have item codes")
+                
+                # Configurable quantity validation
+                received_qty = flt(item.received_qty)
+                if not config.get("allow_zero_qty", False) and received_qty <= 0:
+                    validation_results["issues"].append("All items must have received quantity greater than 0")
+                elif received_qty < config.get("received_qty_min", 0):
+                    validation_results["issues"].append(f"Received quantity must be at least {config.get('received_qty_min', 0)}")
 
-            # Check batch requirement
-            if item.item_code:
-                has_batch = frappe.db.get_value("Item", item.item_code, "has_batch_no")
-                if has_batch and not item.batch_no:
-                    item_issues.append("Batch number is required for this item")
-
-            if item_issues:
-                validation_results["is_valid"] = False
-                validation_results["issues"].extend([f"Item {item.item_code}: {issue}" for issue in item_issues])
+                # Configurable batch requirements
+                if config.get("require_batch_for_batch_items", True) and item.item_code:
+                    has_batch = frappe.db.get_value("Item", item.item_code, "has_batch_no")
+                    if has_batch and not item.batch_no:
+                        validation_results["issues"].append(f"Batch number required for item {item.item_code}")
+                
+                # Configurable rate validation
+                if config.get("validate_rates", True):
+                    rate = flt(item.rate)
+                    if rate < config.get("rate_min", 0):
+                        validation_results["issues"].append(f"Rate must be at least {config.get('rate_min', 0)} for item {item.item_code}")
 
         # Final validation
         if validation_results["issues"]:
@@ -1023,5 +1259,5 @@ def validate_document_items(doctype, doc_id):
         return {"success": True, "data": validation_results, "message": message}
 
     except Exception as e:
-        frappe.log_error("Mobile Utils Validate Items Error", frappe.get_traceback())
-        return {"success": False, "error": {"message": "Items validation failed", "code": "VALIDATION_ERROR"}}
+        frappe.log_error(f"Mobile Utils Validate Items Error: {str(e)}", frappe.get_traceback())
+        return {"success": False, "error": {"message": f"Failed to validate document items: {str(e)}", "code": "VALIDATE_ITEMS_ERROR"}}

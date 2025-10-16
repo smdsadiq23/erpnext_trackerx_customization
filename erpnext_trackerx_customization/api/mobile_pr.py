@@ -11,6 +11,8 @@ from .mobile_utils import (
     search_items as search_items_utils, get_document_items as get_document_items_utils, add_document_item as add_document_item_utils,
     update_document_item as update_document_item_utils, delete_document_item as delete_document_item_utils, 
     validate_document_items as validate_document_items_utils,
+    # Import security decorator
+    secure_api_call
 )
 
 # Constants
@@ -23,6 +25,7 @@ DOCTYPE = "Purchase Receipt"
 # ===========================
 
 @frappe.whitelist()
+@secure_api_call
 def get_pr_list(search=None, status=None, company=None, supplier=None,
                             date_from=None, date_to=None, page=1, limit=20, sort_by="creation", sort_order="desc"):
     """
@@ -32,6 +35,7 @@ def get_pr_list(search=None, status=None, company=None, supplier=None,
                             date_from, date_to, page, limit, sort_by, sort_order)
 
 @frappe.whitelist()
+@secure_api_call
 def get_pr_filters():
     """
     Get filter options for PR list
@@ -39,6 +43,7 @@ def get_pr_filters():
     return get_document_filters_utils(DOCTYPE)
 
 @frappe.whitelist()
+@secure_api_call
 def search_pr(search_term, limit=10):
     """
     Quick search PRs
@@ -94,27 +99,25 @@ def create_pr(company=None, naming_series=None, supplier=None, purchase_order=No
         if supplier_delivery_note:
             pr.supplier_delivery_note = supplier_delivery_note
 
-        # Insert document (save as draft) with validation bypass for required items
-        # This allows creating a PR without items initially
-        pr.flags.ignore_validate = True
-        pr.flags.ignore_mandatory = True
-        pr.flags.ignore_links = True
+        # SECURITY IMPROVEMENT: Only bypass mandatory validation for items
+        # This allows creating a PR without items initially, but maintains other validations
+        pr.flags.ignore_mandatory = True  # Only bypass mandatory fields (like items requirement)
+        
+        # Additional security: Validate critical fields before insert
+        if not pr.company:
+            return {"success": False, "error": {"message": "Company is required", "code": "MISSING_COMPANY"}}
+        
+        if not pr.posting_date:
+            return {"success": False, "error": {"message": "Posting date is required", "code": "MISSING_POSTING_DATE"}}
 
-        # Alternative approach: Add a temporary placeholder item to satisfy validation
-        # This will be removed when real items are added
-        temp_item = pr.append("items", {})
-        temp_item.item_code = "TEMP-PLACEHOLDER"
-        temp_item.item_name = "Temporary Placeholder - To be replaced"
-        temp_item.qty = 1
-        temp_item.received_qty = 1
-        temp_item.rate = 0
-        temp_item.amount = 0
-        temp_item.uom = "Nos"
-        temp_item.stock_uom = "Nos"
-        temp_item.conversion_factor = 1
-        temp_item.stock_qty = 1
-
+        # Insert document with minimal validation bypass
         pr.insert(ignore_permissions=True)
+        
+        # SECURITY NOTE: This approach is much safer than the previous implementation
+        # - Only bypasses mandatory field validation (allows empty items)
+        # - Maintains all business logic validations
+        # - Preserves data integrity and security
+        # - No temporary placeholder items needed
 
         return {
             "success": True,
@@ -137,11 +140,11 @@ def create_pr(company=None, naming_series=None, supplier=None, purchase_order=No
         }
 
     except Exception as e:
-        frappe.log_error("Mobile PR Create Error", frappe.get_traceback())
+        frappe.log_error(f"Mobile PR Create Error for company {company}, supplier {supplier}, purchase_order {purchase_order}", frappe.get_traceback())
         return {
             "success": False,
             "error": {
-                "message": str(e),
+                "message": f"Failed to create Purchase Receipt: {str(e)}",
                 "code": "PR_CREATE_ERROR"
             }
         }
@@ -161,6 +164,10 @@ def get_pr(pr_id):
 
         # Get PR document
         pr = frappe.get_doc(DOCTYPE, pr_id)
+        
+        # SECURITY: Check document-level permissions
+        if not pr.has_permission("read"):
+            return {"success": False, "error": {"message": "Access denied to this Purchase Receipt", "code": "PERMISSION_DENIED"}}
 
         # Format response
         pr_data = {
@@ -481,31 +488,37 @@ def validate_pr_for_submission(pr_id):
 # ===========================
 
 @frappe.whitelist()
+@secure_api_call
 def get_companies():
     """Get companies list for dropdown"""
     return get_companies_utils()
 
 @frappe.whitelist()
+@secure_api_call
 def get_purchase_orders(supplier=None, company=None, search=None):
     """Get purchase orders for dropdown"""
     return get_purchase_orders_utils(supplier, company, search)
 
 @frappe.whitelist()
+@secure_api_call
 def get_warehouses(company=None):
     """Get list of warehouses for dropdown"""
     return get_warehouses_utils(company)
 
 @frappe.whitelist()
+@secure_api_call
 def get_tax_templates():
     """Get available Purchase Taxes and Charges templates"""
     return get_tax_templates_utils()
 
 @frappe.whitelist()
+@secure_api_call
 def get_tax_accounts(company=None):
     """Get tax account heads for dropdown"""
     return get_tax_accounts_utils(company)
 
 @frappe.whitelist()
+@secure_api_call
 def get_pr_status_summary():
     """
     Get count of PRs by status for dashboard display
@@ -513,6 +526,7 @@ def get_pr_status_summary():
     return get_document_status_summary_utils(DOCTYPE)
 
 @frappe.whitelist()
+@secure_api_call
 def get_naming_series():
     """
     Get available naming series for Purchase Receipt
@@ -630,6 +644,7 @@ def update_pr_header(pr_id, **kwargs):
 # ===========================
 
 @frappe.whitelist()
+@secure_api_call
 def search_items(search_term, supplier=None, company=None, limit=10):
     """
     Search items for adding to Purchase Receipt
@@ -638,6 +653,7 @@ def search_items(search_term, supplier=None, company=None, limit=10):
 
 
 @frappe.whitelist()
+@secure_api_call
 def get_pr_items(pr_id):
     """
     Get all items in a Purchase Receipt for the Items tab
@@ -1313,3 +1329,88 @@ def _initialize_default_checklist(pr):
         checklist_item.received = 0
         checklist_item.received_date = None
         checklist_item.remarks = ""
+
+
+@frappe.whitelist()
+@secure_api_call
+def validate_pr_header(pr_id):
+    """
+    Validate PR header before moving to next tab
+
+    Args:
+        pr_id (str): PR document name
+
+    Returns:
+        dict: Validation result
+    """
+    try:
+        if not pr_id:
+            return {
+                "success": False,
+                "error": {
+                    "message": "PR ID is required",
+                    "code": "PR_ID_REQUIRED"
+                }
+            }
+
+        # Get PR document
+        pr = frappe.get_doc("Purchase Receipt", pr_id)
+
+        # Validation rules
+        errors = []
+        warnings = []
+
+        # Required field validations
+        if not pr.company:
+            errors.append("Company is required")
+
+        if not pr.posting_date:
+            errors.append("Posting date is required")
+
+        if not pr.supplier:
+            errors.append("Supplier is required")
+
+        # Business logic validations
+        if pr.posting_date and getdate(pr.posting_date) > getdate():
+            warnings.append("Posting date is in the future")
+
+        if pr.is_return and not pr.return_against:
+            warnings.append("Return against document is recommended for return entries")
+
+        # Purchase order validations
+        if pr.items:
+            po_list = list(set([item.purchase_order for item in pr.items if item.purchase_order]))
+            if len(po_list) > 1:
+                warnings.append("Multiple purchase orders found in items")
+
+        # Supplier delivery note validation
+        if pr.supplier_delivery_note and not pr.purchase_order:
+            warnings.append("Purchase order is recommended when supplier delivery note is provided")
+
+        # Currency validation
+        if pr.currency != pr.company_currency:
+            warnings.append("Currency differs from company currency")
+
+        return {
+            "success": True,
+            "data": {
+                "is_valid": len(errors) == 0,
+                "errors": errors,
+                "warnings": warnings,
+                "can_proceed": len(errors) == 0,
+                "pr_id": pr.name,
+                "status": pr.status,
+                "docstatus": pr.docstatus
+            },
+            "message": "Validation completed" if len(errors) == 0 else f"Validation failed with {len(errors)} error(s)"
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error validating PR {pr_id}: {str(e)}", "Mobile PR Validation Error")
+        return {
+            "success": False,
+            "error": {
+                "message": str(e),
+                "code": "PR_VALIDATION_ERROR"
+            }
+        }
