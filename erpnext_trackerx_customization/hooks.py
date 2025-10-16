@@ -161,7 +161,6 @@ app_include_css = [
     "/assets/erpnext_trackerx_customization/css/xystyle.css"
 ]
 app_include_js = [
-    "/assets/erpnext_trackerx_customization/js/fabric_inspection_routes.js",
     "/assets/erpnext_trackerx_customization/js/process_map.js"
 ]
 
@@ -461,14 +460,6 @@ override_whitelisted_methods = {
 
 # Login hooks
 # -----------
-# on_login = "erpnext_trackerx_customization.utils.quality_redirect.redirect_quality_users_on_login"
-
-# Role-based home page redirection
-# Removed - not working properly with custom pages, users can access Quality Dashboard through workspace
-# role_home_page = {
-#     "Quality Inspector": "/app/quality_dashboard",
-#     "Quality Manager": "/app/quality_dashboard"
-# }
 
 
 # Automatically update python controller files with type annotations for this app.

@@ -9,16 +9,20 @@ import { normalizeNodes, normalizeEdges } from "./nodeNormalizer";
 export function App() {
   const [operationProcesses, setOperationProcesses] = useState([]);
   const [processMaps, setProcessMaps] = useState([]);
-  const [items, setItems] = useState([]);
-  const [fgComponents, setFgComponents] = useState([]);
+  const [styleGroups, setStyleGroups] = useState([]);
+  const [styleGroupComponents, setStyleGroupComponents] = useState([]);
   const [operationGroups, setOperationGroups] = useState([]);
 
   // Modal + Process Map state
-  const [showItemModal, setShowItemModal] = useState(true);
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [showStyleGroupModal, setShowStyleGroupModal] = useState(true);
+  const [selectedStyleGroup, setSelectedStyleGroup] = useState(null);
   const [processMapNo, setProcessMapNo] = useState("");
   const [description, setDescription] = useState("");
   const [processMapName, setProcessMapName] = useState("");
+
+  // Component selection state
+  const [availableComponents, setAvailableComponents] = useState([]);
+  const [selectedComponents, setSelectedComponents] = useState([]);
 
   // Pre-loaded map data (when URL has id)
   const [loadedNodes, setLoadedNodes] = useState([]);
@@ -28,7 +32,13 @@ export function App() {
   const BASE_URL = `${window.location.protocol}//${window.location.hostname}${window.location.port ? `:${window.location.port}` : ""
     }`;
 
-  // Detect URL param
+  // Detect URL params for style group context
+  const urlParams = new URLSearchParams(window.location.search);
+  const styleGroupParam = urlParams.get('style_group');
+  const mapNameParam = urlParams.get('map_name');
+  const mapNumberParam = urlParams.get('map_number');
+
+  // Detect URL param for direct process map ID
   const pathParts = window.location.pathname.split("/");
   const processMapId =
     pathParts[pathParts.length - 1] !== "process-map-builder"
@@ -54,21 +64,29 @@ export function App() {
     }
   };
 
-  const fetchItemDetails = async (itemName) => {
-    if (!itemName) return null;
+  const fetchStyleGroupDetails = async (styleGroupName) => {
+    if (!styleGroupName) return null;
     try {
+      // Get CSRF token
+      const csrfToken = window.frappe?.csrf_token ||
+                       document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
       const response = await fetch(
-        `${BASE_URL}/api/resource/Item/${itemName}`,
+        `${BASE_URL}/api/method/erpnext_trackerx_customization.api.process_map.get_style_group_data`,
         {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Frappe-CSRF-Token": csrfToken
+          },
           credentials: "include",
+          body: JSON.stringify({ style_group_name: styleGroupName })
         }
       );
       const result = await response.json();
-      return result.data;
+      return result.message?.data || null;
     } catch (error) {
-      console.error("Error fetching Item details:", error);
+      console.error("Error fetching Style Group details:", error);
       return null;
     }
   };
@@ -92,13 +110,11 @@ export function App() {
   };
 
   useEffect(() => {
-    const loadItems = async () => {
-      const itemList = await fetchDocTypeItem("Item", [
-        ["custom_select_master", "=", "Finished Goods"],
-      ]);
-      setItems(itemList);
+    const loadStyleGroups = async () => {
+      const styleGroupList = await fetchDocType("Style Group");
+      setStyleGroups(styleGroupList);
     };
-    loadItems();
+    loadStyleGroups();
   }, []);
 
 
@@ -127,75 +143,159 @@ export function App() {
   };
 
 
-  // Case 2 → URL has processMapId → fetch directly
+  // Handle URL parameters and existing map loading
   useEffect(() => {
-    const loadExistingMap = async () => {
-      if (!processMapId) return;
+    const handleUrlParams = async () => {
+      // Case 1: Direct process map ID in URL path
+      if (processMapId) {
+        try {
+          const res = await fetch(
+            `${BASE_URL}/api/resource/Process Map/${processMapId}?fields=["*"]`,
+            {
+              method: "GET",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+            }
+          );
 
-      try {
-        const res = await fetch(
-          `${BASE_URL}/api/resource/Process Map/${processMapId}?fields=["*"]`,
-          {
-            method: "GET",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
+          const result = await res.json();
+          const mapData = result.data;
+
+          setProcessMapName(mapData.map_name);
+          setProcessMapNo(mapData.process_map_number);
+          setDescription(mapData.description);
+          setSelectedStyleGroup(mapData.style_group);
+
+          // ✅ Normalize nodes & edges here
+          setLoadedNodes(normalizeNodes(JSON.parse(mapData.nodes || "[]")));
+          setLoadedEdges(normalizeEdges(JSON.parse(mapData.edges || "[]")));
+
+          // Style Group components
+          if (mapData.style_group) {
+            const details = await fetchStyleGroupDetails(mapData.style_group);
+            const components = details?.components || [];
+            setAvailableComponents(components);
+
+            const sgComps = components.map((comp) => comp.component_name);
+            setSelectedComponents(sgComps);
+            setStyleGroupComponents(sgComps);
           }
-        );
 
-        const result = await res.json();
-        const mapData = result.data;
+          // Fetch other references in parallel
+          const [operationData, pmData, operationGroupData] =
+            await Promise.all([
+              fetchDocType("Operation"),
+              fetchProcessMaps(),
+              fetchDocType("Operation Group"),
+            ]);
 
-        setProcessMapName(mapData.map_name);
-        setProcessMapNo(mapData.process_map_number);
-        setDescription(mapData.description);
-        setSelectedItem(mapData.select_fg);
+          let operationDataProcessed = operationData?.map((row) => ({
+            ...row,
+            process_name: row.name,
+          })) || [];
+          setOperationProcesses(operationDataProcessed);
+          setProcessMaps(pmData || []);
+          setOperationGroups(operationGroupData || []);
 
-        // ✅ Normalize nodes & edges here
-        setLoadedNodes(normalizeNodes(JSON.parse(mapData.nodes || "[]")));
-        setLoadedEdges(normalizeEdges(JSON.parse(mapData.edges || "[]")));
+          setShowStyleGroupModal(false);
+          setIsEditMode(true);
+        } catch (err) {
+          console.error("❌ Failed to load process map:", err);
+        }
+      }
+      // Case 2: Style Group context from URL parameters
+      else if (styleGroupParam) {
+        setSelectedStyleGroup(styleGroupParam);
 
-        // FG components
-        if (mapData.select_fg) {
-          const details = await fetchItemDetails(mapData.select_fg);
-          const fgComps =
-            details?.custom_fg_components?.map((row) => row.component_name) ||
-            [];
-          setFgComponents(fgComps);
+        if (mapNameParam) {
+          setProcessMapName(mapNameParam);
+        }
+        if (mapNumberParam) {
+          setProcessMapNo(mapNumberParam);
         }
 
-        // Fetch other references in parallel
-        const [operationData, pmData, operationGroupData] =
-          await Promise.all([
-            fetchDocType("Operation"),
-            fetchProcessMaps(),
-            fetchDocType("Operation Group"),
-          ]);
+        // Load Style Group components
+        try {
+          const details = await fetchStyleGroupDetails(styleGroupParam);
+          const components = details?.components || [];
+          setAvailableComponents(components);
 
-        let operationDataProcessed = operationData?.map((row) => ({
-          ...row,
-          process_name: row.name,
-        })) || [];
-        setOperationProcesses(operationDataProcessed);
-        setProcessMaps(pmData || []);
-        setOperationGroups(operationGroupData || []);
+          // Auto-select all components when loading from URL (but keep modal open)
+          const sgComps = components.map((comp) => comp.component_name);
+          setSelectedComponents(sgComps);
 
-        setShowItemModal(false); // 🚀 Skip modal if URL provided
-        setIsEditMode(true)
-      } catch (err) {
-        console.error("❌ Failed to load process map:", err);
+          // Fetch other references in parallel
+          const [operationData, pmData, operationGroupData] =
+            await Promise.all([
+              fetchDocType("Operation"),
+              fetchProcessMaps(),
+              fetchDocType("Operation Group"),
+            ]);
+
+          let operationDataProcessed = operationData?.map((row) => ({
+            ...row,
+            process_name: row.name,
+          })) || [];
+          setOperationProcesses(operationDataProcessed);
+          setProcessMaps(pmData || []);
+          setOperationGroups(operationGroupData || []);
+
+          // Keep modal open to allow component selection and process map naming
+          setShowStyleGroupModal(true);
+        } catch (err) {
+          console.error("❌ Failed to load style group data:", err);
+        }
       }
     };
 
-    loadExistingMap();
-  }, [processMapId]);
+    handleUrlParams();
+  }, [processMapId, styleGroupParam, mapNameParam, mapNumberParam]);
 
-  const handleConfirmItem = async () => {
-    if (!selectedItem) return;
+  // Handle Style Group selection change
+  const handleStyleGroupChange = async (styleGroupName) => {
+    setSelectedStyleGroup(styleGroupName);
 
-    const details = await fetchItemDetails(selectedItem);
-    const fgComps =
-      details?.custom_fg_components?.map((row) => row.component_name) || [];
-    setFgComponents(fgComps);
+    if (styleGroupName) {
+      // Fetch components for the selected style group
+      const details = await fetchStyleGroupDetails(styleGroupName);
+      const components = details?.components || [];
+      setAvailableComponents(components);
+
+      // Auto-select all components by default
+      const componentNames = components.map((comp) => comp.component_name);
+      setSelectedComponents(componentNames);
+    } else {
+      setAvailableComponents([]);
+      setSelectedComponents([]);
+    }
+  };
+
+  // Handle component selection toggle
+  const handleComponentToggle = (componentName) => {
+    setSelectedComponents(prev => {
+      if (prev.includes(componentName)) {
+        return prev.filter(name => name !== componentName);
+      } else {
+        return [...prev, componentName];
+      }
+    });
+  };
+
+  // Handle select all / deselect all
+  const handleSelectAllComponents = () => {
+    const allComponentNames = availableComponents.map(comp => comp.component_name);
+    setSelectedComponents(allComponentNames);
+  };
+
+  const handleDeselectAllComponents = () => {
+    setSelectedComponents([]);
+  };
+
+  const handleConfirmStyleGroup = async () => {
+    if (!selectedStyleGroup || selectedComponents.length === 0) return;
+
+    // Use only selected components
+    setStyleGroupComponents(selectedComponents);
 
     const [operationData, pmData, operationGroupData] =
       await Promise.all([
@@ -212,11 +312,11 @@ export function App() {
     setProcessMaps(pmData || []);
     setOperationGroups(operationGroupData || []);
 
-    setShowItemModal(false);
+    setShowStyleGroupModal(false);
   };
 
    const handleCloseModal = () => {
-    setShowItemModal(false);
+    setShowStyleGroupModal(false);
     window.history.pushState({}, "", "/app/home");
     window.location.href = "/app/process-map";
   };
@@ -279,8 +379,8 @@ export function App() {
         </Modal>
       )} */}
 
-      {!processMapId && (
-        <Modal show={showItemModal} backdrop="static" keyboard={false}>
+      {!processMapId && !styleGroupParam && (
+        <Modal show={showStyleGroupModal} backdrop="static" keyboard={false}>
            <Modal.Header>
             <Modal.Title>Enter Process Map Details</Modal.Title>
              <button
@@ -293,9 +393,9 @@ export function App() {
 
           </Modal.Header>
           <Modal.Body>
-            {/* FG Item Group */}
+            {/* Style Group */}
             <div className="mb-3">
-              <label className="form-label fw-semibold">FG Item</label>
+              <label className="form-label fw-semibold">Style Group</label>
               <div>
                 <select
                  className="form-select"
@@ -310,20 +410,77 @@ export function App() {
                     borderRadius: ".25rem",
                     MozAppearance: "none"
                   }}
-                 
-                  value={selectedItem || ""}
-                  onChange={(e) => setSelectedItem(e.target.value)}
+
+                  value={selectedStyleGroup || ""}
+                  onChange={(e) => handleStyleGroupChange(e.target.value)}
+                  disabled={!!styleGroupParam}
                 >
-                  <option value="">-- Select Item --</option>
-                  {items.map((item) => (
-                    <option key={item.name} value={item.name}>
-                      {item.item_code || item_code}
+                  <option value="">-- Select Style Group --</option>
+                  {styleGroups.map((sg) => (
+                    <option key={sg.name} value={sg.name}>
+                      {sg.name}
                     </option>
                   ))}
                 </select>
               </div>
 
             </div>
+
+            {/* Component Selection Group */}
+            {availableComponents.length > 0 && (
+              <div className="mb-3">
+                <label className="form-label fw-semibold">Select Components</label>
+                <div className="mb-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary me-2"
+                    onClick={handleSelectAllComponents}
+                  >
+                    Select All
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={handleDeselectAllComponents}
+                  >
+                    Deselect All
+                  </button>
+                </div>
+                <div style={{
+                  maxHeight: "150px",
+                  overflowY: "auto",
+                  border: "1px solid #ced4da",
+                  borderRadius: ".25rem",
+                  padding: "8px"
+                }}>
+                  {availableComponents.map((component) => (
+                    <div key={component.component_name} className="form-check">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id={`component-${component.component_name}`}
+                        checked={selectedComponents.includes(component.component_name)}
+                        onChange={() => handleComponentToggle(component.component_name)}
+                      />
+                      <label
+                        className="form-check-label"
+                        htmlFor={`component-${component.component_name}`}
+                      >
+                        <strong>{component.component_name}</strong>
+                        {component.description && (
+                          <small className="text-muted d-block">
+                            {component.description}
+                          </small>
+                        )}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <small className="text-muted">
+                  Selected: {selectedComponents.length} of {availableComponents.length} components
+                </small>
+              </div>
+            )}
 
             {/* Process Map Name Group */}
             <div className="mb-3">
@@ -361,8 +518,8 @@ export function App() {
           <Modal.Footer>
             <Button
               variant="primary"
-              onClick={handleConfirmItem}
-              disabled={!selectedItem || !processMapName || !processMapNo}
+              onClick={handleConfirmStyleGroup}
+              disabled={!selectedStyleGroup || !processMapName || !processMapNo || selectedComponents.length === 0}
             >
               Confirm
             </Button>
@@ -371,15 +528,15 @@ export function App() {
       )}
 
       {/* Canvas */}
-      {!showItemModal && fgComponents.length > 0 && (
+      {!showStyleGroupModal && styleGroupComponents.length > 0 && (
         <ReactFlowProvider>
           <FlowCanvas
             operationProcesses={operationProcesses}
             processMaps={processMaps}
             operationGroups={operationGroups}
-            defaultComponents={fgComponents}
+            defaultComponents={styleGroupComponents}
             processMapNumber={processMapNo}
-            selectedItem={selectedItem}
+            selectedStyleGroup={selectedStyleGroup}
             description={description}
             processMapName={processMapName}
             initialNodes={loadedNodes}
