@@ -112,12 +112,6 @@ def create_pr(company=None, naming_series=None, supplier=None, purchase_order=No
 
         # Insert document with minimal validation bypass
         pr.insert(ignore_permissions=True)
-        
-        # SECURITY NOTE: This approach is much safer than the previous implementation
-        # - Only bypasses mandatory field validation (allows empty items)
-        # - Maintains all business logic validations
-        # - Preserves data integrity and security
-        # - No temporary placeholder items needed
 
         return {
             "success": True,
