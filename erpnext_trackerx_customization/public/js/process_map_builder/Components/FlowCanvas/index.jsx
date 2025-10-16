@@ -15,7 +15,7 @@ import { Modal, Button, Form } from "react-bootstrap";
 
 import ProcessGroupNode from "../ProcessGroupNode";
 import OperationProcessNode from "../OperationProcessNode";
-import { blendColors, COMPONENT_COLORS } from "../../util";
+import { blendColors, getComponentColor } from "../../util";
 import Sidebar from "../Sidebar";
 
 let idCounter = 0;
@@ -96,12 +96,47 @@ const FlowCanvas = ({
 
     const rebuilt = {};
     initialEdges.forEach((e) => {
-      // edge may have components in e.data.components or e.components (depending on saved shape)
-      rebuilt[e.id] = (e.data && e.data.components) || e.components || [];
+      // Try multiple sources for component data
+      let components = (e.data && e.data.components) || e.components || [];
+
+      // If no components found but edge has a label, use label as component
+      if ((!components || components.length === 0) && e.label) {
+        components = [e.label];
+      }
+
+      rebuilt[e.id] = components;
     });
+
     setEdgeComponents(rebuilt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialEdges, setEdgeComponents]);
+
+  // 3) Calculate usedComponents for each node based on outgoing edges (must run after edgeComponents is set)
+  useEffect(() => {
+    if (!initialEdges || initialEdges.length === 0) return;
+
+    // Wait for edgeComponents to be populated first
+    const hasEdgeComponents = Object.keys(edgeComponents).length > 0;
+    if (!hasEdgeComponents) return;
+
+    setNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        const outgoingEdges = initialEdges.filter(edge => edge.source === node.id);
+        const usedComponents = outgoingEdges.flatMap(edge =>
+          edgeComponents[edge.id] || edge.data?.components || edge.components || []
+        );
+
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            usedComponents: [...new Set(usedComponents)] // Remove duplicates
+          }
+        };
+      })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialEdges, edgeComponents, setNodes]);
 
   // Handle selection changes
   const onSelectionChange = useCallback(({ nodes, edges }) => {
@@ -245,7 +280,7 @@ const FlowCanvas = ({
       if (availableComponents.length === 1) {
         // auto edge
         const component = availableComponents[0];
-        const componentColor = COMPONENT_COLORS[component] || "#999999";
+        const componentColor = getComponentColor(component);
         const newEdge = {
           ...params,
           id: `${params.source}-${params.target}-${Date.now()}`,
@@ -362,7 +397,7 @@ const FlowCanvas = ({
   // --- Confirm edge ---
   const handleConfirmEdge = () => {
     if ((newEdgeParams || selectedEdgeId) && selectedComponents.length > 0) {
-      const componentColors = selectedComponents.map((c) => COMPONENT_COLORS[c] || "#999999");
+      const componentColors = selectedComponents.map((c) => getComponentColor(c));
       const edgeColor = componentColors.length === 1 ? componentColors[0] : blendColors(componentColors);
 
       const edgeId = newEdgeParams ? `${newEdgeParams.source}-${newEdgeParams.target}-${Date.now()}` : selectedEdgeId;
@@ -413,8 +448,8 @@ const FlowCanvas = ({
 
   // --- Save map ---
   const handleSaveMap = async () => {
-    if (!processMapName || !processMapNumber || !selectedStyleGroup) {
-      return alert("Process Map Name, Number, and Style Group are required.");
+    if (!processMapName || !selectedStyleGroup) {
+      return alert("Process Map Name and Style Group are required.");
     }
 
     const nodePayload = nodes.map((node) => ({
@@ -529,6 +564,8 @@ const FlowCanvas = ({
           deleteSelectedElements={deleteSelectedElements}
           selectedNodes={selectedNodes}
           selectedEdges={selectedEdges}
+          isEditMode={isEditMode}
+          processMapName={processMapName}
         />
         <div className="col-9 p-0">
           <ReactFlow
