@@ -161,7 +161,6 @@ app_include_css = [
     "/assets/erpnext_trackerx_customization/css/xystyle.css"
 ]
 app_include_js = [
-    "/assets/erpnext_trackerx_customization/js/fabric_inspection_routes.js",
     "/assets/erpnext_trackerx_customization/js/process_map.js"
 ]
 
