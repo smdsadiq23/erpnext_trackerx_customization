@@ -34,19 +34,6 @@ frappe.ui.form.on('Style Group', {
         }
     },
 
-    style_group_number: function(frm) {
-        // Validate style group number format
-        if (frm.doc.style_group_number) {
-            validate_style_group_number(frm);
-        }
-    },
-
-    name: function(frm) {
-        // Auto-generate style group number based on name if not set
-        if (frm.doc.name && !frm.doc.style_group_number) {
-            auto_generate_style_group_number(frm);
-        }
-    }
 });
 
 // Process Map Integration Helper Functions
@@ -72,7 +59,7 @@ function setup_process_map_integration(frm) {
 
 function create_style_group_process_map(frm) {
     /**
-     * Create a new process map for the style group
+     * Redirect to Process Map Builder with style group pre-selected
      */
     if (!frm.doc.name) {
         frappe.msgprint({
@@ -83,66 +70,18 @@ function create_style_group_process_map(frm) {
         return;
     }
 
-    // Prompt for process map details
-    frappe.prompt([
-        {
-            label: __('Process Map Name'),
-            fieldname: 'map_name',
-            fieldtype: 'Data',
-            reqd: 1,
-            description: __('Enter a descriptive name for the process map')
-        },
-        {
-            label: __('Process Map Number'),
-            fieldname: 'process_map_number',
-            fieldtype: 'Data',
-            reqd: 1,
-            description: __('Enter a unique number for this process map')
-        },
-        {
-            label: __('Description'),
-            fieldname: 'description',
-            fieldtype: 'Small Text',
-            description: __('Optional description for the process map')
-        }
-    ], function(values) {
-        // Create process map with provided details
-        frappe.call({
-            method: 'erpnext_trackerx_customization.api.process_map.save_process_map',
-            args: {
-                map_name: values.map_name,
-                process_map_number: values.process_map_number,
-                style_group: frm.doc.name,
-                nodes: JSON.stringify([]),
-                edges: JSON.stringify([]),
-                description: values.description || ''
-            },
-            callback: function(r) {
-                if (r.message && r.message.success) {
-                    frappe.show_alert({
-                        message: __('Process Map created successfully'),
-                        indicator: 'green'
-                    });
+    // Redirect directly to Process Map Builder with style group in URL
+    const baseUrl = window.location.origin + "/app/process-map-builder/";
+    const url = `${baseUrl}?style_group=${encodeURIComponent(frm.doc.name)}`;
 
-                    // Open process map builder
-                    const baseUrl = window.location.origin + "/app/process-map-builder/";
-                    const url = `${baseUrl}?style_group=${encodeURIComponent(frm.doc.name)}&map_name=${encodeURIComponent(values.map_name)}&map_number=${encodeURIComponent(values.process_map_number)}`;
-                    window.open(url, '_blank');
+    // Show a brief message and redirect
+    frappe.show_alert({
+        message: __('Opening Process Map Builder for {0}', [frm.doc.name]),
+        indicator: 'blue'
+    });
 
-                    // Refresh process map count
-                    setTimeout(() => {
-                        load_process_map_count(frm);
-                    }, 1000);
-                } else {
-                    frappe.msgprint({
-                        title: __('Error'),
-                        message: r.message ? r.message.message : __('Failed to create process map'),
-                        indicator: 'red'
-                    });
-                }
-            }
-        });
-    }, __('Create Process Map'), __('Create'));
+    // Open in new tab
+    window.open(url, '_blank');
 }
 
 function view_style_group_process_maps(frm) {
@@ -280,77 +219,6 @@ function set_company_filter(frm) {
     });
 }
 
-function validate_style_group_number(frm) {
-    /**
-     * Validate style group number format and uniqueness
-     */
-    if (!frm.doc.style_group_number) {
-        return;
-    }
-
-    // Remove extra spaces
-    frm.set_value('style_group_number', frm.doc.style_group_number.trim().toUpperCase());
-
-    // Check for uniqueness
-    frappe.call({
-        method: 'frappe.client.get_list',
-        args: {
-            doctype: 'Style Group',
-            filters: {
-                'style_group_number': frm.doc.style_group_number,
-                'name': ['!=', frm.doc.name || 'new']
-            },
-            fields: ['name']
-        },
-        callback: function(r) {
-            if (r.message && r.message.length > 0) {
-                frappe.msgprint({
-                    title: __('Duplicate Style Group Number'),
-                    message: __('Style Group Number {0} already exists in {1}',
-                        [frm.doc.style_group_number, r.message[0].name]),
-                    indicator: 'red'
-                });
-                frm.set_focus('style_group_number');
-            }
-        }
-    });
-}
-
-function auto_generate_style_group_number(frm) {
-    /**
-     * Auto-generate style group number based on name and company
-     */
-    if (!frm.doc.name || !frm.doc.company) {
-        return;
-    }
-
-    // Get company abbreviation
-    frappe.call({
-        method: 'frappe.client.get_value',
-        args: {
-            doctype: 'Company',
-            filters: {'name': frm.doc.company},
-            fieldname: 'abbr'
-        },
-        callback: function(r) {
-            if (r.message) {
-                var company_abbr = r.message.abbr || frm.doc.company.substring(0, 3).toUpperCase();
-                var name_prefix = frm.doc.name.substring(0, 5).toUpperCase().replace(/[^A-Z0-9]/g, '');
-                var timestamp = new Date().getTime().toString().slice(-4);
-
-                var suggested_number = company_abbr + '-' + name_prefix + '-' + timestamp;
-
-                frappe.msgprint({
-                    title: __('Suggested Style Group Number'),
-                    message: __('Suggested Style Group Number: {0}', [suggested_number]),
-                    indicator: 'blue'
-                });
-
-                frm.set_value('style_group_number', suggested_number);
-            }
-        }
-    });
-}
 
 function setup_form_layout(frm) {
     /**

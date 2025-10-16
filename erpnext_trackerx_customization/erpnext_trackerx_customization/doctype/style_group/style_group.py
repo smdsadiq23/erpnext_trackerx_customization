@@ -11,7 +11,6 @@ class StyleGroup(Document):
 	def validate(self):
 		"""Validate the style group data"""
 		self.validate_style_group_name()
-		self.validate_style_group_number()
 		self.validate_components()
 		self.set_default_company()
 
@@ -25,20 +24,6 @@ class StyleGroup(Document):
 
 		if len(self.name) < 2:
 			frappe.throw("Style Group Name must be at least 2 characters long")
-
-	def validate_style_group_number(self):
-		"""Validate style group number uniqueness"""
-		if not self.style_group_number:
-			frappe.throw("Style Group Number is required")
-
-		# Check for uniqueness
-		existing = frappe.db.exists("Style Group", {
-			"style_group_number": self.style_group_number,
-			"name": ["!=", self.name]
-		})
-
-		if existing:
-			frappe.throw(f"Style Group Number {self.style_group_number} already exists in {get_link_to_form('Style Group', existing)}")
 
 	def validate_components(self):
 		"""Validate components table"""

@@ -220,10 +220,9 @@ export function App() {
           const components = details?.components || [];
           setAvailableComponents(components);
 
-          // Auto-select all components when loading from URL
+          // Auto-select all components when loading from URL (but keep modal open)
           const sgComps = components.map((comp) => comp.component_name);
           setSelectedComponents(sgComps);
-          setStyleGroupComponents(sgComps);
 
           // Fetch other references in parallel
           const [operationData, pmData, operationGroupData] =
@@ -241,7 +240,8 @@ export function App() {
           setProcessMaps(pmData || []);
           setOperationGroups(operationGroupData || []);
 
-          setShowStyleGroupModal(false);
+          // Keep modal open to allow component selection and process map naming
+          setShowStyleGroupModal(true);
         } catch (err) {
           console.error("❌ Failed to load style group data:", err);
         }
@@ -413,11 +413,12 @@ export function App() {
 
                   value={selectedStyleGroup || ""}
                   onChange={(e) => handleStyleGroupChange(e.target.value)}
+                  disabled={!!styleGroupParam}
                 >
                   <option value="">-- Select Style Group --</option>
                   {styleGroups.map((sg) => (
                     <option key={sg.name} value={sg.name}>
-                      {sg.name} ({sg.style_group_number || 'No Number'})
+                      {sg.name}
                     </option>
                   ))}
                 </select>
