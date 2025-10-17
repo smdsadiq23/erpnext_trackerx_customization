@@ -22,26 +22,19 @@ frappe.ui.form.on("Process Map", {
     },
 
     edit_map_button: function(frm) {
-        const mapName = frm.doc.map_name;
-        const mapNumber = frm.doc.process_map_number;
-        const styleGroup = frm.doc.style_group;
-
-        if (!mapName || !mapNumber || !styleGroup) {
+        if (!frm.doc.name) {
             frappe.msgprint({
-                title: __('Missing Information'),
-                message: __('Map name, process map number, and style group are required!'),
+                title: __('Error'),
+                message: __('Process Map document not saved yet!'),
                 indicator: 'red'
             });
             return;
         }
 
-        // Construct dynamic URL with style group context
+        // Construct URL with Process Map ID in path for direct loading
         const baseUrl = window.location.origin + "/app/process-map-builder/";
-        const encodedStyleGroup = encodeURIComponent(styleGroup);
-        const encodedMapName = encodeURIComponent(mapName);
-        const encodedMapNumber = encodeURIComponent(mapNumber);
-
-        const url = `${baseUrl}?style_group=${encodedStyleGroup}&map_name=${encodedMapName}&map_number=${encodedMapNumber}`;
+        const processMapId = encodeURIComponent(frm.doc.name);
+        const url = `${baseUrl}${processMapId}`;
 
         // Open process map builder in new tab
         window.open(url, "_blank");

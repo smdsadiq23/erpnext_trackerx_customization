@@ -9,6 +9,8 @@ const Sidebar = ({
   deleteSelectedElements,
   selectedNodes,
   selectedEdges,
+  isEditMode,
+  processMapName,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [mapSearchTerm, setMapSearchTerm] = useState("");
@@ -238,7 +240,7 @@ const Sidebar = ({
       <hr />
 
       <button onClick={handleSaveMap} className="btn btn-success w-100 mt-4">
-        Save Process Map
+        {isEditMode ? `Update Process Map ${processMapName || ''}` : 'Save Process Map'}
       </button>
 
       {/* Delete Button */}
