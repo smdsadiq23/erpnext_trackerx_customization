@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:component_name",
+ "autoname": "hash",
  "creation": "2025-01-14 14:30:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -38,7 +38,7 @@
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Style Group Component",
- "naming_rule": "By fieldname",
+ "naming_rule": "Random",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",
