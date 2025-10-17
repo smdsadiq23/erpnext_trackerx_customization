@@ -83,7 +83,6 @@ def get_style_group_data(style_group_name):
             "success": True,
             "data": {
                 "name": style_group.name,
-                "brand": style_group.brand or "",
                 "description": style_group.description or "",
                 "image": style_group.image or "",
                 "company": style_group.company or "",
