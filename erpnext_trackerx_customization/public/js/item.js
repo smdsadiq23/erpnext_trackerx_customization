@@ -81,6 +81,7 @@ frappe.ui.form.on('Item', {
     custom_select_master: function(frm) {
         setTimeout(function() {
             updateItemLabels(frm);
+            setDefaultUOM(frm);        
         }, 300);
         $('#custom-master-type-select').val(frm.doc.custom_select_master);
         
@@ -89,7 +90,6 @@ frappe.ui.form.on('Item', {
         setConstructionTypeFilter(frm);
         setItemGroupFilter(frm);
         setItemNameAndItemNumberProps(frm);
-        
         
     },
 
@@ -151,7 +151,7 @@ function setMeasurementUploadAttachExtensionRestriction(frm) {
 }
 
 function setItemNameAndItemNumberProps(frm){
-    const read_only_value = 1;
+    let read_only_value = 1;
     const reqd_value = 1;
         if(frm.doc.custom_select_master != 'Finished Goods'){
             read_only_value = 0;
@@ -392,8 +392,35 @@ function setItemGroupFilter(frm) {
     console.log(`Applied item_group filter: descendants of (inclusive) '${root_group}'`);
 }
 
+function setDefaultUOM(frm) {
+    console.log("reached here")
+    if (!frm.is_new()) return; // Only for new items
 
+    const master = frm.doc.custom_select_master;
+    const uomMap = frappe.boot.item_constants?.item_master_uom_defaults || {
+        "Finished Goods": "Nos",
+        "Fabrics": "Meter",
+        "Trims": "Meter",
+        "Yarns": "Kg",
+        "Accessories": "Nos",
+        "Labels": "Nos",
+        "Packing Materials": "Nos",
+        "Semi Finished Goods": "Nos",
+        "Spare Parts": "Nos",
+        "Machines": "Nos"
+    };
 
+    const defaultUOM = uomMap[master];
+    if (defaultUOM) {
+        // Set stock_uom (standard field for Item)
+        frm.set_value('stock_uom', defaultUOM);
+        // Optional: make it read-only after setting
+        //frm.set_df_property('stock_uom', 'read_only', 1);
+    } else {
+        // If no mapping, allow user to choose (or keep as is)
+        //frm.set_df_property('stock_uom', 'read_only', 0);
+    }
+}
 
 function filterCustomSelectMasterOptionsBasedOnRole(frm) {
     const role_map = frappe.boot.item_constants.item_master_role_map;
