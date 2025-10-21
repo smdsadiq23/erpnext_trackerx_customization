@@ -2,6 +2,8 @@
  {
   "batch_size": 1,
   "create_job_card_based_on_batch_size": 0,
+  "custom_allowed_defective_unit_limit": 0.0,
+  "custom_allowed_defects_limit": 0.0,
   "custom_defect_list": [],
   "custom_operation_group": "QR/Barcode Cut Bundle Activation",
   "custom_operation_type": "Activation",
