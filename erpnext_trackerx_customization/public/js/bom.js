@@ -1,5 +1,6 @@
 let allowed_item_groups_map = {
     'Fabrics': ["Fabrics"],
+    'Yarns': ["Yarns"],
     'Trims': ["Trims"],
     'Accessories': ["Accessories"],
     'Labels': ["Labels"],
@@ -70,7 +71,7 @@ frappe.ui.form.on('BOM', {
         set_item_filter(frm);  
     },
 
-    custom_net_qty(frm, cdt, cdn) {
+    custom_net_qty(frm,  cdt, cdn) {
         calculate_qty_based_on_net_and_wastage(frm, cdt, cdn);
     },
 
@@ -308,8 +309,6 @@ function set_item_filter(frm) {
     });                         
 }
 
-
-
 function generate_uuid() {
   return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
     (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
@@ -320,6 +319,7 @@ function merge_custom_items_into_items(frm)
 {
     const source_tables = [
         { table: 'custom_fabrics_items', label: 'Fabrics' },
+        { table: 'custom_yarns_items', label: 'Yarns' },
         { table: 'custom_trims_items', label: 'Trims' },
         { table: 'custom_accessories_items', label: 'Accessories' },
         { table: 'custom_labels_items', label: 'Labels' },
@@ -417,6 +417,7 @@ function copy(new_row, row, item_type) {
     new_row.description = row.description;
     new_row.stock_uom = row.stock_uom;
     new_row.custom_fg_link = row.custom_fg_link;
+    new_row.custom_yarn_shade = row.custom_yarn_shade;
     new_row.custom_article_no = row.custom_article_no;
     new_row.custom_size = row.custom_size;
     new_row.custom_consremarks = row.custom_consremarks;
@@ -435,6 +436,7 @@ function modifyTheBOMItemTableFields(frm) {
     const tables = [
         'items',
         'custom_fabrics_items',
+        'custom_yarns_items',
         'custom_trims_items',
         'custom_accessories_items',
         'custom_labels_items',
@@ -487,6 +489,7 @@ function calculate_qty(cdt, cdn) {
 function set_item_code_filters(frm) {
     const table_field_map = {
         'custom_fabrics_items': 'Fabrics',
+        'custom_yarns_items': 'Yarns',
         'custom_trims_items': 'Trims',
         'custom_accessories_items': 'Accessories',
         'custom_labels_items': 'Labels',
