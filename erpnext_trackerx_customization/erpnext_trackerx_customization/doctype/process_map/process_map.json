@@ -11,7 +11,6 @@
   "map_name",
   "style_group",
   "style_group_name",
-  "style_group_number",
   "description",
   "nodes",
   "edges",
@@ -64,13 +63,6 @@
    "fetch_from": "style_group.name"
   },
   {
-   "fieldname": "style_group_number",
-   "fieldtype": "Data",
-   "label": "Style Group Number",
-   "read_only": 1,
-   "fetch_from": "style_group.style_group_number"
-  },
-  {
    "fieldname": "amended_from",
    "fieldtype": "Link",
    "label": "Amended From",
@@ -86,7 +78,6 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Process Map Number",
-   "reqd": 1,
    "unique": 1
   },
   {

@@ -15,6 +15,7 @@ export function App() {
 
   // Modal + Process Map state
   const [showStyleGroupModal, setShowStyleGroupModal] = useState(true);
+
   const [selectedStyleGroup, setSelectedStyleGroup] = useState(null);
   const [processMapNo, setProcessMapNo] = useState("");
   const [description, setDescription] = useState("");
@@ -37,6 +38,7 @@ export function App() {
   const styleGroupParam = urlParams.get('style_group');
   const mapNameParam = urlParams.get('map_name');
   const mapNumberParam = urlParams.get('map_number');
+
 
   // Detect URL param for direct process map ID
   const pathParts = window.location.pathname.split("/");
@@ -371,7 +373,7 @@ export function App() {
             <Button
               variant="primary"
               onClick={handleConfirmItem}
-              disabled={!selectedItem || !processMapName || !processMapNo}
+              disabled={!selectedItem || !processMapName}
             >
               Confirm
             </Button>
@@ -379,7 +381,7 @@ export function App() {
         </Modal>
       )} */}
 
-      {!processMapId && !styleGroupParam && (
+      {!processMapId && (
         <Modal show={showStyleGroupModal} backdrop="static" keyboard={false}>
            <Modal.Header>
             <Modal.Title>Enter Process Map Details</Modal.Title>
@@ -519,7 +521,7 @@ export function App() {
             <Button
               variant="primary"
               onClick={handleConfirmStyleGroup}
-              disabled={!selectedStyleGroup || !processMapName || !processMapNo || selectedComponents.length === 0}
+              disabled={!selectedStyleGroup || !processMapName || selectedComponents.length === 0}
             >
               Confirm
             </Button>

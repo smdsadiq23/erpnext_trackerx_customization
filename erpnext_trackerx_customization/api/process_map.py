@@ -2,7 +2,7 @@ import frappe
 from frappe import _
 
 @frappe.whitelist(allow_guest=False)
-def save_process_map(map_name, process_map_number, style_group, nodes, edges, description=None):
+def save_process_map(map_name, style_group, nodes, edges, process_map_number=None, description=None):
     """
     Save or update a Process Map for Style Group.
     - If a map with the given map_name already exists → update it.
@@ -12,8 +12,6 @@ def save_process_map(map_name, process_map_number, style_group, nodes, edges, de
         # Input validation
         if not map_name:
             frappe.throw(_("Map name is required"))
-        if not process_map_number:
-            frappe.throw(_("Process map number is required"))
         if not style_group:
             frappe.throw(_("Style Group selection is required"))
         if not nodes:
@@ -85,8 +83,6 @@ def get_style_group_data(style_group_name):
             "success": True,
             "data": {
                 "name": style_group.name,
-                "style_group_number": style_group.style_group_number,
-                "brand": style_group.brand or "",
                 "description": style_group.description or "",
                 "image": style_group.image or "",
                 "company": style_group.company or "",
