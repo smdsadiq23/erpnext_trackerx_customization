@@ -177,6 +177,7 @@ def get_doctype_fields(doctype):
 # ===========================
 
 @frappe.whitelist()
+@secure_api_call
 def get_document_list(doctype, search=None, status=None, company=None, supplier=None,
                       date_from=None, date_to=None, page=1, limit=20, sort_by="creation", sort_order="desc"):
     """
@@ -328,6 +329,7 @@ def get_document_list(doctype, search=None, status=None, company=None, supplier=
         return {"success": False, "error": {"message": "An error occurred while fetching documents", "code": "DOCUMENT_LIST_ERROR"}}
 
 @frappe.whitelist()
+@secure_api_call
 def get_document_filters(doctype):
     """
     Generic function to get filter options for document list
@@ -376,6 +378,7 @@ def get_document_filters(doctype):
         return {"success": False, "error": {"message": "An error occurred while fetching filters", "code": "DOCUMENT_FILTERS_ERROR"}}
 
 @frappe.whitelist()
+@secure_api_call
 def search_document(doctype, search_term, limit=10):
     """
     Generic function to search documents
@@ -448,6 +451,7 @@ def search_document(doctype, search_term, limit=10):
         return {"success": False, "error": {"message": "An error occurred while searching documents", "code": "DOCUMENT_SEARCH_ERROR"}}
 
 @frappe.whitelist()
+@secure_api_call
 def get_companies():
     """
     Get companies list for dropdown - REUSABLE
@@ -481,6 +485,7 @@ def get_companies():
         return {"success": False, "error": {"message": f"Failed to fetch companies: {str(e)}", "code": "COMPANIES_ERROR"}}
 
 @frappe.whitelist()
+@secure_api_call
 def get_purchase_orders(supplier=None, company=None, search=None):
     """
     Get purchase orders for dropdown - REUSABLE
@@ -556,6 +561,7 @@ def get_purchase_orders(supplier=None, company=None, search=None):
         return {"success": False, "error": {"message": f"Failed to fetch purchase orders: {str(e)}", "code": "PURCHASE_ORDERS_ERROR"}}
 
 @frappe.whitelist()
+@secure_api_call
 def get_warehouses(company=None):
     """
     Get list of warehouses for dropdown - REUSABLE
@@ -597,6 +603,7 @@ def get_warehouses(company=None):
         return {"success": False, "error": {"message": f"Failed to fetch warehouses: {str(e)}", "code": "WAREHOUSES_ERROR"}}
 
 @frappe.whitelist()
+@secure_api_call
 def get_tax_templates():
     """
     Get available Purchase Taxes and Charges templates - REUSABLE
@@ -678,6 +685,7 @@ def get_tax_accounts(company=None):
 
 
 @frappe.whitelist()
+@secure_api_call
 def get_document_status_summary(doctype):
     """
     Get count of documents by status for dashboard display - REUSABLE
@@ -882,382 +890,958 @@ def search_items(search_term, supplier=None, company=None, limit=10):
         frappe.log_error(f"Error searching items: {str(e)}", "Mobile Utils Search Items Error")
         return {"success": False, "error": {"message": f"Failed to search items: {str(e)}", "code": "SEARCH_ITEMS_ERROR"}}
 
-
+# //////////////////////////////////////////
 @frappe.whitelist()
-def get_document_items(doctype, doc_id):
+@secure_api_call
+def manage_document(doctype, action, doc_id=None, data=None):
     """
-    Get all items in a document for the Items tab
-
+    Unified API for document management
+    
     Args:
-        doctype (str): Document type
-        doc_id (str): Document ID
-
+        doctype (str): Document type (Purchase Receipt, Goods Receipt Note, etc.)
+        action (str): new, update
+        doc_id (str): Document ID (required for update)
+        data (dict): Document data including items
+    
     Returns:
-        dict: List of document items with details
+        dict: Operation result
     """
     try:
-        # SECURITY: Validate doctype and sanitize doc_id
-        validate_doctype(doctype)
-        if not doc_id or not isinstance(doc_id, str):
-            return {"success": False, "error": {"message": "Invalid document ID", "code": "INVALID_DOC_ID"}}
+        # Validate doctype
+        if doctype not in ALLOWED_DOCTYPES:
+            return {"success": False, "error": {"message": f"Unsupported doctype: {doctype}", "code": "UNSUPPORTED_DOCTYPE"}}
         
-        # Sanitize doc_id to prevent injection
-        doc_id = re.sub(r'[^\w\-\.]', '', str(doc_id))
-        if not doc_id:
-            return {"success": False, "error": {"message": "Invalid document ID format", "code": "INVALID_DOC_ID"}}
+        if action == "new":
+            return _create_document(doctype, data)
+        elif action == "update":
+            return _update_document(doctype, doc_id, data)
+        elif action == "submit":
+            return _submit_document(doctype, doc_id)
+        else:
+            return {"success": False, "error": {"message": f"Invalid action: {action}", "code": "INVALID_ACTION"}}
+            
+    except Exception as e:
+        frappe.log_error("Mobile API Error", f"Document management error: {str(e)}")
+        return {"success": False, "error": {"message": str(e), "code": "DOCUMENT_MANAGEMENT_ERROR"}}
 
+def _create_document(doctype, data):
+    """Create new document with all data and validation"""
+    try:
+        if not data:
+            return {"success": False, "error": {"message": "Document data is required", "code": "MISSING_DATA"}}
+        
+        # Get user defaults
+        default_company = frappe.defaults.get_user_default("Company") or frappe.db.get_single_value("Global Defaults", "default_company")
+        
+        # Create new document
+        doc = frappe.new_doc(doctype)
+        
+        # Set default values
+        doc.posting_date = getdate(data.get('posting_date')) or getdate()
+        doc.posting_time = now_datetime().time()
+        doc.set_posting_time = 0
+        doc.company = data.get('company') or default_company
+        doc.is_return = 0
+        
+        # Set naming series
+        if data.get('naming_series'):
+            doc.naming_series = data['naming_series']
+        else:
+            default_naming_series = frappe.db.get_value(doctype, {"company": doc.company}, "naming_series")
+            if not default_naming_series:
+                default_naming_series = frappe.get_meta(doctype).get_field("naming_series").options.split("\n")[0]
+            doc.naming_series = default_naming_series
+        
+        # Set document fields
+        for field, value in data.items():
+            if field != 'items' and hasattr(doc, field) and value is not None:
+                setattr(doc, field, value)
+        
+        # Bypass mandatory validation initially
+        doc.flags.ignore_mandatory = True
+        doc.insert(ignore_permissions=True)
+        
+        # Add items if provided
+        if data.get('items'):
+            for item_data in data['items']:
+                _add_item_to_document(doc, item_data)
+        
+        # Validate document before saving using Mobile API Settings
+        validation_result = _validate_document_with_settings(doc)
+        if not validation_result["is_valid"]:
+            return {"success": False, "error": {"message": "Validation failed", "code": "VALIDATION_ERROR", "details": validation_result["issues"]}}
+        
+        # Save document
+        doc.save()
+        
+        return {
+            "success": True,
+            "data": {
+                "doc_id": doc.name,
+                "action": "new",
+                "changes_made": len(data.get('items', [])),
+                "new_items": len(data.get('items', [])),
+                "updated_items": 0,
+                "deleted_items": 0
+            },
+            "message": f"{doctype} created successfully"
+        }
+        
+    except Exception as e:
+        frappe.log_error("Mobile API Error", f"Create document error: {str(e)}")
+        return {"success": False, "error": {"message": str(e), "code": "CREATE_DOCUMENT_ERROR"}}
+
+def _update_document(doctype, doc_id, data):
+    """Update existing document with changed data and validation"""
+    try:
+        if not doc_id:
+            return {"success": False, "error": {"message": "Document ID is required for update", "code": "MISSING_DOC_ID"}}
+        
+        if not data:
+            return {"success": False, "error": {"message": "Update data is required", "code": "MISSING_DATA"}}
+        
+        # Get existing document
+        doc = frappe.get_doc(doctype, doc_id)
+        
+        # Check if document can be modified
+        if doc.docstatus != 0:
+            return {"success": False, "error": {"message": f"Cannot modify {doc.status} document", "code": "INVALID_STATE"}}
+        
+        # Track changes
+        changes_made = 0
+        changed_fields = []
+        new_items = 0
+        updated_items = 0
+        deleted_items = 0
+        
+        # Update document fields
+        for field, value in data.items():
+            if field != 'items' and hasattr(doc, field) and value is not None:
+                old_value = getattr(doc, field)
+                if old_value != value:
+                    setattr(doc, field, value)
+                    changed_fields.append(field)
+                    changes_made += 1
+        
+        # Handle items
+        if 'items' in data:
+            item_changes = _update_document_items(doc, data['items'])
+            new_items = item_changes['new_items']
+            updated_items = item_changes['updated_items']
+            deleted_items = item_changes['deleted_items']
+            changes_made += new_items + updated_items + deleted_items
+        
+        # Validate document before saving using Mobile API Settings
+        validation_result = _validate_document_with_settings(doc)
+        if not validation_result["is_valid"]:
+            return {"success": False, "error": {"message": "Validation failed", "code": "VALIDATION_ERROR", "details": validation_result["issues"]}}
+        
+        # Save document
+        doc.save()
+        
+        return {
+            "success": True,
+            "data": {
+                "doc_id": doc.name,
+                "action": "update",
+                "changes_made": changes_made,
+                "changed_fields": changed_fields,
+                "new_items": new_items,
+                "updated_items": updated_items,
+                "deleted_items": deleted_items
+            },
+            "message": f"{doctype} updated successfully"
+        }
+        
+    except Exception as e:
+        frappe.log_error("Mobile API Error", f"Update document error: {str(e)}")
+        return {"success": False, "error": {"message": str(e), "code": "UPDATE_DOCUMENT_ERROR"}}
+
+def _validate_document_with_settings(doc):
+    """Validate document using Mobile API Settings configuration"""
+    try:
+        validation_results = {
+            "is_valid": True,
+            "issues": [],
+            "warnings": []
+        }
+        
+        # Get validation configuration from Mobile API Settings
+        config = get_validation_config()
+        
+        # Check items
+        if not doc.items:
+            validation_results["issues"].append("At least one item is required")
+        elif len(doc.items) < config.get("min_items_required", 1):
+            validation_results["issues"].append(f"At least {config.get('min_items_required', 1)} item(s) required")
+        else:
+            # Validate each item
+            for item in doc.items:
+                # Required fields validation
+                if config.get("require_item_codes", True) and not item.item_code:
+                    validation_results["issues"].append("All items must have item codes")
+                
+                # Quantity validation - ZERO QUANTITY CHECK
+                received_qty = flt(item.received_qty)
+                if not config.get("allow_zero_qty", False) and received_qty <= 0:
+                    validation_results["issues"].append(f"Received quantity must be greater than 0 for item {item.item_code}")
+                elif received_qty < config.get("received_qty_min", 0):
+                    validation_results["issues"].append(f"Received quantity must be at least {config.get('received_qty_min', 0)} for item {item.item_code}")
+                
+                # Batch validation
+                if config.get("require_batch_for_batch_items", True) and item.item_code:
+                    has_batch = frappe.db.get_value("Item", item.item_code, "has_batch_no")
+                    if has_batch and not item.batch_no:
+                        validation_results["issues"].append(f"Batch number required for item {item.item_code}")
+                
+                # Rate validation
+                if config.get("validate_rates", True):
+                    rate = flt(item.rate)
+                    if rate < config.get("rate_min", 0):
+                        validation_results["issues"].append(f"Rate must be at least {config.get('rate_min', 0)} for item {item.item_code}")
+        
+        # Set final validation status
+        if validation_results["issues"]:
+            validation_results["is_valid"] = False
+        
+        return validation_results
+        
+    except Exception as e:
+        frappe.log_error("Mobile API Error", f"Document validation error: {str(e)}")
+        return {"is_valid": False, "issues": [str(e)], "warnings": []}
+
+def _add_item_to_document(doc, item_data):
+    """Add item to document"""
+    try:
+        # Validate required fields
+        required_fields = ["item_code", "warehouse", "received_qty"]
+        for field in required_fields:
+            if not item_data.get(field):
+                raise ValueError(f"{field} is required")
+        
+        # Get item details
+        if not frappe.db.exists("Item", item_data['item_code']):
+            raise ValueError("Item not found")
+        
+        item = frappe.get_doc("Item", item_data['item_code'])
+        
+        # Get default rate if not provided
+        if not item_data.get('rate'):
+            item_data['rate'] = frappe.db.get_value("Item Price", {"item_code": item_data['item_code'], "price_list": "Standard Buying"}, "price_list_rate") or 0
+        
+        # Create new item row
+        item_row = doc.append("items", {})
+        item_row.item_code = item_data['item_code']
+        item_row.item_name = item.item_name
+        item_row.description = item.description
+        item_row.qty = flt(item_data.get('qty', 1))
+        item_row.received_qty = flt(item_data.get('received_qty', 1))
+        item_row.uom = item.purchase_uom or item.stock_uom
+        item_row.warehouse = item_data['warehouse']
+        item_row.rate = flt(item_data['rate'])
+        item_row.amount = item_row.received_qty * item_row.rate
+        item_row.conversion_factor = 1
+        item_row.stock_uom = item.stock_uom
+        item_row.stock_qty = item_row.received_qty
+        
+        # Add optional fields
+        if item_data.get('batch_no'):
+            item_row.batch_no = item_data['batch_no']
+        if item_data.get('serial_no'):
+            item_row.serial_no = item_data['serial_no']
+        if item_data.get('no_of_boxes'):
+            item_row.custom_no_of_boxes = flt(item_data['no_of_boxes'])
+        
+        return True
+        
+    except Exception as e:
+        frappe.log_error("Mobile API Error", f"Add item error: {str(e)}")
+        raise e
+
+def _update_document_items(doc, items_data):
+    """Update document items based on provided data"""
+    try:
+        new_items = 0
+        updated_items = 0
+        deleted_items = 0
+        
+        # Get existing item IDs
+        existing_item_ids = [item.name for item in doc.items]
+        provided_item_ids = [item.get('item_id') for item in items_data if item.get('item_id')]
+        
+        # Find deleted items (items not in provided data)
+        deleted_item_ids = [item_id for item_id in existing_item_ids if item_id not in provided_item_ids]
+        deleted_items = len(deleted_item_ids)
+        
+        # Remove deleted items
+        for item_id in deleted_item_ids:
+            for i, row in enumerate(doc.items):
+                if row.name == item_id:
+                    del doc.items[i]
+                    break
+        
+        # Process provided items
+        for item_data in items_data:
+            if item_data.get('item_id'):
+                # Update existing item
+                updated = _update_existing_item(doc, item_data)
+                if updated:
+                    updated_items += 1
+            else:
+                # Add new item
+                _add_item_to_document(doc, item_data)
+                new_items += 1
+        
+        return {
+            "new_items": new_items,
+            "updated_items": updated_items,
+            "deleted_items": deleted_items
+        }
+        
+    except Exception as e:
+        frappe.log_error("Mobile API Error", f"Update items error: {str(e)}")
+        raise e
+
+def _update_existing_item(doc, item_data):
+    """Update existing item in document"""
+    try:
+        item_id = item_data.get('item_id')
+        if not item_id:
+            return False
+        
+        # Find the item
+        for item in doc.items:
+            if item.name == item_id:
+                # Update allowed fields
+                allowed_fields = ['qty', 'received_qty', 'warehouse', 'rate', 'batch_no', 'serial_no', 'custom_no_of_boxes']
+                
+                for field, value in item_data.items():
+                    if field in allowed_fields and value is not None:
+                        if field in ['qty', 'received_qty', 'rate', 'custom_no_of_boxes']:
+                            setattr(item, field, flt(value))
+                        else:
+                            setattr(item, field, value)
+                
+                # Recalculate amount if qty or rate changed
+                if 'received_qty' in item_data or 'rate' in item_data:
+                    item.amount = item.received_qty * item.rate
+                    item.stock_qty = item.received_qty * item.conversion_factor
+                
+                return True
+        
+        return False
+        
+    except Exception as e:
+        frappe.log_error("Mobile API Error", f"Update existing item error: {str(e)}")
+        raise e
+
+def _submit_document(doctype, doc_id):
+    """Submit document after comprehensive validation"""
+    try:
+        if not doc_id:
+            return {"success": False, "error": {"message": "Document ID is required for submit", "code": "MISSING_DOC_ID"}}
+        
+        # Get document
+        doc = frappe.get_doc(doctype, doc_id)
+        
+        # Check if document can be submitted
+        if doc.docstatus == 1:
+            return {"success": False, "error": {"message": f"{doctype} is already submitted", "code": "ALREADY_SUBMITTED"}}
+        
+        if doc.docstatus == 2:
+            return {"success": False, "error": {"message": f"{doctype} is cancelled", "code": "CANCELLED_DOCUMENT"}}
+        
+        # Comprehensive validation for submission
+        validation_result = _validate_document_for_submission(doc, doctype)
+        if not validation_result["is_valid"]:
+            return {
+                "success": False, 
+                "error": {
+                    "message": f"{doctype} validation failed", 
+                    "code": "VALIDATION_FAILED", 
+                    "details": validation_result["issues"]
+                }
+            }
+        
+        # Submit the document
+        doc.submit()
+        
+        return {
+            "success": True,
+            "data": {
+                "doc_id": doc.name,
+                "action": "submit",
+                "status": "Submitted",
+                "docstatus": doc.docstatus,
+                "submitted_by": frappe.session.user,
+                "submission_date": now_datetime(),
+                "grand_total": flt(doc.grand_total),
+                "currency": getattr(doc, "currency", ""),
+                "supplier": getattr(doc, "supplier", ""),
+                "company": doc.company,
+                "validation_results": validation_result,
+                "submission_checklist": validation_result.get("submission_checklist", [])
+            },
+            "message": f"{doctype} submitted successfully"
+        }
+        
+    except Exception as e:
+        frappe.log_error("Mobile API Error", f"Submit document error: {str(e)}")
+        return {"success": False, "error": {"message": str(e), "code": "SUBMIT_DOCUMENT_ERROR"}}
+
+def _validate_document_for_submission(doc, doctype):
+    """Comprehensive validation for document submission"""
+    try:
+        validation_results = {
+            "is_valid": True,
+            "can_submit": True,
+            "issues": [],
+            "warnings": []
+        }
+        
+        # Get validation configuration from Mobile API Settings
+        config = get_validation_config()
+        
+        # Header validation
+        if not getattr(doc, "supplier", None):
+            validation_results["issues"].append("Supplier is required")
+        if not getattr(doc, "company", None):
+            validation_results["issues"].append("Company is required")
+        if not getattr(doc, "posting_date", None):
+            validation_results["issues"].append("Posting date is required")
+        
+        # Items validation
+        if not doc.items:
+            validation_results["issues"].append("At least one item is required")
+        elif len(doc.items) < config.get("min_items_required", 1):
+            validation_results["issues"].append(f"At least {config.get('min_items_required', 1)} item(s) required")
+        else:
+            # Validate each item
+            for item in doc.items:
+                # Required fields validation
+                if config.get("require_item_codes", True) and not item.item_code:
+                    validation_results["issues"].append("All items must have item codes")
+                
+                # Quantity validation - ZERO QUANTITY CHECK
+                received_qty = flt(item.received_qty)
+                if not config.get("allow_zero_qty", False) and received_qty <= 0:
+                    validation_results["issues"].append(f"Received quantity must be greater than 0 for item {item.item_code}")
+                elif received_qty < config.get("received_qty_min", 0):
+                    validation_results["issues"].append(f"Received quantity must be at least {config.get('received_qty_min', 0)} for item {item.item_code}")
+                
+                # Batch validation
+                if config.get("require_batch_for_batch_items", True) and item.item_code:
+                    has_batch = frappe.db.get_value("Item", item.item_code, "has_batch_no")
+                    if has_batch and not item.batch_no:
+                        validation_results["issues"].append(f"Batch number required for item {item.item_code}")
+                
+                # Rate validation
+                if config.get("validate_rates", True):
+                    rate = flt(item.rate)
+                    if rate < config.get("rate_min", 0):
+                        validation_results["issues"].append(f"Rate must be at least {config.get('rate_min', 0)} for item {item.item_code}")
+        
+        # Total validation
+        if flt(doc.grand_total) <= 0:
+            validation_results["warnings"].append("Grand total is zero - please verify calculations")
+        
+        # Set final validation status
+        if validation_results["issues"]:
+            validation_results["is_valid"] = False
+            validation_results["can_submit"] = False
+        
+        # Basic submission checklist (without document-specific checklist)
+        submission_checklist = [
+            {
+                "item": "Header Information",
+                "status": "Complete" if getattr(doc, "supplier", None) and getattr(doc, "company", None) and getattr(doc, "posting_date", None) else "Incomplete",
+                "required": True
+            },
+            {
+                "item": "Items Added",
+                "status": "Complete" if doc.items and len(doc.items) > 0 else "Incomplete",
+                "required": True
+            },
+            {
+                "item": "Quantities Entered",
+                "status": "Complete" if all(flt(item.received_qty) > 0 for item in doc.items) else "Incomplete",
+                "required": True
+            },
+            {
+                "item": "Tax Calculations",
+                "status": "Complete" if flt(doc.grand_total) > 0 else "Incomplete",
+                "required": False
+            }
+        ]
+        
+        validation_results["submission_checklist"] = submission_checklist
+        
+        return validation_results
+        
+    except Exception as e:
+        frappe.log_error("Mobile API Error", f"Document submission validation error: {str(e)}")
+        return {"is_valid": False, "issues": [str(e)], "warnings": [], "submission_checklist": []}
+
+@frappe.whitelist()
+@secure_api_call
+def get_document(doctype, doc_id):
+    """
+    Unified API to get document details
+    
+    Args:
+        doctype (str): Document type (Purchase Receipt, Goods Receipt Note, etc.)
+        doc_id (str): Document ID
+    
+    Returns:
+        dict: Document details with items
+    """
+    try:
+        # Validate doctype
+        if doctype not in ALLOWED_DOCTYPES:
+            return {"success": False, "error": {"message": f"Unsupported doctype: {doctype}", "code": "UNSUPPORTED_DOCTYPE"}}
+        
+        if not doc_id:
+            return {"success": False, "error": {"message": "Document ID is required", "code": "DOC_ID_REQUIRED"}}
+        
         # Check if document exists
         if not frappe.db.exists(doctype, doc_id):
-            return {"success": False, "error": {"message": "Document not found", "code": "DOCUMENT_NOT_FOUND"}}
+            return {"success": False, "error": {"message": f"{doctype} {doc_id} not found", "code": "DOCUMENT_NOT_FOUND"}}
+        
+        # Get document
+        doc = frappe.get_doc(doctype, doc_id)
+        
+        # Check permissions
+        if not doc.has_permission("read"):
+            return {"success": False, "error": {"message": f"Access denied to this {doctype}", "code": "PERMISSION_DENIED"}}
+        
+        # Format response based on doctype
+        doc_data = _format_document_response(doc, doctype)
+        
+        return {"success": True, "data": doc_data}
+        
+    except Exception as e:
+        frappe.log_error("Mobile API Error", f"Get document error: {str(e)}")
+        return {"success": False, "error": {"message": str(e), "code": "GET_DOCUMENT_ERROR"}}
 
-        # SECURITY: Use safe child table name
-        child_table = safe_child_table_name(doctype)
-
-        # Get document items with safe table names
-        items = frappe.db.sql(f"""
-            SELECT
-                pri.name,
-                pri.item_code,
-                pri.item_name,
-                pri.description,
-                pri.qty,
-                pri.received_qty,
-                pri.uom,
-                pri.warehouse,
-                pri.batch_no,
-                pri.serial_no,
-                pri.rate,
-                pri.amount,
-                pri.conversion_factor,
-                pri.stock_uom,
-                pri.stock_qty,
-                pri.custom_color,
-                i.item_group,
-                i.stock_uom as item_stock_uom,
-                i.has_batch_no,
-                i.has_serial_no
-            FROM {child_table} pri
-            LEFT JOIN `tabItem` i ON pri.item_code = i.name
-            WHERE pri.parent = %(doc_id)s
-            ORDER BY pri.idx
-        """, {"doc_id": doc_id}, as_dict=True)
-
-        # Format items for mobile display
-        formatted_items = []
-        for item in items:
-            formatted_item = {
-                "name": item.name,
+def _format_document_response(doc, doctype):
+    """Format document response based on doctype"""
+    try:
+        # Get doctype-specific field mappings
+        fields = get_doctype_fields(doctype)
+        
+        # Base document data
+        doc_data = {
+            "doc_id": doc.name,
+            "title": getattr(doc, fields.get("title_field", "title"), ""),
+            "naming_series": getattr(doc, "naming_series", ""),
+            "company": doc.company,
+            "posting_date": str(getattr(doc, fields.get("date_field", "posting_date"))) if getattr(doc, fields.get("date_field", "posting_date")) else None,
+            "posting_time": str(doc.posting_time) if getattr(doc, "posting_time", None) else None,
+            "set_posting_time": getattr(doc, "set_posting_time", 0),
+            "supplier": getattr(doc, fields.get("supplier_field", "supplier"), ""),
+            "supplier_name": getattr(doc, "supplier_name", ""),
+            "supplier_delivery_note": getattr(doc, "supplier_delivery_note", ""),
+            "bill_no": getattr(doc, "bill_no", ""),
+            "bill_date": str(getattr(doc, "bill_date", "")) if getattr(doc, "bill_date", None) else None,
+            "is_return": getattr(doc, "is_return", 0),
+            "purchase_order": getattr(doc, "purchase_order", None),
+            "currency": getattr(doc, fields.get("currency_field", "currency"), ""),
+            "conversion_rate": flt(getattr(doc, "conversion_rate", 1), 4),
+            "docstatus": doc.docstatus,
+            "workflow_state": getattr(doc, "workflow_state", ""),
+            "status": getattr(doc, "status", ""),
+            "total_qty": flt(getattr(doc, "total_qty", 0), 2),
+            "total": flt(getattr(doc, "total", 0), 2),
+            "net_total": flt(getattr(doc, "net_total", 0), 2),
+            "total_taxes_and_charges": flt(getattr(doc, "total_taxes_and_charges", 0), 2),
+            "grand_total": flt(getattr(doc, fields.get("total_field", "grand_total"), 0), 2),
+            "creation": doc.creation.isoformat() if doc.creation else None,
+            "modified": doc.modified.isoformat() if doc.modified else None,
+            "owner": doc.owner,
+            "modified_by": doc.modified_by
+        }
+        
+        # Add doctype-specific fields
+        if doctype == "Purchase Receipt":
+            doc_data.update({
+                "remarks": getattr(doc, "remarks", ""),
+                "custom_fields": _get_custom_fields(doc, doctype)
+            })
+        elif doctype == "Goods Receipt Note":
+            doc_data.update({
+                "remarks": getattr(doc, "remarks", ""),
+                "custom_fields": _get_custom_fields(doc, doctype)
+            })
+        
+        # Get items
+        items = []
+        for item in doc.items:
+            item_data = {
+                "id": item.name,
                 "item_code": item.item_code,
                 "item_name": item.item_name,
                 "description": item.description,
                 "qty": flt(item.qty),
                 "received_qty": flt(item.received_qty),
                 "uom": item.uom,
+                "stock_uom": item.stock_uom,
                 "warehouse": item.warehouse,
                 "batch_no": item.batch_no,
                 "serial_no": item.serial_no,
                 "rate": flt(item.rate),
                 "amount": flt(item.amount),
                 "conversion_factor": flt(item.conversion_factor),
-                "stock_uom": item.stock_uom,
-                "stock_qty": flt(item.stock_qty),
-                "custom_color": item.custom_color,
-                "item_group": item.item_group,
-                "item_stock_uom": item.item_stock_uom,
-                "has_batch_no": item.has_batch_no,
-                "has_serial_no": item.has_serial_no,
-                "display_name": f"{item.item_code} - {item.item_name}",
-                "amount_display": f"{flt(item.amount):,.2f}",
-                "rate_display": f"{flt(item.rate):,.2f}"
+                "stock_qty": flt(item.stock_qty)
             }
-            formatted_items.append(formatted_item)
-
-        return {
-            "success": True,
-            "data": formatted_items,
-            "total": len(formatted_items),
-            "timestamp": now_datetime().isoformat()
-        }
-
-    except frappe.ValidationError as ve:
-        return {"success": False, "error": {"message": str(ve), "code": "VALIDATION_ERROR"}}
+            
+            # Add custom item fields if any
+            custom_item_fields = _get_custom_item_fields(item, doctype)
+            if custom_item_fields:
+                item_data.update(custom_item_fields)
+            
+            items.append(item_data)
+        
+        doc_data["items"] = items
+        
+        # Get taxes if available
+        if hasattr(doc, "taxes") and doc.taxes:
+            taxes = []
+            for tax in doc.taxes:
+                tax_data = {
+                    "id": tax.name,
+                    "charge_type": tax.charge_type,
+                    "account_head": tax.account_head,
+                    "description": tax.description,
+                    "rate": flt(tax.rate),
+                    "tax_amount": flt(tax.tax_amount),
+                    "total": flt(tax.total),
+                    "cost_center": tax.cost_center
+                }
+                taxes.append(tax_data)
+            doc_data["taxes"] = taxes
+        
+        return doc_data
+        
     except Exception as e:
-        frappe.log_error(f"Mobile Utils Get Items Error: {str(e)}", frappe.get_traceback())
-        return {"success": False, "error": {"message": f"Failed to fetch document items: {str(e)}", "code": "GET_ITEMS_ERROR"}}
+        frappe.log_error("Mobile API Error", f"Format document response error: {str(e)}")
+        return {}
 
+def _get_custom_fields(doc, doctype):
+    """Get custom fields for the document"""
+    try:
+        custom_fields = {}
+        
+        # Add any custom fields that might exist
+        if hasattr(doc, "custom_color"):
+            custom_fields["custom_color"] = doc.custom_color
+        if hasattr(doc, "custom_remarks"):
+            custom_fields["custom_remarks"] = doc.custom_remarks
+        
+        return custom_fields
+        
+    except:
+        return {}
+
+def _get_custom_item_fields(item, doctype):
+    """Get custom fields for item"""
+    try:
+        custom_fields = {}
+        
+        # Add any custom item fields that might exist
+        if hasattr(item, "custom_no_of_boxes"):
+            custom_fields["custom_no_of_boxes"] = flt(item.custom_no_of_boxes)
+        if hasattr(item, "custom_color"):
+            custom_fields["custom_color"] = item.custom_color
+        
+        return custom_fields
+        
+    except:
+        return {}
 
 @frappe.whitelist()
-def add_document_item(doctype, doc_id, item_code, warehouse, qty=1, received_qty=None, no_of_boxes=None,
-                     batch_no=None, serial_no=None, rate=None):
+@secure_api_call
+def manage_document_checklist(doctype, action, doc_id, item_id=None, **kwargs):
     """
-    Add a new item to document
-
+    Unified API for document checklist management
+    
     Args:
-        doctype (str): Document type
+        doctype (str): Document type (Purchase Receipt, Goods Receipt Note, etc.)
+        action (str): get, update_item, add_item
         doc_id (str): Document ID
-        item_code (str): Item code to add
-        warehouse (str): Warehouse for the item
-        qty (float): Ordered quantity
-        received_qty (float): Actually received quantity
-        no_of_boxes (float): Number of boxes/rolls
-        batch_no (str): Batch number if applicable
-        serial_no (str): Serial number if applicable
-        rate (float): Item rate
-
+        item_id (str): Checklist item ID (for update_item)
+        **kwargs: Additional parameters (status, received_date, remarks, item_name, description, is_required)
+    
     Returns:
-        dict: Added item details
+        dict: Operation result
     """
     try:
-        # Validate inputs
-        if not doc_id or not item_code or not warehouse:
-            return {"success": False, "error": {"message": "Document ID, Item Code, and Warehouse are required", "code": "MISSING_REQUIRED_FIELDS"}}
-
-        # Check if document exists and is editable
-        doc = frappe.get_doc(doctype, doc_id)
-        if doc.docstatus == 1:
-            return {"success": False, "error": {"message": "Cannot modify submitted document", "code": "INVALID_STATE"}}
-
-        # Get item details
-        if not frappe.db.exists("Item", item_code):
-            return {"success": False, "error": {"message": "Item not found", "code": "ITEM_NOT_FOUND"}}
-
-        item = frappe.get_doc("Item", item_code)
-
-        # Get default rate if not provided
-        if not rate:
-            rate = frappe.db.get_value("Item Price", {"item_code": item_code, "price_list": "Standard Buying"}, "price_list_rate") or 0
-
-        # Calculate quantities
-        qty = flt(qty) or 1
-        received_qty = flt(received_qty) or qty
-        rate = flt(rate)
-
-        # Create new item row
-        item_row = doc.append("items", {})
-        item_row.item_code = item_code
-        item_row.item_name = item.item_name
-        item_row.description = item.description
-        item_row.qty = qty
-        item_row.received_qty = received_qty
-        item_row.uom = item.purchase_uom or item.stock_uom
-        item_row.warehouse = warehouse
-        item_row.rate = rate
-        item_row.amount = received_qty * rate
-        item_row.conversion_factor = 1
-        item_row.stock_uom = item.stock_uom
-        item_row.stock_qty = received_qty
-
-        # Add optional fields
-        if batch_no:
-            item_row.batch_no = batch_no
-        if serial_no:
-            item_row.serial_no = serial_no
-        if no_of_boxes:
-            item_row.custom_no_of_boxes = flt(no_of_boxes)
-
-        # Save the document
-        doc.save()
-
-        return {
-            "success": True,
-            "message": "Item added successfully",
-            "data": {
-                "name": item_row.name,
-                "item_code": item_row.item_code,
-                "item_name": item_row.item_name,
-                "qty": flt(item_row.qty),
-                "received_qty": flt(item_row.received_qty),
-                "rate": flt(item_row.rate),
-                "amount": flt(item_row.amount),
-                "warehouse": item_row.warehouse
-            },
-            "timestamp": now_datetime().isoformat()
-        }
-
-    except Exception as e:
-        frappe.log_error(f"Mobile Utils Add Item Error: {str(e)}", frappe.get_traceback())
-        return {"success": False, "error": {"message": f"Failed to add item to document: {str(e)}", "code": "ADD_ITEM_ERROR"}}
-
-
-@frappe.whitelist()
-def update_document_item(doctype, item_id, **kwargs):
-    """
-    Update an existing document item
-
-    Args:
-        doctype (str): Document type
-        item_id (str): Item ID
-        **kwargs: Fields to update (qty, received_qty, warehouse, rate, etc.)
-
-    Returns:
-        dict: Updated item details
-    """
-    try:
-        # Get child table name
-        child_table = f"{doctype} Item"
-
-        # Check if item exists
-        if not frappe.db.exists(child_table, item_id):
-            return {"success": False, "error": {"message": "Item not found", "code": "ITEM_NOT_FOUND"}}
-
-        # Get the item and parent document
-        item_doc = frappe.get_doc(child_table, item_id)
-        doc = frappe.get_doc(doctype, item_doc.parent)
-
-        if doc.docstatus == 1:
-            return {"success": False, "error": {"message": "Cannot modify submitted document", "code": "INVALID_STATE"}}
-
-        # Update allowed fields
-        allowed_fields = ['qty', 'received_qty', 'warehouse', 'rate', 'batch_no', 'serial_no', 'custom_no_of_boxes']
-        updated_fields = []
-
-        for field, value in kwargs.items():
-            if field in allowed_fields and value is not None:
-                if field in ['qty', 'received_qty', 'rate', 'custom_no_of_boxes']:
-                    setattr(item_doc, field, flt(value))
-                else:
-                    setattr(item_doc, field, value)
-                updated_fields.append(field)
-
-        # Recalculate amount if qty or rate changed
-        if 'received_qty' in updated_fields or 'rate' in updated_fields:
-            item_doc.amount = item_doc.received_qty * item_doc.rate
-            item_doc.stock_qty = item_doc.received_qty * item_doc.conversion_factor
-
-        # Save the document
-        doc.save()
-
-        return {
-            "success": True,
-            "message": "Item updated successfully",
-            "data": {
-                "name": item_doc.name,
-                "item_code": item_doc.item_code,
-                "qty": flt(item_doc.qty),
-                "received_qty": flt(item_doc.received_qty),
-                "rate": flt(item_doc.rate),
-                "amount": flt(item_doc.amount),
-                "warehouse": item_doc.warehouse,
-                "updated_fields": updated_fields
-            },
-            "timestamp": now_datetime().isoformat()
-        }
-
-    except Exception as e:
-        frappe.log_error(f"Mobile Utils Update Item Error: {str(e)}", frappe.get_traceback())
-        return {"success": False, "error": {"message": f"Failed to update document item: {str(e)}", "code": "UPDATE_ITEM_ERROR"}}
-
-
-@frappe.whitelist()
-def delete_document_item(doctype, item_id):
-    """
-    Delete a document item
-
-    Args:
-        doctype (str): Document type
-        item_id (str): Item ID
-
-    Returns:
-        dict: Success confirmation
-    """
-    try:
-        # Get child table name
-        child_table = f"{doctype} Item"
-
-        # Check if item exists
-        if not frappe.db.exists(child_table, item_id):
-            return {"success": False, "error": {"message": "Item not found", "code": "ITEM_NOT_FOUND"}}
-
-        # Get the item and parent document
-        item_doc = frappe.get_doc(child_table, item_id)
-        doc = frappe.get_doc(doctype, item_doc.parent)
-
-        if doc.docstatus == 1:
-            return {"success": False, "error": {"message": "Cannot modify submitted document", "code": "INVALID_STATE"}}
-
-        # Remove the item from document
-        for i, row in enumerate(doc.items):
-            if row.name == item_id:
-                del doc.items[i]
-                break
-
-        # Save the document
-        doc.save()
-
-        return {
-            "success": True,
-            "message": "Item deleted successfully",
-            "timestamp": now_datetime().isoformat()
-        }
-
-    except Exception as e:
-        frappe.log_error(f"Mobile Utils Delete Item Error: {str(e)}", frappe.get_traceback())
-        return {"success": False, "error": {"message": f"Failed to delete document item: {str(e)}", "code": "DELETE_ITEM_ERROR"}}
-
-
-@frappe.whitelist()
-def validate_document_items(doctype, doc_id):
-    """
-    Validate document items before moving to next tab
-
-    Args:
-        doctype (str): Document type
-        doc_id (str): Document ID
-
-    Returns:
-        dict: Validation results
-    """
-    try:
-        doc = frappe.get_doc(doctype, doc_id)
-        validation_results = {"is_valid": True, "can_proceed": True, "issues": []}
-
-        # Check if there are any items
-        if not doc.items:
-            validation_results["is_valid"] = False
-            validation_results["can_proceed"] = False
-            validation_results["issues"].append("At least one item is required")
-
-        # Validate each item
-        config = get_validation_config()
-        frappe.log_error(f"Validation Config", config)
-
-        if not doc.items:
-            validation_results["issues"].append("At least one item is required")
-        elif len(doc.items) < config.get("min_items_required", 1):
-            validation_results["issues"].append(f"At least {config.get('min_items_required', 1)} item(s) required")
+        # Validate doctype
+        if doctype not in ALLOWED_DOCTYPES:
+            return {"success": False, "error": {"message": f"Unsupported doctype: {doctype}", "code": "UNSUPPORTED_DOCTYPE"}}
+        
+        if not doc_id:
+            return {"success": False, "error": {"message": "Document ID is required", "code": "MISSING_DOC_ID"}}
+        
+        if action == "get":
+            return _get_document_checklist(doctype, doc_id)
+        elif action == "update_item":
+            return _update_checklist_item(doctype, doc_id, item_id, **kwargs)
+        elif action == "add_item":
+            return _add_checklist_item(doctype, doc_id, **kwargs)
         else:
-            for item in doc.items:
-                # Configurable item code validation
-                if config.get("require_item_codes", True) and not item.item_code:
-                    validation_results["issues"].append("All items must have item codes")
-                
-                # Configurable quantity validation
-                received_qty = flt(item.received_qty)
-                if not config.get("allow_zero_qty", False) and received_qty <= 0:
-                    validation_results["issues"].append("All items must have received quantity greater than 0")
-                elif received_qty < config.get("received_qty_min", 0):
-                    validation_results["issues"].append(f"Received quantity must be at least {config.get('received_qty_min', 0)}")
-
-                # Configurable batch requirements
-                if config.get("require_batch_for_batch_items", True) and item.item_code:
-                    has_batch = frappe.db.get_value("Item", item.item_code, "has_batch_no")
-                    if has_batch and not item.batch_no:
-                        validation_results["issues"].append(f"Batch number required for item {item.item_code}")
-                
-                # Configurable rate validation
-                if config.get("validate_rates", True):
-                    rate = flt(item.rate)
-                    if rate < config.get("rate_min", 0):
-                        validation_results["issues"].append(f"Rate must be at least {config.get('rate_min', 0)} for item {item.item_code}")
-
-        # Final validation
-        if validation_results["issues"]:
-            validation_results["can_proceed"] = False
-
-        message = "Items validation successful" if validation_results["is_valid"] else "Items validation failed"
-
-        return {"success": True, "data": validation_results, "message": message}
-
+            return {"success": False, "error": {"message": f"Invalid action: {action}", "code": "INVALID_ACTION"}}
+            
     except Exception as e:
-        frappe.log_error(f"Mobile Utils Validate Items Error: {str(e)}", frappe.get_traceback())
-        return {"success": False, "error": {"message": f"Failed to validate document items: {str(e)}", "code": "VALIDATE_ITEMS_ERROR"}}
+        frappe.log_error("Mobile API Error", f"Checklist management error: {str(e)}")
+        return {"success": False, "error": {"message": str(e), "code": "CHECKLIST_MANAGEMENT_ERROR"}}
+
+def _get_document_checklist(doctype, doc_id):
+    """Get document checklist"""
+    try:
+        # Check if document exists
+        if not frappe.db.exists(doctype, doc_id):
+            return {"success": False, "error": {"message": f"{doctype} not found", "code": "DOCUMENT_NOT_FOUND"}}
+        
+        doc = frappe.get_doc(doctype, doc_id)
+        
+        # Check if document has document_checklist field
+        if not hasattr(doc, 'document_checklist'):
+            return {"success": False, "error": {"message": f"{doctype} does not support document checklist", "code": "FEATURE_NOT_AVAILABLE"}}
+        
+        # Get default checklist items based on doctype
+        default_checklist = _get_default_checklist(doctype)
+        
+        # Get existing checklist items
+        checklist_items = []
+        
+        if doc.document_checklist:
+            for item in doc.document_checklist:
+                checklist_item = {
+                    "id": item.name,
+                    "item_name": item.document_type,
+                    "description": item.document_type,
+                    "status": "Received" if item.received else "Not Received",
+                    "received_date": item.received_date,
+                    "remarks": item.remarks,
+                    "is_required": 1 if item.document_type in [item["item_name"] for item in default_checklist if item["is_required"]] else 0,
+                    "priority": 99
+                }
+                checklist_items.append(checklist_item)
+        else:
+            # Create default checklist items
+            for i, default_item in enumerate(default_checklist, 1):
+                checklist_item = {
+                    "id": f"default_{i}",
+                    "item_name": default_item["item_name"],
+                    "description": default_item["description"],
+                    "status": "Not Received",
+                    "received_date": None,
+                    "remarks": "",
+                    "is_required": default_item["is_required"],
+                    "priority": default_item["priority"]
+                }
+                checklist_items.append(checklist_item)
+        
+        # Sort by priority
+        checklist_items.sort(key=lambda x: x["priority"])
+        
+        # Calculate completion status
+        total_items = len(checklist_items)
+        completed_items = len([item for item in checklist_items if item["status"] == "Received"])
+        required_items = len([item for item in checklist_items if item["is_required"]])
+        required_completed = len([item for item in checklist_items if item["is_required"] and item["status"] == "Received"])
+        
+        checklist_summary = {
+            "total_items": total_items,
+            "completed_items": completed_items,
+            "required_items": required_items,
+            "required_completed": required_completed,
+            "completion_percentage": (completed_items / total_items * 100) if total_items > 0 else 0,
+            "required_completion_percentage": (required_completed / required_items * 100) if required_items > 0 else 0,
+            "can_submit": required_completed == required_items,
+            "status": "Complete" if required_completed == required_items else "Pending"
+        }
+        
+        return {
+            "success": True,
+            "data": {
+                "doc_id": doc_id,
+                "checklist_items": checklist_items,
+                "summary": checklist_summary
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        frappe.log_error("Mobile API Error", f"Get checklist error: {str(e)}")
+        return {"success": False, "error": {"message": str(e), "code": "GET_CHECKLIST_ERROR"}}
+
+def _update_checklist_item(doctype, doc_id, item_id, **kwargs):
+    """Update checklist item"""
+    try:
+        if not item_id:
+            return {"success": False, "error": {"message": "Item ID is required", "code": "MISSING_ITEM_ID"}}
+        
+        doc = frappe.get_doc(doctype, doc_id)
+        
+        # Check if document can be modified
+        if doc.docstatus != 0:
+            return {"success": False, "error": {"message": f"Cannot modify {doc.status} document", "code": "INVALID_STATE"}}
+        
+        # Check if document has document_checklist field
+        if not hasattr(doc, 'document_checklist'):
+            return {"success": False, "error": {"message": f"{doctype} does not support document checklist", "code": "FEATURE_NOT_AVAILABLE"}}
+        
+        # Initialize checklist if not exists
+        if not doc.document_checklist:
+            _initialize_default_checklist(doc, doctype)
+        
+        # Find and update the checklist item
+        item_updated = False
+        for item in doc.document_checklist:
+            if item.name == item_id or str(item.idx) == str(item_id):
+                if kwargs.get('status'):
+                    item.received = 1 if kwargs['status'] == "Received" else 0
+                if kwargs.get('received_date'):
+                    item.received_date = getdate(kwargs['received_date'])
+                if kwargs.get('remarks') is not None:
+                    item.remarks = kwargs['remarks']
+                item_updated = True
+                break
+        
+        if not item_updated and item_id.startswith('default_'):
+            # Handle default items by creating them
+            default_items = [item["item_name"] for item in _get_default_checklist(doctype)]
+            
+            item_index = int(item_id.split('_')[1]) - 1
+            if 0 <= item_index < len(default_items):
+                new_item = doc.append("document_checklist", {})
+                new_item.document_type = default_items[item_index]
+                new_item.received = 1 if kwargs.get('status') == "Received" else 0
+                new_item.received_date = getdate(kwargs.get('received_date')) if kwargs.get('received_date') else None
+                new_item.remarks = kwargs.get('remarks', "")
+                item_updated = True
+        
+        if not item_updated:
+            return {"success": False, "error": {"message": "Checklist item not found", "code": "ITEM_NOT_FOUND"}}
+        
+        # Save the document
+        doc.save()
+        
+        return {
+            "success": True,
+            "data": {
+                "id": item_id,
+                "status": kwargs.get('status'),
+                "received_date": kwargs.get('received_date'),
+                "remarks": kwargs.get('remarks'),
+                "updated": True
+            },
+            "message": "Checklist item updated successfully",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        frappe.log_error("Mobile API Error", f"Update checklist item error: {str(e)}")
+        return {"success": False, "error": {"message": str(e), "code": "UPDATE_CHECKLIST_ERROR"}}
+
+def _add_checklist_item(doctype, doc_id, **kwargs):
+    """Add new checklist item"""
+    try:
+        doc = frappe.get_doc(doctype, doc_id)
+        
+        # Check if document can be modified
+        if doc.docstatus != 0:
+            return {"success": False, "error": {"message": f"Cannot modify {doc.status} document", "code": "INVALID_STATE"}}
+        
+        if not kwargs.get('item_name'):
+            return {"success": False, "error": {"message": "Item name is required", "code": "MISSING_REQUIRED_FIELDS"}}
+        
+        # Check if document has document_checklist field
+        if not hasattr(doc, 'document_checklist'):
+            return {"success": False, "error": {"message": f"{doctype} does not support document checklist", "code": "FEATURE_NOT_AVAILABLE"}}
+        
+        # Initialize checklist if not exists
+        if not doc.document_checklist:
+            _initialize_default_checklist(doc, doctype)
+        
+        # Add new checklist item
+        new_item = doc.append("document_checklist", {})
+        new_item.document_type = kwargs['item_name']
+        new_item.received = 0
+        new_item.remarks = kwargs.get('description', "")
+        
+        # Save the document
+        doc.save()
+        
+        return {
+            "success": True,
+            "data": {
+                "id": new_item.name,
+                "item_name": kwargs['item_name'],
+                "description": kwargs.get('description', ""),
+                "status": "Not Received",
+                "received_date": None,
+                "remarks": kwargs.get('description', ""),
+                "is_required": cint(kwargs.get('is_required', 0)),
+                "priority": 99
+            },
+            "message": "Checklist item added successfully",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        frappe.log_error("Mobile API Error", f"Add checklist item error: {str(e)}")
+        return {"success": False, "error": {"message": str(e), "code": "ADD_CHECKLIST_ERROR"}}
+
+def _get_default_checklist(doctype):
+    """Get default checklist items for document type"""
+    if doctype == "Purchase Receipt":
+        return [
+            {
+                "item_name": "Delivery Challan / Invoice",
+                "description": "Invoice or delivery challan received from supplier",
+                "is_required": 1,
+                "priority": 1
+            },
+            {
+                "item_name": "Packing List",
+                "description": "Detailed packing list with item descriptions",
+                "is_required": 1,
+                "priority": 2
+            },
+            {
+                "item_name": "Material Test Certificate (MTC)",
+                "description": "Test certificate for material quality validation",
+                "is_required": 0,
+                "priority": 3
+            }
+        ]
+    elif doctype == "Goods Receipt Note":
+        return [
+            {
+                "item_name": "Delivery Challan / Invoice",
+                "description": "Invoice or delivery challan received from supplier",
+                "is_required": 1,
+                "priority": 1
+            },
+            {
+                "item_name": "Packing List",
+                "description": "Detailed packing list with item descriptions",
+                "is_required": 1,
+                "priority": 2
+            }
+        ]
+    else:
+        return []
+
+def _initialize_default_checklist(doc, doctype):
+    """Initialize default checklist items for document"""
+    default_items = _get_default_checklist(doctype)
+    
+    for item_name in [item["item_name"] for item in default_items]:
+        checklist_item = doc.append("document_checklist", {})
+        checklist_item.document_type = item_name
+        checklist_item.received = 0
+        checklist_item.received_date = None
+        checklist_item.remarks = ""
