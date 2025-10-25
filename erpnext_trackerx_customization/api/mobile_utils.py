@@ -175,9 +175,51 @@ def get_doctype_fields(doctype):
 # ===========================
 # SHARED MOBILE UTILITIES
 # ===========================
-
 @frappe.whitelist()
 @secure_api_call
+def manage_document_list(doctype, action, **kwargs):
+    """
+    Unified API for document list operations
+    
+    Args:
+        doctype (str): Document type (Purchase Receipt, Goods Receipt Note, etc.)
+        action (str): "list" or "filters"
+        **kwargs: Parameters for list (search, status, company, etc.) or filters
+    
+    Returns:
+        dict: Document list with pagination OR filter options
+    """
+    try:
+        # Validate doctype
+        if doctype not in ALLOWED_DOCTYPES:
+            return {"success": False, "error": {"message": f"Unsupported doctype: {doctype}", "code": "UNSUPPORTED_DOCTYPE"}}
+        
+        if not action:
+            return {"success": False, "error": {"message": "Action is required", "code": "MISSING_ACTION"}}
+        
+        if action == "list":
+            # Call existing get_document_list logic
+            return get_document_list(doctype, **kwargs)
+        elif action == "filters":
+            # Call existing get_document_filters logic  
+            return get_document_filters(doctype)
+        elif action == "search":
+            # Use 'search' parameter consistently (same as list action)
+            search_term = kwargs.get('search_term') or kwargs.get('search')
+            if not search_term:
+                return {"success": False, "error": {"message": "search parameter is required for search action", "code": "MISSING_SEARCH_PARAMETER"}}
+            
+            limit = kwargs.get('limit', 10)
+            return search_document(doctype, search_term, limit)
+        else:
+            return {"success": False, "error": {"message": f"Invalid action: {action}", "code": "INVALID_ACTION"}}
+            
+    except Exception as e:
+        frappe.log_error("Mobile Utils Error", f"Error in manage_document_list: {str(e)}")
+        return {"success": False, "error": {"message": "An error occurred", "code": "DOCUMENT_LIST_ERROR"}}
+
+
+
 def get_document_list(doctype, search=None, status=None, company=None, supplier=None,
                       date_from=None, date_to=None, page=1, limit=20, sort_by="creation", sort_order="desc"):
     """
@@ -325,11 +367,10 @@ def get_document_list(doctype, search=None, status=None, company=None, supplier=
     except frappe.ValidationError as ve:
         return {"success": False, "error": {"message": str(ve), "code": "VALIDATION_ERROR"}}
     except Exception as e:
-        frappe.log_error(f"Error in get_document_list for {doctype}: {str(e)}", "Mobile Utils Error")
+        frappe.log_error("Mobile Utils Error", f"Error in get_document_list for {doctype}: {str(e)}")
         return {"success": False, "error": {"message": "An error occurred while fetching documents", "code": "DOCUMENT_LIST_ERROR"}}
 
-@frappe.whitelist()
-@secure_api_call
+
 def get_document_filters(doctype):
     """
     Generic function to get filter options for document list
@@ -374,11 +415,10 @@ def get_document_filters(doctype):
     except frappe.ValidationError as ve:
         return {"success": False, "error": {"message": str(ve), "code": "VALIDATION_ERROR"}}
     except Exception as e:
-        frappe.log_error(f"Error in get_document_filters for {doctype}: {str(e)}", "Mobile Utils Error")
+        frappe.log_error("Mobile Utils Error", f"Error in get_document_filters for {doctype}: {str(e)}")
         return {"success": False, "error": {"message": "An error occurred while fetching filters", "code": "DOCUMENT_FILTERS_ERROR"}}
 
-@frappe.whitelist()
-@secure_api_call
+
 def search_document(doctype, search_term, limit=10):
     """
     Generic function to search documents
@@ -396,6 +436,9 @@ def search_document(doctype, search_term, limit=10):
         
         # Get doctype-specific field mappings
         fields = get_doctype_fields(doctype)
+        
+        # Get searchable fields for this doctype
+        searchable_fields = get_searchable_fields(doctype)
 
         query = f"""
             SELECT
@@ -416,11 +459,7 @@ def search_document(doctype, search_term, limit=10):
             FROM {table_name} doc
             WHERE doc.docstatus != 2
             AND (
-                doc.name LIKE %(search)s OR
-                doc.{fields['supplier']} LIKE %(search)s OR
-                doc.{fields['supplier_name']} LIKE %(search)s OR
-                doc.supplier_delivery_note LIKE %(search)s OR
-                doc.purchase_order LIKE %(search)s
+                {' OR '.join([f"doc.{field} LIKE %(search)s" for field in searchable_fields])}
             )
             ORDER BY doc.modified DESC
             LIMIT %(limit)s
@@ -447,7 +486,7 @@ def search_document(doctype, search_term, limit=10):
     except frappe.ValidationError as ve:
         return {"success": False, "error": {"message": str(ve), "code": "VALIDATION_ERROR"}}
     except Exception as e:
-        frappe.log_error(f"Error in search_document for {doctype}: {str(e)}", "Mobile Utils Error")
+        frappe.log_error("Mobile Utils Error", f"Error in search_document for {doctype}: {str(e)}")
         return {"success": False, "error": {"message": "An error occurred while searching documents", "code": "DOCUMENT_SEARCH_ERROR"}}
 
 @frappe.whitelist()
@@ -481,7 +520,7 @@ def get_companies():
         }
 
     except Exception as e:
-        frappe.log_error(f"Mobile Utils Companies Error: {str(e)}", frappe.get_traceback())
+        frappe.log_error("Mobile Utils Error", f"Mobile Utils Companies Error: {str(e)}")
         return {"success": False, "error": {"message": f"Failed to fetch companies: {str(e)}", "code": "COMPANIES_ERROR"}}
 
 @frappe.whitelist()
@@ -557,7 +596,7 @@ def get_purchase_orders(supplier=None, company=None, search=None):
         }
 
     except Exception as e:
-        frappe.log_error(f"Mobile Utils PO Error: {str(e)}", frappe.get_traceback())
+        frappe.log_error(f"Mobile Utils PO Error", frappe.get_traceback())
         return {"success": False, "error": {"message": f"Failed to fetch purchase orders: {str(e)}", "code": "PURCHASE_ORDERS_ERROR"}}
 
 @frappe.whitelist()
@@ -1845,3 +1884,22 @@ def _initialize_default_checklist(doc, doctype):
         checklist_item.received = 0
         checklist_item.received_date = None
         checklist_item.remarks = ""
+
+def get_searchable_fields(doctype):
+    """
+    Get searchable fields that actually exist in the table
+    """
+    table_name = safe_table_name(doctype)
+    
+    # Get all columns from the table
+    columns = frappe.db.sql(f"SHOW COLUMNS FROM {table_name}", as_dict=True)
+    existing_columns = [col['Field'] for col in columns]
+    
+    # Define preferred search fields
+    preferred_fields = [
+        "name", "supplier", "supplier_name", 
+        "supplier_delivery_note", "purchase_order"
+    ]
+    
+    # Return only fields that exist
+    return [field for field in preferred_fields if field in existing_columns]
