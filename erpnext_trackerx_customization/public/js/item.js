@@ -113,12 +113,12 @@ function toggle_item_code_behavior(frm) {
         frm.set_df_property('item_code', 'read_only', 0);
         // frm.toggle_reqd('item_code', true);
         // Optional: change label
-        frm.set_value('item_code', '');
+         frm.doc.item_code = '';
     } else {
         frm.toggle_display('item_code', false);
         frm.set_df_property('item_code', 'read_only', 1);
         // Reset label to default
-        frm.set_value('item_code', 'Item Code');        
+        frm.doc.item_code = 'Item Code';
     }
 
     frm.refresh_field('item_code');
