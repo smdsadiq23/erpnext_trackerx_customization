@@ -35,17 +35,32 @@ def get_item_permission_query_conditions(user):
         return "1=1" # do not restrict if the role doesnt have any item types (empty)
 
 
-def set_item_code_before_insert(doc, method):
-    """
-    Auto-generate item_code before validation
-    Only runs for new documents
-    """
-    frappe.log_error(f"before_insert hook called for Item: {doc.name}", "Item Code Generation")
+## ITS PART OF BELOW autonam_item method now
+# def set_item_code_before_insert(doc, method):
+#     """
+#     Auto-generate item_code before validation
+#     Only runs for new documents
+#     """
+#     frappe.log_error(f"before_insert hook called for Item: {doc.name}", "Item Code Generation")
 
-    if not doc.custom_select_master:
-        frappe.throw("custom_select_master is required to generate item_code")
+#     if not doc.custom_select_master:
+#         frappe.throw("custom_select_master is required to generate item_code")
 
-    doc.item_code = generate_item_code(doc)
+#     doc.item_code = generate_item_code(doc)
+
+
+def autoname(doc, method=None):
+    if doc.get("custom_manual_item_code"):
+        if not doc.item_code:
+            frappe.throw("Item Code is mandatory when 'Manual Item Code' is enabled.")
+        doc.name = doc.item_code
+    else:
+        try:
+            doc.item_code = generate_item_code(doc)
+        except Exception as e:
+            frappe.log_error(f"Item autoname error: {str(e)}", "Item autoname")
+            frappe.throw(f"Failed to generate item code: {str(e)}")
+        doc.name = doc.item_code
 
 
 def generate_item_code(doc):
