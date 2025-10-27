@@ -98,9 +98,31 @@ frappe.ui.form.on('Item', {
         {
             copy_operations_from_style_master(frm);
         }
+    },
+
+    custom_manual_item_code: function(frm) {
+        toggle_item_code_behavior(frm);
+    }       
+});
+
+function toggle_item_code_behavior(frm) {
+    const is_manual = cint(frm.doc.custom_manual_item_code);
+
+    if (is_manual) {
+        frm.toggle_display('item_code', true);
+        frm.set_df_property('item_code', 'read_only', 0);
+        // frm.toggle_reqd('item_code', true);
+        // Optional: change label
+        frm.set_value('item_code', '');
+    } else {
+        frm.toggle_display('item_code', false);
+        frm.set_df_property('item_code', 'read_only', 1);
+        // Reset label to default
+        frm.set_value('item_code', 'Item Code');        
     }
 
-});
+    frm.refresh_field('item_code');
+}
 
 function populate_measurement_table_sample_data(frm) {
     // Only proceed if both fields are selected
