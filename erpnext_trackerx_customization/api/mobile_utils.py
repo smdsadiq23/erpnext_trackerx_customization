@@ -4,6 +4,7 @@ from frappe.utils import flt, cint, getdate, nowdate, now_datetime
 import json
 import re
 from datetime import datetime, timedelta
+import math
 
 # ===========================
 # SECURITY CONSTANTS
@@ -166,328 +167,10 @@ def safe_child_table_name(doctype):
     """Generate safe child table name after validation"""
     validated_doctype = validate_doctype(doctype)
     return f"`tab{validated_doctype} Item`"
-
-def get_doctype_fields(doctype):
-    """Get field mappings for a specific doctype"""
-    validated_doctype = validate_doctype(doctype)
-    return DOCTYPE_FIELDS.get(validated_doctype, DOCTYPE_FIELDS["Purchase Receipt"])
-
 # ===========================
 # SHARED MOBILE UTILITIES
 # ===========================
-@frappe.whitelist()
-@secure_api_call
-def manage_document_list(doctype, action, **kwargs):
-    """
-    Unified API for document list operations
-    
-    Args:
-        doctype (str): Document type (Purchase Receipt, Goods Receipt Note, etc.)
-        action (str): "list" or "filters"
-        **kwargs: Parameters for list (search, status, company, etc.) or filters
-    
-    Returns:
-        dict: Document list with pagination OR filter options
-    """
-    try:
-        # Validate doctype
-        if doctype not in ALLOWED_DOCTYPES:
-            return {"success": False, "error": {"message": f"Unsupported doctype: {doctype}", "code": "UNSUPPORTED_DOCTYPE"}}
-        
-        if not action:
-            return {"success": False, "error": {"message": "Action is required", "code": "MISSING_ACTION"}}
-        
-        if action == "list":
-            # Call existing get_document_list logic
-            return get_document_list(doctype, **kwargs)
-        elif action == "filters":
-            # Call existing get_document_filters logic  
-            return get_document_filters(doctype)
-        elif action == "search":
-            # Use 'search' parameter consistently (same as list action)
-            search_term = kwargs.get('search_term') or kwargs.get('search')
-            if not search_term:
-                return {"success": False, "error": {"message": "search parameter is required for search action", "code": "MISSING_SEARCH_PARAMETER"}}
-            
-            limit = kwargs.get('limit', 10)
-            return search_document(doctype, search_term, limit)
-        else:
-            return {"success": False, "error": {"message": f"Invalid action: {action}", "code": "INVALID_ACTION"}}
-            
-    except Exception as e:
-        frappe.log_error("Mobile Utils Error", f"Error in manage_document_list: {str(e)}")
-        return {"success": False, "error": {"message": "An error occurred", "code": "DOCUMENT_LIST_ERROR"}}
 
-
-
-def get_document_list(doctype, search=None, status=None, company=None, supplier=None,
-                      date_from=None, date_to=None, page=1, limit=20, sort_by="creation", sort_order="desc"):
-    """
-    Generic function to get document list with filters/pagination
-    Works for any doctype (Purchase Receipt, Goods Receipt Note, etc.)
-    """
-    try:
-        # SECURITY: Validate and sanitize all inputs
-        validate_doctype(doctype)
-        search = sanitize_search_term(search) if search else None
-        sort_by, sort_order = validate_sort_params(sort_by, sort_order)
-        page, limit = validate_pagination_params(page, limit)
-        
-        offset = (page - 1) * limit
-
-        # Build conditions with parameterized queries
-        conditions = ["doc.docstatus != 2"]
-        values = {}
-
-        # Get doctype-specific field mappings for search
-        fields = get_doctype_fields(doctype)
-        
-        # Search functionality with sanitized input using dynamic fields
-        if search:
-            search_conditions = [
-                f"doc.name LIKE %(search)s",
-                f"doc.{fields['supplier']} LIKE %(search)s", 
-                f"doc.{fields['supplier_name']} LIKE %(search)s"
-            ]
-            conditions.append(f"({' OR '.join(search_conditions)})")
-            values["search"] = f"%{search}%"
-
-        # Status filter with validation
-        if status:
-            status = status.lower()
-            if status == "draft":
-                conditions.append("doc.docstatus = 0")
-            elif status == "submitted":
-                conditions.append("doc.docstatus = 1")
-            elif status == "cancelled":
-                conditions.append("doc.docstatus = 2")
-
-        # Company filter with validation
-        if company:
-            # Validate company exists
-            if frappe.db.exists("Company", company):
-                conditions.append("doc.company = %(company)s")
-                values["company"] = company
-
-        # Supplier filter with validation
-        if supplier:
-            # Validate supplier exists
-            if frappe.db.exists("Supplier", supplier):
-                conditions.append("doc.supplier = %(supplier)s")
-                values["supplier"] = supplier
-
-        # Date range filter with validation
-        if date_from:
-            try:
-                getdate(date_from)  # Validate date format
-                conditions.append("doc.posting_date >= %(date_from)s")
-                values["date_from"] = date_from
-            except:
-                pass  # Skip invalid dates
-
-        if date_to:
-            try:
-                getdate(date_to)  # Validate date format
-                conditions.append("doc.posting_date <= %(date_to)s")
-                values["date_to"] = date_to
-            except:
-                pass  # Skip invalid dates
-
-        where_clause = " AND ".join(conditions)
-
-        # SECURITY: Use safe table names
-        table_name = safe_table_name(doctype)
-        child_table = safe_child_table_name(doctype)
-        
-        # Get doctype-specific field mappings
-        fields = get_doctype_fields(doctype)
-
-        # OPTIMIZED: Use SQL_CALC_FOUND_ROWS for better performance with dynamic fields
-        # Performance hint: Use index on docstatus, company, supplier for faster filtering
-        query = f"""
-            SELECT SQL_CALC_FOUND_ROWS
-                doc.name as id,
-                doc.{fields['title']} as title,
-                doc.{fields['supplier']} as supplier,
-                doc.{fields['supplier_name']} as supplier_name,
-                doc.{fields['company']} as company,
-                doc.{fields['posting_date']} as date,
-                doc.{fields['grand_total']} as grand_total,
-                doc.{fields['currency']} as currency,
-                doc.docstatus,
-                doc.{fields['remarks']} as remarks,
-                doc.modified,
-                doc.creation,
-                CASE
-                    WHEN doc.docstatus = 0 THEN 'Draft'
-                    WHEN doc.docstatus = 1 AND doc.is_return = 1 THEN 'Return'
-                    WHEN doc.docstatus = 1 THEN 'Submitted'
-                    WHEN doc.docstatus = 2 THEN 'Cancelled'
-                    ELSE 'Unknown'
-                END as status,
-                COUNT(child.name) as total_items
-            FROM {table_name} doc
-            LEFT JOIN {child_table} child ON child.parent = doc.name
-            WHERE {where_clause}
-            GROUP BY doc.name
-            ORDER BY doc.{sort_by} {sort_order}
-            LIMIT %(limit)s OFFSET %(offset)s
-        """
-
-        values.update({"limit": limit, "offset": offset})
-        doc_list = frappe.db.sql(query, values, as_dict=True)
-
-        # Get total count using FOUND_ROWS() - much more efficient
-        total_count = frappe.db.sql("SELECT FOUND_ROWS() as total", as_dict=True)[0].total
-        total_pages = (total_count + limit - 1) // limit
-
-        # Format response
-        for doc in doc_list:
-            if doc.get("date"):
-                doc["date"] = str(doc["date"])
-            if doc.get("modified"):
-                doc["modified"] = doc["modified"].isoformat() if doc["modified"] else None
-            if doc.get("creation"):
-                doc["creation"] = doc["creation"].isoformat() if doc["creation"] else None
-            doc["grand_total"] = flt(doc.get("grand_total", 0), 2)
-
-        return {
-            "success": True,
-            "data": doc_list,
-            "pagination": {
-                "page": page,
-                "per_page": limit,
-                "total": total_count,
-                "pages": total_pages,
-                "has_next": page < total_pages,
-                "has_previous": page > 1
-            }
-        }
-
-    except frappe.ValidationError as ve:
-        return {"success": False, "error": {"message": str(ve), "code": "VALIDATION_ERROR"}}
-    except Exception as e:
-        frappe.log_error("Mobile Utils Error", f"Error in get_document_list for {doctype}: {str(e)}")
-        return {"success": False, "error": {"message": "An error occurred while fetching documents", "code": "DOCUMENT_LIST_ERROR"}}
-
-
-def get_document_filters(doctype):
-    """
-    Generic function to get filter options for document list
-    """
-    try:
-        # SECURITY: Validate doctype
-        validate_doctype(doctype)
-        table_name = safe_table_name(doctype)
-
-        # Get unique companies with safe table name
-        companies = frappe.db.sql(f"""
-            SELECT DISTINCT company, company as label
-            FROM {table_name}
-            WHERE docstatus != 2
-            ORDER BY company
-        """, as_dict=True)
-
-        # Get unique suppliers with safe table name
-        suppliers = frappe.db.sql(f"""
-            SELECT DISTINCT supplier, supplier_name as label
-            FROM {table_name}
-            WHERE docstatus != 2 AND supplier IS NOT NULL
-            ORDER BY supplier_name
-        """, as_dict=True)
-
-        # Get status options
-        statuses = [
-            {"value": "draft", "label": "Draft"},
-            {"value": "submitted", "label": "Submitted"},
-            {"value": "cancelled", "label": "Cancelled"}
-        ]
-
-        return {
-            "success": True,
-            "data": {
-                "companies": companies,
-                "suppliers": suppliers,
-                "statuses": statuses
-            }
-        }
-
-    except frappe.ValidationError as ve:
-        return {"success": False, "error": {"message": str(ve), "code": "VALIDATION_ERROR"}}
-    except Exception as e:
-        frappe.log_error("Mobile Utils Error", f"Error in get_document_filters for {doctype}: {str(e)}")
-        return {"success": False, "error": {"message": "An error occurred while fetching filters", "code": "DOCUMENT_FILTERS_ERROR"}}
-
-
-def search_document(doctype, search_term, limit=10):
-    """
-    Generic function to search documents
-    """
-    try:
-        # SECURITY: Validate doctype and sanitize inputs
-        validate_doctype(doctype)
-        search_term = sanitize_search_term(search_term)
-        
-        if not search_term:
-            return {"success": True, "data": [], "message": "Please provide a search term"}
-
-        limit = max(1, min(50, cint(limit) or 10))  # Cap at 50 for performance
-        table_name = safe_table_name(doctype)
-        
-        # Get doctype-specific field mappings
-        fields = get_doctype_fields(doctype)
-        
-        # Get searchable fields for this doctype
-        searchable_fields = get_searchable_fields(doctype)
-
-        query = f"""
-            SELECT
-                doc.name as id,
-                doc.{fields['title']} as title,
-                doc.{fields['supplier']} as supplier,
-                doc.{fields['supplier_name']} as supplier_name,
-                doc.{fields['posting_date']} as date,
-                doc.{fields['grand_total']} as grand_total,
-                doc.{fields['currency']} as currency,
-                CASE
-                    WHEN doc.docstatus = 0 THEN 'Draft'
-                    WHEN doc.docstatus = 1 AND doc.is_return = 1 THEN 'Return'
-                    WHEN doc.docstatus = 1 THEN 'Submitted'
-                    WHEN doc.docstatus = 2 THEN 'Cancelled'
-                    ELSE 'Unknown'
-                END as status
-            FROM {table_name} doc
-            WHERE doc.docstatus != 2
-            AND (
-                {' OR '.join([f"doc.{field} LIKE %(search)s" for field in searchable_fields])}
-            )
-            ORDER BY doc.modified DESC
-            LIMIT %(limit)s
-        """
-
-        results = frappe.db.sql(query, {
-            "search": f"%{search_term}%",
-            "limit": limit
-        }, as_dict=True)
-
-        # Format results
-        for result in results:
-            if result.get("date"):
-                result["date"] = str(result["date"])
-            result["grand_total"] = flt(result.get("grand_total", 0), 2)
-
-        return {
-            "success": True,
-            "data": results,
-            "search_term": search_term,
-            "total_results": len(results)
-        }
-
-    except frappe.ValidationError as ve:
-        return {"success": False, "error": {"message": str(ve), "code": "VALIDATION_ERROR"}}
-    except Exception as e:
-        frappe.log_error("Mobile Utils Error", f"Error in search_document for {doctype}: {str(e)}")
-        return {"success": False, "error": {"message": "An error occurred while searching documents", "code": "DOCUMENT_SEARCH_ERROR"}}
 
 @frappe.whitelist()
 @secure_api_call
@@ -1885,21 +1568,140 @@ def _initialize_default_checklist(doc, doctype):
         checklist_item.received_date = None
         checklist_item.remarks = ""
 
-def get_searchable_fields(doctype):
-    """
-    Get searchable fields that actually exist in the table
-    """
-    table_name = safe_table_name(doctype)
+
+def get_doctype_fields(doctype):
+    """Return valid field mappings for a given doctype."""
+    validated_doctype = validate_doctype(doctype)
+    table_name = safe_table_name(validated_doctype)
     
-    # Get all columns from the table
+    # Fetch columns from DB
     columns = frappe.db.sql(f"SHOW COLUMNS FROM {table_name}", as_dict=True)
-    existing_columns = [col['Field'] for col in columns]
+    existing_columns = [col["Field"] for col in columns]
     
-    # Define preferred search fields
-    preferred_fields = [
-        "name", "supplier", "supplier_name", 
-        "supplier_delivery_note", "purchase_order"
-    ]
+    # Get configured fields
+    configured_fields = DOCTYPE_FIELDS.get(validated_doctype, {})
     
-    # Return only fields that exist
+    # Build validated field map dynamically
+    validated_fields = {}
+    for key, fieldname in configured_fields.items():
+        validated_fields[key] = fieldname if fieldname in existing_columns else None
+    
+    # Fallbacks
+    if not validated_fields.get("title"):
+        validated_fields["title"] = "name"
+    if not validated_fields.get("posting_date"):
+        validated_fields["posting_date"] = "creation"
+
+    return validated_fields
+
+
+def get_searchable_fields(doctype):
+    """Return searchable fields (common + dynamic) that exist in DB."""
+    table_name = safe_table_name(doctype)
+    columns = frappe.db.sql(f"SHOW COLUMNS FROM {table_name}", as_dict=True)
+    existing_columns = [col["Field"] for col in columns]
+
+    # Common system fields
+    common_fields = ["name", "creation", "modified", "docstatus"]
+
+    # Dynamically get fields defined for this doctype (from your config)
+    configured_fields = DOCTYPE_FIELDS.get(doctype, {}).values()
+
+    # Combine and deduplicate
+    preferred_fields = list(set(common_fields + list(configured_fields)))
+
+    # Return only those that actually exist in DB
     return [field for field in preferred_fields if field in existing_columns]
+
+
+def build_dynamic_query(doctype, where_clause="1=1", sort_by="creation", sort_order="DESC", limit=20, offset=0):
+    """Build SQL dynamically based on doctype configuration."""
+    fields = get_doctype_fields(doctype)
+    table_name = safe_table_name(doctype)
+    child_table = f"`tab{doctype} Item`" if frappe.db.table_exists(f"{doctype} Item") else None
+
+    # Build SELECT fields dynamically (skip None values)
+    select_fields = [
+        f"doc.name AS id",
+        *(f"doc.{v} AS {k}" for k, v in fields.items() if v),
+        "doc.docstatus",
+        """CASE
+            WHEN doc.docstatus = 0 THEN 'Draft'
+            WHEN doc.docstatus = 1 AND IFNULL(doc.is_return, 0) = 1 THEN 'Return'
+            WHEN doc.docstatus = 1 THEN 'Submitted'
+            WHEN doc.docstatus = 2 THEN 'Cancelled'
+            ELSE 'Unknown'
+        END AS status""",
+        "doc.creation",
+        "doc.modified"
+    ]
+
+    join_clause = f"LEFT JOIN {child_table} child ON child.parent = doc.name" if child_table else ""
+    count_field = "COUNT(child.name) AS total_items" if child_table else "0 AS total_items"
+
+    query = f"""
+        SELECT SQL_CALC_FOUND_ROWS
+            {', '.join(select_fields)},
+            {count_field}
+        FROM {table_name} doc
+        {join_clause}
+        WHERE {where_clause}
+        GROUP BY doc.name
+        ORDER BY doc.{sort_by} {sort_order}
+        LIMIT %(limit)s OFFSET %(offset)s
+    """
+    return query
+
+
+@frappe.whitelist()
+def manage_document_list(doctype, filters=None, sort_by="creation", sort_order="DESC", limit=20, page=1):
+    """
+    Unified API for document listing with pagination, filters, and dynamic field mapping.
+    """
+    doctype = validate_doctype(doctype)
+    filters = frappe.parse_json(filters) if filters else {}
+
+    offset = (page - 1) * limit
+
+    # Build WHERE clause
+    where_conditions = []
+    for field, value in filters.items():
+        # Support pattern search using dict syntax: {"supplier_name": {"like": "%ABC%"}}
+        if isinstance(value, dict) and "like" in value:
+            pattern = value["like"]
+            where_conditions.append(f"doc.{field} LIKE {frappe.db.escape(pattern)}")
+        else:
+            # Default to exact match
+            where_conditions.append(f"doc.{field} = {frappe.db.escape(value)}")
+
+    where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+
+    # Build and run query
+    query = build_dynamic_query(
+        doctype=doctype,
+        where_clause=where_clause,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        limit=limit,
+        offset=offset
+    )
+
+    doc_list = frappe.db.sql(query, {"limit": limit, "offset": offset}, as_dict=True)
+    total_count = frappe.db.sql("SELECT FOUND_ROWS() as total", as_dict=True)[0].total
+    total_pages = math.ceil(total_count / limit) if total_count else 1
+
+    # Optional metadata for filters
+    filters_meta = {"applied": filters, "count": len(filters)}
+
+    return {
+        "success": True,
+        "data": doc_list,
+        "pagination": {
+            "page": page,
+            "per_page": limit,
+            "total": total_count,
+            "pages": total_pages
+        },
+        "filters": filters_meta,
+        "searchable_fields": get_searchable_fields(doctype)
+    }
