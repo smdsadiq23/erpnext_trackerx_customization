@@ -1,0 +1,19 @@
+{
+ "content": null,
+ "creation": "2025-10-24 11:53:55.715741",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2025-10-24 11:53:55.715741",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "production-tv-dashbo",
+ "owner": "Administrator",
+ "page_name": "production-tv-dashbo",
+ "roles": [],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Production TV Dashboard"
+}
