@@ -4,7 +4,7 @@ import frappe
 from frappe import _
 
 # Define the list of protected Role names that should not be deleted
-PROTECTED_ROLES = ["Finished Goods Master","Fabrics Master","Trims Master", "Accessories Master", "Machine Master", "Packing Materials Master", "Labels Master", "Spare Parts Master"]
+PROTECTED_ROLES = ["Finished Goods Master","Fabrics Master","Trims Master", "Accessories Master", "Machine Master", "Packing Materials Master", "Labels Master", "Spare Parts Master", "Vendor AQL Audit Supervisor"]
 
 def prevent_role_deletion(doc, method):
     """

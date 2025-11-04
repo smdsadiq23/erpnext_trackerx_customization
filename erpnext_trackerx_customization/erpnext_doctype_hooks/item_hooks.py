@@ -35,24 +35,39 @@ def get_item_permission_query_conditions(user):
         return "1=1" # do not restrict if the role doesnt have any item types (empty)
 
 
-def set_item_code_before_insert(doc, method):
-    """
-    Auto-generate item_code before validation
-    Only runs for new documents
-    """
-    frappe.log_error(f"before_insert hook called for Item: {doc.name}", "Item Code Generation")
+## ITS PART OF BELOW autonam_item method now
+# def set_item_code_before_insert(doc, method):
+#     """
+#     Auto-generate item_code before validation
+#     Only runs for new documents
+#     """
+#     frappe.log_error(f"before_insert hook called for Item: {doc.name}", "Item Code Generation")
 
-    if not doc.custom_select_master:
-        frappe.throw("custom_select_master is required to generate item_code")
+#     if not doc.custom_select_master:
+#         frappe.throw("custom_select_master is required to generate item_code")
 
-    doc.item_code = generate_item_code(doc)
+#     doc.item_code = generate_item_code(doc)
 
+
+def autoname(doc, method=None):
+    if doc.get("custom_manual_item_code"):
+        if not doc.item_code:
+            frappe.throw("Item Code is mandatory when 'Manual Item Code' is enabled.")
+        doc.name = doc.item_code
+    else:
+        try:
+            doc.item_code = generate_item_code(doc)
+        except Exception as e:
+            frappe.log_error(f"Item autoname error: {str(e)}", "Item autoname")
+            frappe.throw(f"Failed to generate item code: {str(e)}")
+        doc.name = doc.item_code
 
 
 def generate_item_code(doc):
     """
     Generate item_code with custom logic.
     For 'Fabrics', include standard fields + GSM, Width, and Finish.
+    For 'Yarns', use: Y-{count}-{type}-{shade}
     """
     master = doc.custom_select_master
     prefix_map = {
@@ -64,83 +79,109 @@ def generate_item_code(doc):
         "Machines": "MC",
         "Packing Materials": "PM",
         "Spare Parts": "SP",
-        "Semi Finished Goods": "SFG"
+        "Semi Finished Goods": "SFG",
+        "Yarns": "YRN"
     }
 
     prefix = prefix_map.get(master)
     if not prefix:
         prefix = "ITEM"
 
-    # Format item_group conditionally
-    item_group = doc.item_group or ""
-    item_group_code = ""
+    # Special handling for Yarns
+    if master == "Yarns":
+        yarn_count = str(doc.custom_yarn_count).strip() if doc.custom_yarn_count else ""
+        yarn_type = str(doc.custom_yarn_type).strip() if doc.custom_yarn_type else ""
+        # Handle Yarn Shade (Link to Colour Master)
+        yarn_shade = ""
+        if doc.custom_yarn_shade:
+            try:
+                shade_doc = frappe.get_doc("Colour Master", doc.custom_yarn_shade)
+                yarn_shade = shade_doc.colour_name or shade_doc.name  # Use 'colour_name' field as title
+            except Exception as e:
+                frappe.log_error(f"Error fetching Colour Master: {doc.custom_yarn_shade}", "Yarn Code Generation")
+                yarn_shade = doc.custom_yarn_shade  # fallback to name
 
-    is_machine = master == 'Machines'
-    is_spare_parts = master == 'Spare Parts'
-    is_fabrics = master == 'Fabrics'
-
-    if item_group:
-        if master == "Accessories":
-            item_group_code = item_group  # full name
-        else:
-            words = item_group.split()
-            if len(words) == 1:
-                item_group_code = words[0][:3].upper()
-            else:
-                item_group_code = ''.join(word[0].upper() for word in words)
-
-    # Standard fields (used for most types, including Fabrics)
-    item_name = doc.item_name or ""
-    color_name = doc.custom_colour_name or ""
-    color_code = doc.custom_colour_code or ""
-
-    # Machine / Spare Parts fields
-    machine_type = doc.custom_machineequipment_type or ''
-    machine_model_no = doc.custom_model_no or ''
-    sp_category = doc.custom_spare_part_category or ''
-    sp_type = doc.custom_spare_part_type or ''
-
-    # Fabric-specific fields (only used when master == 'Fabrics')
-    fabric_width = str(doc.custom_width).strip() if doc.custom_width else ""
-    fabric_gsm = str(doc.custom_gsm).strip() if doc.custom_gsm else ""
-    fabric_finish = str(doc.custom_type_of_finish).strip() if doc.custom_type_of_finish else ""
-
-    # Build parts list
-    if item_group_code == prefix:
-        prefix = ""
-        parts = []
-    else:
         parts = [prefix]
+        if yarn_count:
+            parts.append(yarn_count)
+        if yarn_type:
+            parts.append(yarn_type)
+        if yarn_shade:
+            parts.append(yarn_shade)
 
-    if is_machine or is_spare_parts:
-        if machine_type:
-            parts.append(machine_type)
-        if machine_model_no:
-            parts.append(machine_model_no)
-        if sp_category:
-            parts.append(sp_category)
-        if sp_type:
-            parts.append(sp_type)
-
+        base_code = "-".join(parts)
     else:
-        # This block now includes Fabrics AND other standard types
-        if item_group_code:
-            parts.append(item_group_code)
-        if item_name:
-            parts.append(item_name)
-        if color_name:
-            parts.append(color_name)
-        if color_code:
-            parts.append(color_code)
+        # === Original logic for all other types ===
+        # Format item_group conditionally
+        item_group = doc.item_group or ""
+        item_group_code = ""
 
-        # ➕ Extra: Append fabric specs ONLY for Fabrics
-        if is_fabrics:
-            fabric_attrs = [fabric_width, fabric_gsm, fabric_finish]
-            fabric_attrs = [attr for attr in fabric_attrs if attr]  # skip empty
-            if fabric_attrs:
-                parts.append("-".join(fabric_attrs))
+        is_machine = master == 'Machines'
+        is_spare_parts = master == 'Spare Parts'
+        is_fabrics = master == 'Fabrics'
 
-    base_code = "-".join(parts)
+        if item_group:
+            if master == "Accessories":
+                item_group_code = item_group  # full name
+            else:
+                words = item_group.split()
+                if len(words) == 1:
+                    item_group_code = words[0][:3].upper()
+                else:
+                    item_group_code = ''.join(word[0].upper() for word in words)
+
+        # Standard fields (used for most types, including Fabrics)
+        item_name = doc.item_name or ""
+        color_name = doc.custom_colour_name or ""
+        color_code = doc.custom_colour_code or ""
+
+        # Machine / Spare Parts fields
+        machine_type = doc.custom_machineequipment_type or ''
+        machine_model_no = doc.custom_model_no or ''
+        sp_category = doc.custom_spare_part_category or ''
+        sp_type = doc.custom_spare_part_type or ''
+
+        # Fabric-specific fields (only used when master == 'Fabrics')
+        fabric_width = str(doc.custom_width).strip() if doc.custom_width else ""
+        fabric_gsm = str(doc.custom_gsm).strip() if doc.custom_gsm else ""
+        fabric_finish = str(doc.custom_type_of_finish).strip() if doc.custom_type_of_finish else ""
+
+        # Build parts list
+        if item_group_code == prefix:
+            prefix = ""
+            parts = []
+        else:
+            parts = [prefix]
+
+        if is_machine or is_spare_parts:
+            if machine_type:
+                parts.append(machine_type)
+            if machine_model_no:
+                parts.append(machine_model_no)
+            if sp_category:
+                parts.append(sp_category)
+            if sp_type:
+                parts.append(sp_type)
+
+        else:
+            # This block now includes Fabrics AND other standard types
+            if item_group_code:
+                parts.append(item_group_code)
+            if item_name:
+                parts.append(item_name)
+            if color_name:
+                parts.append(color_name)
+            if color_code:
+                parts.append(color_code)
+
+            # ➕ Extra: Append fabric specs ONLY for Fabrics
+            if is_fabrics:
+                fabric_attrs = [fabric_width, fabric_gsm, fabric_finish]
+                fabric_attrs = [attr for attr in fabric_attrs if attr]  # skip empty
+                if fabric_attrs:
+                    parts.append("-".join(fabric_attrs))
+
+        base_code = "-".join(parts)
 
     # Get next sequence number
     last_doc = frappe.db.sql("""
@@ -163,7 +204,12 @@ def generate_item_code(doc):
 
 
 def validate_item(doc, method):
-    pass
+    if doc.custom_select_master == "Yarns":
+        if not doc.custom_yarn_count:
+            frappe.throw("Yarn Count is required for Yarn items.")
+        if not doc.custom_yarn_type:
+            frappe.throw("Yarn Type is required for Yarn items.")
+        # Shade can be optional if business allows
 
 
 def validate_for_fg_components(doc, method):
