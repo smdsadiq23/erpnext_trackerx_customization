@@ -658,35 +658,27 @@ def _create_document(doctype, data):
         # Create new document
         doc = frappe.new_doc(doctype)
         
-        # Set default values
+        # Set essential defaults only
         doc.posting_date = getdate(data.get('posting_date')) or getdate()
         doc.posting_time = now_datetime().time()
         doc.set_posting_time = 0
         doc.company = data.get('company') or default_company
         doc.is_return = 0
         
-        # Set naming series
-        if data.get('naming_series'):
-            doc.naming_series = data['naming_series']
-        else:
-            default_naming_series = frappe.db.get_value(doctype, {"company": doc.company}, "naming_series")
-            if not default_naming_series:
-                default_naming_series = frappe.get_meta(doctype).get_field("naming_series").options.split("\n")[0]
-            doc.naming_series = default_naming_series
-        
-        # Set document fields
+        # Map ALL fields from data to document (except 'items')
+        # This will override defaults if the field is provided in data
         for field, value in data.items():
             if field != 'items' and hasattr(doc, field) and value is not None:
                 setattr(doc, field, value)
         
-        # Bypass mandatory validation initially
-        doc.flags.ignore_mandatory = True
-        doc.insert(ignore_permissions=True)
-        
-        # Add items if provided
+        # Add items if provided - map all fields directly from item_data
         if data.get('items'):
             for item_data in data['items']:
-                _add_item_to_document(doc, item_data)
+                item_row = doc.append("items", {})
+                # Map all fields from item_data to item_row
+                for field, value in item_data.items():
+                    if hasattr(item_row, field) and value is not None:
+                        setattr(item_row, field, value)
         
         # Validate document before saving using Mobile API Settings
         validation_result = _validate_document_with_settings(doc)
@@ -708,7 +700,10 @@ def _create_document(doctype, data):
             },
             "message": f"{doctype} created successfully"
         }
-        
+    except frappe.MandatoryError as e:
+        return {"success": False, "error": {"message": str(e), "code": "MANDATORY_ERROR"}}
+    except frappe.ValidationError as e:
+        return {"success": False, "error": {"message": str(e), "code": "VALIDATION_ERROR"}}
     except Exception as e:
         frappe.log_error("Mobile API Error", f"Create document error: {str(e)}")
         return {"success": False, "error": {"message": str(e), "code": "CREATE_DOCUMENT_ERROR"}}
@@ -736,7 +731,8 @@ def _update_document(doctype, doc_id, data):
         updated_items = 0
         deleted_items = 0
         
-        # Update document fields
+        # Map ALL fields from data to document (except 'items')
+        # This will update fields if they are provided in data
         for field, value in data.items():
             if field != 'items' and hasattr(doc, field) and value is not None:
                 old_value = getattr(doc, field)
@@ -745,7 +741,7 @@ def _update_document(doctype, doc_id, data):
                     changed_fields.append(field)
                     changes_made += 1
         
-        # Handle items
+        # Handle items - match by item_code and update all fields
         if 'items' in data:
             item_changes = _update_document_items(doc, data['items'])
             new_items = item_changes['new_items']
@@ -774,7 +770,10 @@ def _update_document(doctype, doc_id, data):
             },
             "message": f"{doctype} updated successfully"
         }
-        
+    except frappe.MandatoryError as e:
+        return {"success": False, "error": {"message": str(e), "code": "MANDATORY_ERROR"}}
+    except frappe.ValidationError as e:
+        return {"success": False, "error": {"message": str(e), "code": "VALIDATION_ERROR"}}
     except Exception as e:
         frappe.log_error("Mobile API Error", f"Update document error: {str(e)}")
         return {"success": False, "error": {"message": str(e), "code": "UPDATE_DOCUMENT_ERROR"}}
@@ -836,7 +835,7 @@ def _add_item_to_document(doc, item_data):
     """Add item to document"""
     try:
         # Validate required fields
-        required_fields = ["item_code", "warehouse", "received_qty"]
+        required_fields = ["item_code"]
         for field in required_fields:
             if not item_data.get(field):
                 raise ValueError(f"{field} is required")
@@ -847,32 +846,55 @@ def _add_item_to_document(doc, item_data):
         
         item = frappe.get_doc("Item", item_data['item_code'])
         
+        # Map qty to received_qty if received_qty is not provided
+        if 'received_qty' not in item_data and 'qty' in item_data:
+            item_data['received_qty'] = item_data['qty']
+        
+        # Set default received_qty if not provided
+        if not item_data.get('received_qty'):
+            item_data['received_qty'] = flt(item_data.get('qty', 1))
+        
+        # Get default warehouse if not provided
+        if not item_data.get('warehouse'):
+            # Try to get default warehouse from item or company
+            default_warehouse = (
+                frappe.db.get_value("Item", item_data['item_code'], "default_warehouse") or
+                frappe.db.get_value("Warehouse", {"company": doc.company, "is_group": 0}, "name") or
+                None
+            )
+            if not default_warehouse:
+                raise ValueError("warehouse is required and no default warehouse found")
+            item_data['warehouse'] = default_warehouse
+        
         # Get default rate if not provided
         if not item_data.get('rate'):
             item_data['rate'] = frappe.db.get_value("Item Price", {"item_code": item_data['item_code'], "price_list": "Standard Buying"}, "price_list_rate") or 0
         
+        # Ensure rate is not None
+        item_data['rate'] = flt(item_data.get('rate', 0))
+        
         # Create new item row
         item_row = doc.append("items", {})
         item_row.item_code = item_data['item_code']
-        item_row.item_name = item.item_name
-        item_row.description = item.description
-        item_row.qty = flt(item_data.get('qty', 1))
-        item_row.received_qty = flt(item_data.get('received_qty', 1))
-        item_row.uom = item.purchase_uom or item.stock_uom
-        item_row.warehouse = item_data['warehouse']
+        # item_row.item_name = item.item_name
+        # item_row.description = item.description
+        item_row.qty = flt(item_data.get('qty', item_data['received_qty']))
+        # item_row.received_qty = flt(item_data['received_qty'])
+        # item_row.uom = item.purchase_uom or item.stock_uom
+        # item_row.warehouse = item_data['warehouse']
         item_row.rate = flt(item_data['rate'])
-        item_row.amount = item_row.received_qty * item_row.rate
-        item_row.conversion_factor = 1
-        item_row.stock_uom = item.stock_uom
-        item_row.stock_qty = item_row.received_qty
+        # item_row.amount = flt(item_row.received_qty) * flt(item_row.rate)
+        # item_row.conversion_factor = 1
+        # item_row.stock_uom = item.stock_uom
+        # item_row.stock_qty = item_row.received_qty
         
         # Add optional fields
-        if item_data.get('batch_no'):
-            item_row.batch_no = item_data['batch_no']
-        if item_data.get('serial_no'):
-            item_row.serial_no = item_data['serial_no']
-        if item_data.get('no_of_boxes'):
-            item_row.custom_no_of_boxes = flt(item_data['no_of_boxes'])
+        # if item_data.get('batch_no'):
+        #     item_row.batch_no = item_data['batch_no']
+        # if item_data.get('serial_no'):
+        #     item_row.serial_no = item_data['serial_no']
+        # if item_data.get('no_of_boxes'):
+        #     item_row.custom_no_of_boxes = flt(item_data['no_of_boxes'])
         
         return True
         
@@ -881,38 +903,65 @@ def _add_item_to_document(doc, item_data):
         raise e
 
 def _update_document_items(doc, items_data):
-    """Update document items based on provided data"""
+    """Update document items based on provided data - match by item_code"""
     try:
         new_items = 0
         updated_items = 0
         deleted_items = 0
         
-        # Get existing item IDs
-        existing_item_ids = [item.name for item in doc.items]
-        provided_item_ids = [item.get('item_id') for item in items_data if item.get('item_id')]
-        
-        # Find deleted items (items not in provided data)
-        deleted_item_ids = [item_id for item_id in existing_item_ids if item_id not in provided_item_ids]
-        deleted_items = len(deleted_item_ids)
-        
-        # Remove deleted items
-        for item_id in deleted_item_ids:
-            for i, row in enumerate(doc.items):
-                if row.name == item_id:
-                    del doc.items[i]
-                    break
+        # Get existing items mapped by item_code
+        existing_items_by_code = {}
+        for item in doc.items:
+            if item.item_code:
+                if item.item_code not in existing_items_by_code:
+                    existing_items_by_code[item.item_code] = []
+                existing_items_by_code[item.item_code].append(item)
         
         # Process provided items
+        provided_item_codes = set()
         for item_data in items_data:
-            if item_data.get('item_id'):
-                # Update existing item
-                updated = _update_existing_item(doc, item_data)
-                if updated:
+            item_code = item_data.get('item_code')
+            if not item_code:
+                continue  # Skip items without item_code
+            
+            provided_item_codes.add(item_code)
+            
+            # Find existing item with this item_code
+            existing_item = None
+            if item_code in existing_items_by_code and existing_items_by_code[item_code]:
+                # Use the first matching item
+                existing_item = existing_items_by_code[item_code][0]
+            
+            if existing_item:
+                # Update existing item - map ALL fields from item_data
+                item_updated = False
+                for field, value in item_data.items():
+                    if field != 'item_code' and hasattr(existing_item, field) and value is not None:
+                        old_value = getattr(existing_item, field, None)
+                        if old_value != value:
+                            setattr(existing_item, field, value)
+                            item_updated = True
+                
+                if item_updated:
                     updated_items += 1
             else:
-                # Add new item
-                _add_item_to_document(doc, item_data)
+                # Add new item - map all fields directly
+                new_item = doc.append("items", {})
+                for field, value in item_data.items():
+                    if hasattr(new_item, field) and value is not None:
+                        setattr(new_item, field, value)
                 new_items += 1
+        
+        # Find deleted items (items in document but not in provided data)
+        items_to_delete = []
+        for item in doc.items:
+            if item.item_code and item.item_code not in provided_item_codes:
+                items_to_delete.append(item)
+        
+        deleted_items = len(items_to_delete)
+        # Remove deleted items
+        for item in items_to_delete:
+            doc.remove(item)
         
         return {
             "new_items": new_items,
