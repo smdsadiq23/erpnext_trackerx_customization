@@ -731,7 +731,8 @@ def _update_document(doctype, doc_id, data):
         updated_items = 0
         deleted_items = 0
         
-        # Update document fields
+        # Map ALL fields from data to document (except 'items')
+        # This will update fields if they are provided in data
         for field, value in data.items():
             if field != 'items' and hasattr(doc, field) and value is not None:
                 old_value = getattr(doc, field)
@@ -740,7 +741,7 @@ def _update_document(doctype, doc_id, data):
                     changed_fields.append(field)
                     changes_made += 1
         
-        # Handle items
+        # Handle items - match by item_code and update all fields
         if 'items' in data:
             item_changes = _update_document_items(doc, data['items'])
             new_items = item_changes['new_items']
@@ -769,7 +770,10 @@ def _update_document(doctype, doc_id, data):
             },
             "message": f"{doctype} updated successfully"
         }
-        
+    except frappe.MandatoryError as e:
+        return {"success": False, "error": {"message": str(e), "code": "MANDATORY_ERROR"}}
+    except frappe.ValidationError as e:
+        return {"success": False, "error": {"message": str(e), "code": "VALIDATION_ERROR"}}
     except Exception as e:
         frappe.log_error("Mobile API Error", f"Update document error: {str(e)}")
         return {"success": False, "error": {"message": str(e), "code": "UPDATE_DOCUMENT_ERROR"}}
@@ -899,38 +903,65 @@ def _add_item_to_document(doc, item_data):
         raise e
 
 def _update_document_items(doc, items_data):
-    """Update document items based on provided data"""
+    """Update document items based on provided data - match by item_code"""
     try:
         new_items = 0
         updated_items = 0
         deleted_items = 0
         
-        # Get existing item IDs
-        existing_item_ids = [item.name for item in doc.items]
-        provided_item_ids = [item.get('item_id') for item in items_data if item.get('item_id')]
-        
-        # Find deleted items (items not in provided data)
-        deleted_item_ids = [item_id for item_id in existing_item_ids if item_id not in provided_item_ids]
-        deleted_items = len(deleted_item_ids)
-        
-        # Remove deleted items
-        for item_id in deleted_item_ids:
-            for i, row in enumerate(doc.items):
-                if row.name == item_id:
-                    del doc.items[i]
-                    break
+        # Get existing items mapped by item_code
+        existing_items_by_code = {}
+        for item in doc.items:
+            if item.item_code:
+                if item.item_code not in existing_items_by_code:
+                    existing_items_by_code[item.item_code] = []
+                existing_items_by_code[item.item_code].append(item)
         
         # Process provided items
+        provided_item_codes = set()
         for item_data in items_data:
-            if item_data.get('item_id'):
-                # Update existing item
-                updated = _update_existing_item(doc, item_data)
-                if updated:
+            item_code = item_data.get('item_code')
+            if not item_code:
+                continue  # Skip items without item_code
+            
+            provided_item_codes.add(item_code)
+            
+            # Find existing item with this item_code
+            existing_item = None
+            if item_code in existing_items_by_code and existing_items_by_code[item_code]:
+                # Use the first matching item
+                existing_item = existing_items_by_code[item_code][0]
+            
+            if existing_item:
+                # Update existing item - map ALL fields from item_data
+                item_updated = False
+                for field, value in item_data.items():
+                    if field != 'item_code' and hasattr(existing_item, field) and value is not None:
+                        old_value = getattr(existing_item, field, None)
+                        if old_value != value:
+                            setattr(existing_item, field, value)
+                            item_updated = True
+                
+                if item_updated:
                     updated_items += 1
             else:
-                # Add new item
-                _add_item_to_document(doc, item_data)
+                # Add new item - map all fields directly
+                new_item = doc.append("items", {})
+                for field, value in item_data.items():
+                    if hasattr(new_item, field) and value is not None:
+                        setattr(new_item, field, value)
                 new_items += 1
+        
+        # Find deleted items (items in document but not in provided data)
+        items_to_delete = []
+        for item in doc.items:
+            if item.item_code and item.item_code not in provided_item_codes:
+                items_to_delete.append(item)
+        
+        deleted_items = len(items_to_delete)
+        # Remove deleted items
+        for item in items_to_delete:
+            doc.remove(item)
         
         return {
             "new_items": new_items,
