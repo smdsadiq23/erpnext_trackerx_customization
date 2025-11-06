@@ -11,31 +11,46 @@ def before_save_bom(doc, method):
     #calculate_custom_material_costs(doc);
     pass
 
-def on_submit(doc,method):
+def on_submit(doc, method):
+    # All material tables
     item_tables = [
         "custom_fabrics_items",
+        "custom_yarns_items",
         "custom_trims_items",
         "custom_accessories_items",
         "custom_labels_items",
         "custom_packing_materials_items"
     ]
+    
+    # For error messages
     item_tables_to_name = {
         "custom_fabrics_items": "Fabrics",
+        "custom_yarns_items": "Yarns",
         "custom_trims_items": "Trims",
         "custom_accessories_items": "Accessories",
         "custom_labels_items": "Labels",
         "custom_packing_materials_items": "Packing Materials"
     }
 
-    if doc.custom_bom_type == "Finished Goods": # each type required at least 1 item
+    if doc.custom_bom_type == "Finished Goods":
+        # Get fabrics and yarns
+        fabrics = getattr(doc, "custom_fabrics_items", [])
+        yarns = getattr(doc, "custom_yarns_items", [])
+        
+        # ✅ Combined check: at least one of Fabrics or Yarns must exist
+        if not fabrics and not yarns:
+            frappe.throw("At least one Fabric or Yarn is required")
+
+        # Validate other tables (Trims, Accessories, etc.)
         for table_name in item_tables:
+            # Skip Fabrics and Yarns — already validated together
+            if table_name in ("custom_fabrics_items", "custom_yarns_items"):
+                continue
+
             child_items = getattr(doc, table_name, [])
             if not child_items:
-                frappe.throw(f"Atleast 1 {item_tables_to_name[table_name]} required")
+                frappe.throw(f"At least 1 {item_tables_to_name[table_name]} required")
     
-    
-
-
 
 def validate_for_duplicate_bom_item_size(doc):
     seen_items = set()

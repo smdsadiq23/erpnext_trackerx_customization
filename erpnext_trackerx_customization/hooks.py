@@ -158,7 +158,8 @@ after_migrate = [
 # app_include_css = "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css"
 app_include_css = [
     "/assets/erpnext_trackerx_customization/css/erpnext_trackerx_customization.css",
-    "/assets/erpnext_trackerx_customization/css/xystyle.css"
+    "/assets/erpnext_trackerx_customization/css/xystyle.css",
+    "/assets/erpnext_trackerx_customization/css/production_tv_dashboard.css"
 ]
 app_include_js = [
     "/assets/erpnext_trackerx_customization/js/process_map.js"
@@ -312,7 +313,8 @@ doc_events= {
         "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.role_hooks.prevent_role_deletion"
     },
 	"Item": {
-        "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.set_item_code_before_insert",
+        # "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.set_item_code_before_insert",
+        "autoname": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.autoname",
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.validate_item"
     },
     "BOM": {
