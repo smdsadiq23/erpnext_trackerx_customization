@@ -65,6 +65,7 @@ frappe.ui.form.on('BOM', {
     },
 
     onload(frm) {
+        frm.set_df_property('items', 'reqd', 0);
         frm.set_df_property('items', 'hidden', 1);
         modifyTheBOMItemTableFields(frm);
         fetch_allowed_item_groups(frm);
