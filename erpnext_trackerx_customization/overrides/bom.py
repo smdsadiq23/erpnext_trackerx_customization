@@ -2,6 +2,7 @@ from erpnext.manufacturing.doctype.bom.bom import BOM as BaseBOM
 from collections import defaultdict
 import frappe
 from frappe.utils import flt
+from frappe.utils import cint, cstr, flt, today
 
 class CustomBOM(BaseBOM):
     def before_save(self):
@@ -10,6 +11,22 @@ class CustomBOM(BaseBOM):
     def before_submit(self):
         # Optional: in case ERPNext or an app re-triggers costing during submit
         self.calculate_order_method_costs()
+
+    
+    def validate_materials(self):
+        """Validate raw material entries"""
+
+        # if not self.get("items"):
+        #     frappe.throw(_("Raw Materials cannot be blank."))
+
+        check_list = []
+        for m in self.get("items"):
+            if m.bom_no:
+                validate_bom_no(m.item_code, m.bom_no)
+            if flt(m.qty) <= 0:
+                frappe.throw(_("Quantity required for Item {0} in row {1}").format(m.item_code, m.idx))
+            check_list.append(m)
+
 
     def calculate_operation_summary(self):
         # Clear existing rows
@@ -161,3 +178,30 @@ class CustomBOM(BaseBOM):
             self.raw_material_cost = size_cost
         else:
             self.raw_material_cost = all_amount
+
+
+
+def validate_bom_no(item, bom_no):
+	"""Validate BOM No of sub-contracted items"""
+	bom = frappe.get_doc("BOM", bom_no)
+	if not bom.is_active:
+		frappe.throw(_("BOM {0} must be active").format(bom_no))
+	if bom.docstatus != 1:
+		if not getattr(frappe.flags, "in_test", False):
+			frappe.throw(_("BOM {0} must be submitted").format(bom_no))
+	if item:
+		rm_item_exists = False
+		for d in bom.items:
+			if d.item_code.lower() == item.lower():
+				rm_item_exists = True
+		for d in bom.scrap_items:
+			if d.item_code.lower() == item.lower():
+				rm_item_exists = True
+		if (
+			bom.item.lower() == item.lower()
+			or bom.item.lower() == cstr(frappe.db.get_value("Item", item, "variant_of")).lower()
+		):
+			rm_item_exists = True
+		if not rm_item_exists:
+			frappe.throw(_("BOM {0} does not belong to Item {1}").format(bom_no, item))
+
