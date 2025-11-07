@@ -463,7 +463,7 @@ frappe.ui.form.on('BOM Item', {
         calculate_qty(cdt, cdn);
     },
     custom_supplier(frm, cdt, cdn) {
-        frappe.model.set_value(cdt, cdn, 'item_code', '');
+        //frappe.model.set_value(cdt, cdn, 'item_code', '');
         set_item_code_filters(frm);
     },
     custom_size(frm, cdt, cdn) {
@@ -488,6 +488,8 @@ function calculate_qty(cdt, cdn) {
 }
 
 function set_item_code_filters(frm) {
+    if(true)
+        return
     const table_field_map = {
         'custom_fabrics_items': 'Fabrics',
         'custom_yarns_items': 'Yarns',

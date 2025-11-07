@@ -48,8 +48,8 @@ def on_submit(doc, method):
                 continue
 
             child_items = getattr(doc, table_name, [])
-            if not child_items:
-                frappe.throw(f"At least 1 {item_tables_to_name[table_name]} required")
+            # if not child_items:
+            #     frappe.throw(f"At least 1 {item_tables_to_name[table_name]} required")
     
 
 def validate_for_duplicate_bom_item_size(doc):
