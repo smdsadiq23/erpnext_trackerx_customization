@@ -1,28 +1,40 @@
 import { useState, useEffect, useCallback } from 'react';
-import { generateMockData } from '../constants/mockData';
 
 export const useProductionData = () => {
   const [data, setData] = useState([]);
+  const [operations, setOperations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (company = null, limit = 20) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Call the real API
+      const response = await frappe.call({
+        method: 'erpnext_trackerx_customization.api.production_dashboard.get_production_dashboard_data',
+        args: {
+          company: company,
+          limit: limit
+        }
+      });
 
-      // Generate mock data
-      const mockData = generateMockData(8);
-
-      setData(mockData);
-      setLastUpdated(new Date());
+      if (response.message && response.message.success) {
+        const apiData = response.message;
+        setData(apiData.data || []);
+        setOperations(apiData.operations_config || []);
+        setLastUpdated(new Date());
+      } else {
+        throw new Error(response.message?.error?.message || 'API returned no data');
+      }
     } catch (err) {
-      setError('Failed to fetch production data');
+      setError('Failed to fetch production data: ' + (err.message || err));
       console.error('Data fetch error:', err);
+      // Fallback to empty data on error
+      setData([]);
+      setOperations([]);
     } finally {
       setLoading(false);
     }
@@ -79,6 +91,7 @@ export const useProductionData = () => {
 
   return {
     data,
+    operations,
     loading,
     error,
     lastUpdated,

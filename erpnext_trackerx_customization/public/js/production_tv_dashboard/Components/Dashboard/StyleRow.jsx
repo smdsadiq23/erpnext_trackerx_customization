@@ -12,8 +12,8 @@ const StyleRow = ({ styleData, operations, columns, screenSize }) => {
           <div className="style-description">{styleData.description}</div>
         </div>
 
-        <div className="color-cell">
-          <div className="color-value">{styleData.color}</div>
+        <div className="order-qty-cell">
+          <div className="order-qty-value">{styleData.orderQuantity || 0}</div>
         </div>
 
         <div className="delivery-cell">

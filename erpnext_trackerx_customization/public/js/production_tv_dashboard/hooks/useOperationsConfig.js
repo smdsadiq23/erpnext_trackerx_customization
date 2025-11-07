@@ -2,14 +2,22 @@ import { useState, useEffect } from 'react';
 import { getDefaultOperations } from '../constants/defaultOperations';
 import { saveToLocalStorage, getFromLocalStorage } from '../utils/localStorageUtils';
 
-export const useOperationsConfig = () => {
+export const useOperationsConfig = (dynamicOperations = []) => {
   const [operations, setOperations] = useState([]);
 
   useEffect(() => {
-    // Load from localStorage or use defaults
-    const savedOperations = getFromLocalStorage('operations');
-    setOperations(savedOperations || getDefaultOperations());
-  }, []);
+    // If dynamic operations are available, use them as the source of truth
+    if (dynamicOperations && dynamicOperations.length > 0) {
+      setOperations(dynamicOperations);
+      // Optionally save to localStorage for offline mode
+      saveToLocalStorage('dynamic_operations', dynamicOperations);
+    } else {
+      // Fallback: Load from localStorage or use defaults
+      const savedDynamicOperations = getFromLocalStorage('dynamic_operations');
+      const savedOperations = getFromLocalStorage('operations');
+      setOperations(savedDynamicOperations || savedOperations || getDefaultOperations());
+    }
+  }, [dynamicOperations]);
 
   const updateOperations = (newOperations) => {
     setOperations(newOperations);
