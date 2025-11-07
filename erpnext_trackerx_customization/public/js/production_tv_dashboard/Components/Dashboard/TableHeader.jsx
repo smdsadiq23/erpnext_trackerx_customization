@@ -8,8 +8,8 @@ const TableHeader = ({ columns }) => {
         <div className="header-cell style-header">
           <span>Style</span>
         </div>
-        <div className="header-cell color-header">
-          <span>Colour</span>
+        <div className="header-cell order-qty-header">
+          <span>Order Qty</span>
         </div>
         <div className="header-cell delivery-header">
           <span>Delivery Date</span>

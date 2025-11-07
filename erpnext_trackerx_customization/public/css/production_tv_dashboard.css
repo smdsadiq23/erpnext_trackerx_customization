@@ -199,7 +199,7 @@
   border-right: 2px solid var(--border-color);
 }
 
-.fixed-columns-header .color-header {
+.fixed-columns-header .order-qty-header {
   width: 15%;
   min-width: 100px;
   border-right: 2px solid var(--border-color);
@@ -245,7 +245,7 @@
   padding: calc(15px * var(--spacing-scale, 1));
 }
 
-.color-header {
+.order-qty-header {
   width: 15%;
   min-width: 100px;
   padding: calc(15px * var(--spacing-scale, 1)) calc(10px * var(--spacing-scale, 1));
@@ -337,7 +337,7 @@
   color: var(--text-secondary);
 }
 
-.color-cell {
+.order-qty-cell {
   width: 15%;
   min-width: 100px;
   text-align: center;
@@ -348,7 +348,7 @@
   justify-content: center;
 }
 
-.color-value {
+.order-qty-value {
   font-size: calc(0.8em * var(--font-scale, 1));
   font-weight: 600;
   color: var(--text-primary);

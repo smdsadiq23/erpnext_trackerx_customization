@@ -23,18 +23,21 @@ export const App = ({ pageInstance }) => {
 
   try {
     console.log('App: Initializing hooks...');
-    const operationsConfig = useOperationsConfig();
-    operations = operationsConfig.operations;
-    updateOperations = operationsConfig.updateOperations;
-    addOperation = operationsConfig.addOperation;
-    removeOperation = operationsConfig.removeOperation;
 
+    // First get production data which includes dynamic operations
     const productionData = useProductionData();
     data = productionData.data;
     loading = productionData.loading;
     error = productionData.error;
     refresh = productionData.refresh;
     simulateRealTimeUpdates = productionData.simulateRealTimeUpdates;
+
+    // Then pass dynamic operations to operations config
+    const operationsConfig = useOperationsConfig(productionData.operations);
+    operations = operationsConfig.operations;
+    updateOperations = operationsConfig.updateOperations;
+    addOperation = operationsConfig.addOperation;
+    removeOperation = operationsConfig.removeOperation;
 
     const screenSizeConfig = useScreenSize();
     screenSize = screenSizeConfig.screenSize;
