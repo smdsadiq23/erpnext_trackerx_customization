@@ -7,6 +7,64 @@ from collections import defaultdict
 from .mobile_utils import secure_api_call
 
 # ===========================
+# USER COMPANY DETECTION
+# ===========================
+
+def get_user_company():
+    """
+    Get the company associated with current logged-in user
+    Priority order:
+    1. Employee.company (where Employee.user_id = current_user)
+    2. User Permissions on Company doctype
+    3. Default company from system settings
+    """
+    try:
+        current_user = frappe.session.user
+
+        # Skip for System Manager and Administrator
+        if current_user in ['Administrator'] or 'System Manager' in frappe.get_roles():
+            frappe.log_error(f"User {current_user} has System Manager role - no company restriction", "Company Detection")
+            return None  # Allow access to all companies
+
+        # Method 1: Get company via Employee record (Primary)
+        employee_company = frappe.db.get_value('Employee',
+            {'user_id': current_user, 'status': 'Active'},
+            'company'
+        )
+
+        if employee_company:
+            frappe.log_error(f"User {current_user} found via Employee: {employee_company}", "Company Detection")
+            return employee_company
+
+        # Method 2: Get company via User Permissions (Fallback)
+        user_permissions = frappe.get_all('User Permission',
+            filters={
+                'user': current_user,
+                'allow': 'Company'
+            },
+            fields=['for_value']
+        )
+
+        if user_permissions:
+            company = user_permissions[0].for_value
+            frappe.log_error(f"User {current_user} found via User Permissions: {company}", "Company Detection")
+            return company
+
+        # Method 3: Get default company (Last resort)
+        default_company = frappe.db.get_single_value('Global Defaults', 'default_company')
+        if default_company:
+            frappe.log_error(f"User {current_user} using default company: {default_company}", "Company Detection")
+            return default_company
+
+        # No company found
+        frappe.log_error(f"No company found for user {current_user}", "Company Detection")
+        return None
+
+    except Exception as e:
+        frappe.log_error(f"Error detecting company for user {frappe.session.user}: {str(e)}", "Company Detection Error")
+        return None
+
+# ===========================
 # DYNAMIC OPERATIONS CONSTANTS
 # ===========================
 
@@ -460,8 +518,17 @@ def calculate_progress_for_dynamic_operations(wo_name, operations_list, size_qty
 def get_production_dashboard_data(company=None, limit=20):
     """
     Get dashboard data with completely dynamic operations
+    Auto-detects user's company if not specified
     """
     try:
+        # Auto-detect user company if not provided
+        if company is None:
+            company = get_user_company()
+            frappe.log_error(f"Auto-detected company: {company} for user: {frappe.session.user}", "Production Dashboard")
+
+        # Log the final company being used
+        frappe.log_error(f"Fetching data for company: {company}, user: {frappe.session.user}", "Production Dashboard")
+
         # Get active work orders
         work_orders = get_active_work_orders_with_operations(company, limit)
 
@@ -490,6 +557,8 @@ def get_production_dashboard_data(company=None, limit=20):
             "operations_config": operations_config,
             "total_operations": len(all_operations_discovered),
             "total_work_orders": len(dashboard_data),
+            "company": company,
+            "user": frappe.session.user,
             "timestamp": now_datetime().isoformat()
         }
 

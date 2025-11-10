@@ -12,13 +12,12 @@ export const App = ({ pageInstance }) => {
   const [appError, setAppError] = useState(null);
 
   const autoRefreshInterval = useRef(null);
-  const realTimeInterval = useRef(null);
 
   console.log('App: Rendering with pageInstance:', pageInstance);
 
   // Initialize hooks with error handling
   let operations, updateOperations, addOperation, removeOperation;
-  let data, loading, error, refresh, simulateRealTimeUpdates;
+  let data, loading, error, refresh;
   let screenSize, fontSize, changeScreenSize, getScreenSettings;
 
   try {
@@ -30,7 +29,6 @@ export const App = ({ pageInstance }) => {
     loading = productionData.loading;
     error = productionData.error;
     refresh = productionData.refresh;
-    simulateRealTimeUpdates = productionData.simulateRealTimeUpdates;
 
     // Then pass dynamic operations to operations config
     const operationsConfig = useOperationsConfig(productionData.operations);
@@ -77,28 +75,6 @@ export const App = ({ pageInstance }) => {
     }
   }, [refresh]);
 
-  // Setup real-time simulation
-  useEffect(() => {
-    try {
-      console.log('App: Setting up real-time updates...');
-      if (simulateRealTimeUpdates) {
-        realTimeInterval.current = setInterval(() => {
-          console.log('App: Real-time update triggered');
-          simulateRealTimeUpdates();
-          setLastUpdateTime(new Date());
-        }, 5000); // Update every 5 seconds
-      }
-
-      return () => {
-        if (realTimeInterval.current) {
-          console.log('App: Cleaning up real-time interval');
-          clearInterval(realTimeInterval.current);
-        }
-      };
-    } catch (err) {
-      console.error('App: Error setting up real-time updates:', err);
-    }
-  }, [simulateRealTimeUpdates]);
 
   // Expose toggle function to page instance
   useEffect(() => {
