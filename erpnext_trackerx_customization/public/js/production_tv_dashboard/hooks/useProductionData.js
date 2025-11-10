@@ -7,16 +7,15 @@ export const useProductionData = () => {
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  const fetchData = useCallback(async (company = null, limit = 20) => {
+  const fetchData = useCallback(async (limit = 20) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Call the real API
+      // Call the real API - company will be auto-detected by backend
       const response = await frappe.call({
         method: 'erpnext_trackerx_customization.api.production_dashboard.get_production_dashboard_data',
         args: {
-          company: company,
           limit: limit
         }
       });
@@ -59,31 +58,6 @@ export const useProductionData = () => {
     );
   }, []);
 
-  const simulateRealTimeUpdates = useCallback(() => {
-    setData(prevData =>
-      prevData.map(style => {
-        const updatedProgress = { ...style.progress };
-
-        // Randomly update some operations with small changes
-        Object.keys(updatedProgress).forEach(op => {
-          if (Math.random() < 0.3) { // 30% chance to update each operation
-            const currentPercentage = updatedProgress[op].percentage;
-            const change = (Math.random() - 0.5) * 2; // -1 to +1 change
-            const newPercentage = Math.max(0, Math.min(100, currentPercentage + change));
-
-            updatedProgress[op] = {
-              ...updatedProgress[op],
-              percentage: Math.floor(newPercentage),
-              completed: Math.floor((newPercentage / 100) * style.totalQuantity)
-            };
-          }
-        });
-
-        return { ...style, progress: updatedProgress };
-      })
-    );
-    setLastUpdated(new Date());
-  }, []);
 
   useEffect(() => {
     fetchData();
@@ -96,7 +70,6 @@ export const useProductionData = () => {
     error,
     lastUpdated,
     refresh: fetchData,
-    updateStyleProgress,
-    simulateRealTimeUpdates
+    updateStyleProgress
   };
 };
