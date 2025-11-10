@@ -86,7 +86,8 @@ fixtures = [
                 "Accessories Master",
                 "Trims Master",
                 "Fabrics Master",
-                "Finished Goods Master"
+                "Finished Goods Master",
+                "Vendor AQL Audit Supervisor"
                 ]
             ]
         ]
