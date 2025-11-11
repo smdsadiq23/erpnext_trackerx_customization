@@ -1,7 +1,7 @@
 {
  "absolute_value": 0,
  "align_labels_right": 0,
- "creation": "2025-11-10 13:05:52.677197",
+ "creation": "2025-11-10 19:20:50.016924",
  "css": "body {\n    font-family: Arial, sans-serif;\n    font-size: 14px;\n    margin: 0;\n    padding: 10px;\n}\n\n.label-container {\n    display: flex;\n    flex-wrap: wrap;\n    justify-content: space-between;\n    gap: 20px;\n}\n\n.label {\n    width: 100%; /* For 2 per row (use 31% for 3 per row) */\n    border: 1px solid #000;\n    padding: 8px;\n    box-sizing: border-box;\n    page-break-inside: avoid;\n}\n\ntable {\n    width: 100%;\n    border-collapse: collapse;\n}\n\ntd {\n    border: 1px solid #000;\n    padding: 4px;\n    vertical-align: top;\n    font-size: 12px;\n}\n\n.qr-img {\n    width: 120px;\n    height: 120px;\n    display: block;\n    margin: 0 auto;\n}\n\n@media print {\n    .label {\n        page-break-inside: avoid;\n    }\n}",
  "custom_format": 1,
  "default_print_language": "en",
@@ -17,7 +17,7 @@
  "margin_left": 15.0,
  "margin_right": 15.0,
  "margin_top": 15.0,
- "modified": "2025-11-10 13:05:52.677197",
+ "modified": "2025-11-10 19:20:50.016924",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "GRN QR Code Labels",
