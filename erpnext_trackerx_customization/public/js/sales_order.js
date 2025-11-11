@@ -470,7 +470,7 @@ function render_tree_view(frm) {
                     <div class="header-field">
                         <label>Color:</label>
                         <input type="text" class="form-control custom-color-input" style="width: 120px;" 
-                               value="${color_val}" data-item-index="${item_index}" placeholder="Color">
+                               value="${color_val}" data-item-index="${item_index}" readonly>
                     </div>
                     
                     <div class="header-field">
