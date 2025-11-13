@@ -56,17 +56,21 @@ class PhysicalCell(Document):
 
 	def validate_for_operations_from_supported_operation_group(self):
 		"""Validate that selected operations belong to the correct operation group"""
+		# Skip during install/migrate/fixture import to avoid race condition
+		if frappe.flags.in_install or frappe.flags.in_migrate or frappe.flags.in_fixtures:
+			return
+
 		if not self.supported_operation_group:
 			return
 		
 		for row in self.operation_workstations:
 			if row.operation:
-				# Get the operation's group
 				operation_group = frappe.db.get_value('Operation', row.operation, 'custom_operation_group')
-				
 				if operation_group != self.supported_operation_group:
 					frappe.throw(
-						f"Operation '{row.operation}' in row {row.idx} does not belong to the selected Operation Group '{self.supported_operation_group}'"
+						_("Operation '{0}' in row {1} does not belong to the selected Operation Group '{2}'").format(
+							row.operation, row.idx, self.supported_operation_group
+						)
 					)
 
 	
