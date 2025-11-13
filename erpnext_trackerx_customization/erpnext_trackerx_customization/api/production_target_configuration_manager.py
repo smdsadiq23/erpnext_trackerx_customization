@@ -496,4 +496,187 @@ def get_configuration_history(physical_cell, style):
         
     except Exception as e:
         frappe.log_error(f"Error getting configuration history: {str(e)}")
-        frappe.throw(_("Error getting configuration history: {0}").format(str(e)))
+        frappe.throw(_("Error getting configuration history: {0}").format(str(e)))# New optimized API functions to append
+# ===========================
+# NEW OPTIMIZED APIs - SAFE APPROACH
+# No breaking changes - existing APIs remain untouched
+# ===========================
+
+@frappe.whitelist()
+def get_physical_cells_only():
+    """Get only physical cells with live operator count - optimized for production_target_2"""
+    try:
+        # Single optimized query with JOIN for operator attendance
+        physical_cells = frappe.db.sql("""
+            SELECT
+                pc.name,
+                pc.cell_name,
+                pc.supported_operation_group,
+                pc.operator_count as default_operator_count,
+                COALESCE(CEIL(oa.avg_operators), pc.operator_count) as operator_count
+            FROM `tabPhysical Cell` pc
+            LEFT JOIN (
+                SELECT
+                    physical_cell,
+                    AVG(value) as avg_operators
+                FROM `tabOperator Attendance`
+                WHERE DATE(hour) = CURDATE()
+                GROUP BY physical_cell
+            ) oa ON oa.physical_cell = pc.name
+            ORDER BY pc.name
+        """, as_dict=True)
+
+        return physical_cells
+
+    except Exception as e:
+        frappe.log_error(f"Error in get_physical_cells_only: {str(e)}")
+        frappe.throw(_("Error fetching physical cells: {0}").format(str(e)))
+
+@frappe.whitelist()
+def get_compatible_styles(cell_name):
+    """Get styles compatible with selected physical cell - smart filtering"""
+    try:
+        # Get cell's operation group
+        cell_operation_group = frappe.db.get_value('Physical Cell', cell_name, 'supported_operation_group')
+
+        if not cell_operation_group:
+            return []
+
+        # Get operations for this group
+        operations = frappe.get_all('Operation',
+            filters={'custom_operation_group': cell_operation_group},
+            pluck='name'
+        )
+
+        if not operations:
+            return []
+
+        # Get styles that have compatible operations
+        compatible_styles = frappe.db.sql("""
+            SELECT DISTINCT
+                i.name,
+                i.item_name,
+                i.custom_style_master as style_number
+            FROM `tabItem` i
+            INNER JOIN `tabBOM Operation` bo ON bo.parent = i.name
+            WHERE i.custom_select_master = 'Finished Goods'
+              AND bo.operation IN %(operations)s
+            ORDER BY i.item_name
+        """, {'operations': operations}, as_dict=True)
+
+        return compatible_styles
+
+    except Exception as e:
+        frappe.log_error(f"Error in get_compatible_styles for {cell_name}: {str(e)}")
+        frappe.throw(_("Error fetching compatible styles: {0}").format(str(e)))
+
+@frappe.whitelist()
+def get_style_configuration(cell_name, style_name):
+    """Get configuration for specific cell-style pair - targeted calculation"""
+    try:
+        # Calculate SAM for this specific combination only
+        calculated_sam = calculate_sam_optimized(cell_name, style_name)
+
+        # Get existing configuration
+        existing_config = frappe.db.get_value(
+            'Production Target Configuration',
+            {
+                'physical_cell': cell_name,
+                'style': style_name,
+                'is_active': 1
+            },
+            ['name', 'sam', 'operator', 'efficiency', 'hour_target', 'start', 'end']
+        )
+
+        # Get cell operator count
+        cell_info = frappe.db.get_value('Physical Cell', cell_name,
+            ['operator_count', 'supported_operation_group'])
+
+        default_operator_count = cell_info[0] if cell_info else 1
+
+        # Get style information
+        style_info = frappe.db.get_value('Item', style_name,
+            ['item_name', 'custom_style_master'])
+
+        result = {
+            'calculated_sam': calculated_sam,
+            'cell_name': cell_name,
+            'style_name': style_name,
+            'style_item_name': style_info[0] if style_info else style_name,
+            'style_number': style_info[1] if style_info else '',
+            'default_operator_count': default_operator_count,
+            'cell_operation_group': cell_info[1] if cell_info else ''
+        }
+
+        if existing_config:
+            result['existing_config'] = {
+                'name': existing_config[0],
+                'sam': existing_config[1],
+                'operator': existing_config[2],
+                'efficiency': existing_config[3],
+                'hour_target': existing_config[4],
+                'start': existing_config[5],
+                'end': existing_config[6]
+            }
+        else:
+            result['existing_config'] = None
+
+        return result
+
+    except Exception as e:
+        frappe.log_error(f"Error in get_style_configuration for {cell_name}-{style_name}: {str(e)}")
+        frappe.throw(_("Error fetching style configuration: {0}").format(str(e)))
+
+@frappe.whitelist()
+def save_single_configuration(cell_name, style_name, config_data):
+    """Save configuration for single cell-style pair - efficient save"""
+    try:
+        # Parse config_data if it's a string
+        if isinstance(config_data, str):
+            config_data = json.loads(config_data)
+
+        # Prepare data for existing save_configuration function
+        save_data = {
+            'physical_cell': cell_name,
+            'style': style_name,
+            'sam': config_data.get('sam', 0),
+            'operator': config_data.get('operator', 0),
+            'efficiency': config_data.get('efficiency', 0),
+            'hour_target': config_data.get('hour_target', 0)
+        }
+
+        # Use existing save_configuration function to maintain consistency
+        result = save_configuration(save_data)
+
+        return {
+            'status': 'success',
+            'message': f'Configuration saved for {cell_name} - {style_name}',
+            'save_result': result
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error in save_single_configuration for {cell_name}-{style_name}: {str(e)}")
+        frappe.throw(_("Error saving single configuration: {0}").format(str(e)))
+
+def calculate_sam_optimized(physical_cell, style):
+    """Optimized SAM calculation with single query approach"""
+    try:
+        # Single optimized query joining all required tables
+        result = frappe.db.sql("""
+            SELECT SUM(bo.time_in_mins) as total_sam
+            FROM `tabPhysical Cell` pc
+            INNER JOIN `tabOperation` op ON op.custom_operation_group = pc.supported_operation_group
+            INNER JOIN `tabBOM Operation` bo ON bo.operation = op.name AND bo.parent = %(style)s
+            WHERE pc.name = %(physical_cell)s
+        """, {
+            'physical_cell': physical_cell,
+            'style': style
+        }, as_dict=True)
+
+        total_sam = result[0]['total_sam'] if result and result[0]['total_sam'] else 0
+        return round(float(total_sam), 2)
+
+    except Exception as e:
+        frappe.log_error(f"Error in calculate_sam_optimized for {physical_cell}-{style}: {str(e)}")
+        # Fallback to original calculate_sam function
+        return calculate_sam(physical_cell, style)
