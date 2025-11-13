@@ -17,7 +17,8 @@ export const useScreenSize = () => {
 
   useEffect(() => {
     // Load saved screen size preference
-    const savedScreenSize = getFromLocalStorage('screenSize');
+    const savedScreenSizeResult = getFromLocalStorage('screenSize');
+    const savedScreenSize = savedScreenSizeResult?.data;
     if (savedScreenSize && screenSizeMapping[savedScreenSize]) {
       setScreenSize(savedScreenSize);
       setFontSize(screenSizeMapping[savedScreenSize].fontSize);
@@ -36,7 +37,14 @@ export const useScreenSize = () => {
     if (screenSizeMapping[newSize]) {
       setScreenSize(newSize);
       setFontSize(screenSizeMapping[newSize].fontSize);
-      saveToLocalStorage('screenSize', newSize);
+      const saveResult = saveToLocalStorage('screenSize', newSize);
+
+      if (!saveResult.success) {
+        console.error('Failed to save screen size setting:', saveResult.error);
+        window.dispatchEvent(new CustomEvent('screenSizeSaveFailed', { detail: saveResult }));
+      } else {
+        window.dispatchEvent(new CustomEvent('screenSizeSaved', { detail: saveResult }));
+      }
     }
   };
 
