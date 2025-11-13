@@ -282,7 +282,7 @@ class SimpleProductionTargetManager {
         try {
             // OPTIMIZED: Load only physical cells initially - 95% faster!
             const response = await frappe.call({
-                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.get_physical_cells_only'
+                method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.get_physical_cells_only'
             });
 
             this.data.physical_cells = response.message;
@@ -340,7 +340,7 @@ class SimpleProductionTargetManager {
 
         try {
             const response = await frappe.call({
-                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.get_compatible_styles',
+                method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.get_compatible_styles',
                 args: { cell_name: cellName }
             });
 
@@ -372,7 +372,7 @@ class SimpleProductionTargetManager {
 
         try {
             const response = await frappe.call({
-                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.get_style_configuration',
+                method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.get_style_configuration',
                 args: {
                     cell_name: this.selectedCell.name,
                     style_name: styleName
@@ -539,7 +539,7 @@ class SimpleProductionTargetManager {
 
         try {
             const response = await frappe.call({
-                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.calculate_sam',
+                method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.calculate_sam',
                 args: {
                     physical_cell: this.selectedCell.name,
                     style: styleCode
@@ -568,7 +568,7 @@ class SimpleProductionTargetManager {
         try {
             for (const style of this.data.styles) {
                 const response = await frappe.call({
-                    method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.calculate_sam',
+                    method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.calculate_sam',
                     args: {
                         physical_cell: this.selectedCell.name,
                         style: style.name
@@ -626,7 +626,7 @@ class SimpleProductionTargetManager {
                 const configData = this.pendingChanges.values().next().value;
 
                 const response = await frappe.call({
-                    method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.save_single_configuration',
+                    method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.save_single_configuration',
                     args: {
                         cell_name: this.selectedCell.name,
                         style_name: this.selectedStyle.name,
@@ -649,7 +649,7 @@ class SimpleProductionTargetManager {
                 // Fallback to bulk update if needed
                 const changes = Array.from(this.pendingChanges.values());
                 const response = await frappe.call({
-                    method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.bulk_update_configurations',
+                    method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.bulk_update_configurations',
                     args: {
                         configurations: changes
                     }
@@ -682,7 +682,7 @@ class SimpleProductionTargetManager {
     async showStyleHistory(styleCode) {
         try {
             const response = await frappe.call({
-                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.get_configuration_history',
+                method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.get_configuration_history',
                 args: {
                     physical_cell: this.selectedCell.name,
                     style: styleCode

@@ -202,7 +202,25 @@ const FlowCanvas = ({
   // Handle keyboard delete
   useEffect(() => {
     const handleKeyDown = (event) => {
+      // Only trigger deletion if:
+      // 1. Delete or Backspace key is pressed
+      // 2. No input/textarea is currently focused
+      // 3. No contentEditable element is focused
       if (event.key === 'Delete' || event.key === 'Backspace') {
+        const activeElement = document.activeElement;
+        const isInputFocused = activeElement && (
+          activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA' ||
+          activeElement.contentEditable === 'true' ||
+          activeElement.isContentEditable
+        );
+
+        // If user is typing in an input field, don't trigger deletion
+        if (isInputFocused) {
+          return;
+        }
+
+        // Only prevent default and delete elements if not in an input
         event.preventDefault();
         deleteSelectedElements();
       }
