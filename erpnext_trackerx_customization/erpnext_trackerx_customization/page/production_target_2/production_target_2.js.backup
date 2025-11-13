@@ -280,15 +280,13 @@ class SimpleProductionTargetManager {
 
     async loadInitialData() {
         try {
-            // OPTIMIZED: Load only physical cells initially - 95% faster!
             const response = await frappe.call({
-                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.get_physical_cells_only'
+                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.get_production_data'
             });
 
-            this.data.physical_cells = response.message;
-            // Styles and SAMs will be loaded progressively when cell/style selected
-            this.data.styles = [];
-            this.data.sams = {};
+            this.data.physical_cells = response.message.physical_cells;
+            this.data.styles = response.message.styles;
+			this.data.sams = response.message.sams;
 
             this.populatePhysicalCellDropdown();
             this.updateLastUpdated();
@@ -327,6 +325,11 @@ class SimpleProductionTargetManager {
 	}
 
     async onCellSelected(cellName) {
+
+		this.showStyleDropDown();
+
+		this.populatedStyleDropdown();
+
         this.selectedCell = this.data.physical_cells.find(c => c.name === cellName);
         if (!this.selectedCell) return;
 
@@ -335,124 +338,115 @@ class SimpleProductionTargetManager {
         $(this.page.body).find('#operation-group-badge').text(`Group: ${this.selectedCell.supported_operation_group || 'None'}`);
         $(this.page.body).find('.cell-info').show();
 
-        // OPTIMIZED: Load only compatible styles for this cell
-        this.showLoading(true, 'Loading compatible styles...');
-
-        try {
-            const response = await frappe.call({
-                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.get_compatible_styles',
-                args: { cell_name: cellName }
-            });
-
-            this.data.styles = response.message || [];
-            this.populatedStyleDropdown();
-            this.showStyleDropDown();
-
-            // Hide style table until style is selected
-            this.hideStylesTable();
-
-        } catch (error) {
-            console.error('Error loading compatible styles:', error);
-            frappe.msgprint({
-                title: 'Error',
-                message: 'Failed to load compatible styles for this cell.',
-                indicator: 'red'
-            });
-        } finally {
-            this.showLoading(false);
-        }
+        // Load current configurations for this cell
+        //await this.loadCellConfigurations();
+        
+        // Show bulk controls and table
+        //$(this.page.body).find('.bulk-controls-card').show();
+        //this.showStylesTable();
     }
 
 	 async onStyleSelected(styleName) {
+
+
         this.selectedStyle = this.data.styles.find(s => s.name === styleName);
         if (!this.selectedStyle) return;
 
-        // OPTIMIZED: Load configuration for this specific cell-style pair only
-        this.showLoading(true, 'Loading style configuration...');
+        // Load current configurations for this cell
+        await this.loadCellConfigurations();
+        
+        // Show bulk controls and table
+        //$(this.page.body).find('.bulk-controls-card').show();
+        this.showStylesTable();
+    }
 
+
+
+    async loadCellConfigurations() {
+        this.showLoading(true);
+        
         try {
+            // Get existing configs for this cell
             const response = await frappe.call({
-                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.get_style_configuration',
+                method: 'frappe.client.get_list',
                 args: {
-                    cell_name: this.selectedCell.name,
-                    style_name: styleName
+                    doctype: 'Production Target Configuration',
+                    filters: {
+                        physical_cell: this.selectedCell.name,
+						style: this.selectedStyle.name,
+                        is_active: 1
+                    },
+                    fields: ['style', 'sam', 'operator', 'efficiency', 'hour_target']
                 }
             });
 
-            this.currentConfiguration = response.message;
+            this.data.current_configs = response.message || [];
             this.populateStylesTable();
-            this.showStylesTable();
 
         } catch (error) {
-            console.error('Error loading style configuration:', error);
-            frappe.msgprint({
-                title: 'Error',
-                message: 'Failed to load configuration for this style.',
-                indicator: 'red'
-            });
+            console.error('Error loading cell configurations:', error);
+            frappe.msgprint('Error loading configurations for this cell');
         } finally {
             this.showLoading(false);
         }
     }
-
-
-    // REMOVED: loadCellConfigurations() - replaced with get_style_configuration API
 
     populateStylesTable() {
         const tbody = $(this.page.body).find('#styles-table-body');
         tbody.empty();
 
-        if (!this.currentConfiguration || !this.selectedStyle) {
-            return;
-        }
+        this.data.styles.forEach(style => {
+			if(style != this.selectedStyle)
+			{
+				return;
+			}
 
-        // OPTIMIZED: Use data from get_style_configuration API
-        const config = this.currentConfiguration;
-        const existing = config.existing_config;
+			
+            const existingConfig = this.data.current_configs.find(c => c.style === style.name);
+            const sam = existingConfig ? existingConfig.sam : (this.data.sams[this.selectedCell.name+"###"+this.selectedStyle.name] || 0);
+            const operator = existingConfig ? existingConfig.operator : (this.selectedCell.operator_count || 0);
+            const efficiency = existingConfig ? existingConfig.efficiency : 0;
+            const target = existingConfig ? existingConfig.hour_target : 0;
+            const hasConfig = !!existingConfig;
+			
 
-        const sam = existing ? existing.sam : config.calculated_sam;
-        const operator = existing ? existing.operator : config.default_operator_count;
-        const efficiency = existing ? existing.efficiency : 0;
-        const target = existing ? existing.hour_target : 0;
-        const hasConfig = !!existing;
-
-        const row = `
-            <tr data-style="${config.style_name}" class="${hasConfig ? 'table-light' : ''}">
-                <td>
-                    <div class="style-info">
-                        <strong>${config.style_item_name || config.style_name}</strong>
-                        <br><small class="text-muted">${config.style_name}</small>
-                        ${hasConfig ? '<span class="badge badge-success badge-sm ml-2">Configured</span>' : '<span class="badge badge-secondary badge-sm ml-2">New</span>'}
-                    </div>
-                </td>
-                <td>
-                    <div class="input-group input-group-sm">
-                        <input type="number" class="form-control sam-input" value="${sam || ''}" step="1" min="0">
-                        <div class="input-group-append">
-                            <button class="btn btn-outline-secondary calc-sam-btn" data-style="${config.style_name}" title="Calculate SAM">
-                                <i class="fa fa-calculator"></i>
-                            </button>
+            const row = `
+                <tr data-style="${style.name}" class="${hasConfig ? 'table-light' : ''}">
+                    <td>
+                        <div class="style-info">
+                            <strong>${style.item_name || style.name}</strong>
+                            <br><small class="text-muted">${style.name}</small>
+                            ${hasConfig ? '<span class="badge badge-success badge-sm ml-2">Configured</span>' : '<span class="badge badge-secondary badge-sm ml-2">New</span>'}
                         </div>
-                    </div>
-                </td>
-                <td>
-                    <input type="number" class="form-control form-control-sm operator-input" value="${operator || ''}" min="1">
-                </td>
-                <td>
-                    <input type="number" class="form-control form-control-sm efficiency-input" value="${efficiency || ''}" min="0" max="100" step="0.01">
-                </td>
-                <td>
-                    <input type="number" class="form-control form-control-sm target-input" value="${target || ''}" min="0" step="0.01">
-                </td>
-                <td>
-                    <button class="btn btn-sm btn-info history-btn" data-style="${config.style_name}" title="View History">
-                        <i class="fa fa-history"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-
-        tbody.append(row);
+                    </td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control sam-input" value="${sam || ''}" step="1" min="0">
+                            <div class="input-group-append">
+                                <button class="btn btn-outline-secondary calc-sam-btn" data-style="${style.name}" title="Calculate SAM">
+                                    <i class="fa fa-calculator"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm operator-input" value="${operator || ''}" min="1">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm efficiency-input" value="${efficiency || ''}" min="0" max="100" step="0.01">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm target-input" value="${target || ''}" min="0" step="0.01">
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-info history-btn" data-style="${style.name}" title="View History">
+                            <i class="fa fa-history"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tbody.append(row);
+        });
 
         // Update counters
         $(this.page.body).find('#selected-cell-name').text(this.selectedCell.name);
@@ -615,56 +609,29 @@ class SimpleProductionTargetManager {
 
     async saveAllChanges() {
         $('#confirmModal').modal('hide');
-
+        
         if (this.pendingChanges.size === 0) return;
 
         this.showLoading(true, 'Saving changes...');
-
+        
         try {
-            // OPTIMIZED: Save single configuration instead of bulk
-            if (this.pendingChanges.size === 1 && this.selectedCell && this.selectedStyle) {
-                const configData = this.pendingChanges.values().next().value;
+            const changes = Array.from(this.pendingChanges.values());
+            const response = await frappe.call({
+                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.bulk_update_configurations',
+                args: {
+                    configurations: changes
+                }
+            });
 
-                const response = await frappe.call({
-                    method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.save_single_configuration',
-                    args: {
-                        cell_name: this.selectedCell.name,
-                        style_name: this.selectedStyle.name,
-                        config_data: configData
-                    }
+            if (response.message.status === 'success') {
+                frappe.msgprint({
+                    title: 'Success',
+                    message: response.message.message,
+                    indicator: 'green'
                 });
 
-                if (response.message.status === 'success') {
-                    frappe.msgprint({
-                        title: 'Success',
-                        message: response.message.message,
-                        indicator: 'green'
-                    });
-
-                    this.clearPendingChanges();
-                    // Reload the specific style configuration
-                    await this.onStyleSelected(this.selectedStyle.name);
-                }
-            } else {
-                // Fallback to bulk update if needed
-                const changes = Array.from(this.pendingChanges.values());
-                const response = await frappe.call({
-                    method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.bulk_update_configurations',
-                    args: {
-                        configurations: changes
-                    }
-                });
-
-                if (response.message.status === 'success') {
-                    frappe.msgprint({
-                        title: 'Success',
-                        message: response.message.message,
-                        indicator: 'green'
-                    });
-
-                    this.clearPendingChanges();
-                    await this.onStyleSelected(this.selectedStyle.name);
-                }
+                this.clearPendingChanges();
+                await this.loadCellConfigurations(); // Refresh data
             }
 
         } catch (error) {
