@@ -12,6 +12,9 @@
   "brand",
   "image",
   "style_group",
+  "bu",
+  "sbu",
+  "fbu",
   "operations_section",
   "with_operations",
   "bom_operations"
@@ -85,12 +88,31 @@
    "label": "Style Group",
    "options": "Style Group",
    "reqd": 1
+  },
+  {
+   "fieldname": "bu",
+   "fieldtype": "Link",
+   "label": "BU",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sbu",
+   "fieldtype": "Link",
+   "label": "SBU",
+   "options": "Strategic Business Unit"
+  },
+  {
+   "fieldname": "fbu",
+   "fieldtype": "Link",
+   "label": "FBU",
+   "options": "Factory Business Unit"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-15 17:26:54.772802",
+ "modified": "2025-11-14 18:22:25.090018",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Style Master",
