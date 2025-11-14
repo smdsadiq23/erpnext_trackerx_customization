@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import '../../styles/config.css';
 
 const ConfigPanel = ({
   operations,
@@ -10,8 +11,64 @@ const ConfigPanel = ({
   onScreenSizeChange
 }) => {
   const [activeTab, setActiveTab] = useState('operations');
+  const [saveStatus, setSaveStatus] = useState({ type: '', message: '', visible: false });
 
   const screenSizes = ['24inch', '32inch', '43inch', '55inch', '65inch', '70inch'];
+
+  // Listen for save events from localStorage operations
+  useEffect(() => {
+    const handleOperationsSaved = (event) => {
+      setSaveStatus({
+        type: 'success',
+        message: 'Operations configuration saved successfully',
+        visible: true
+      });
+      // Auto-hide after 3 seconds
+      setTimeout(() => setSaveStatus(prev => ({ ...prev, visible: false })), 3000);
+    };
+
+    const handleOperationsSaveFailed = (event) => {
+      setSaveStatus({
+        type: 'error',
+        message: `Failed to save: ${event.detail?.error || 'Unknown error'}`,
+        visible: true
+      });
+      // Auto-hide after 5 seconds for errors
+      setTimeout(() => setSaveStatus(prev => ({ ...prev, visible: false })), 5000);
+    };
+
+    const handleScreenSizeSaved = (event) => {
+      setSaveStatus({
+        type: 'success',
+        message: 'Screen size setting saved successfully',
+        visible: true
+      });
+      setTimeout(() => setSaveStatus(prev => ({ ...prev, visible: false })), 3000);
+    };
+
+    const handleScreenSizeSaveFailed = (event) => {
+      setSaveStatus({
+        type: 'error',
+        message: `Failed to save screen size: ${event.detail?.error || 'Unknown error'}`,
+        visible: true
+      });
+      setTimeout(() => setSaveStatus(prev => ({ ...prev, visible: false })), 5000);
+    };
+
+    // Add event listeners
+    window.addEventListener('operationsSaved', handleOperationsSaved);
+    window.addEventListener('operationsSaveFailed', handleOperationsSaveFailed);
+    window.addEventListener('screenSizeSaved', handleScreenSizeSaved);
+    window.addEventListener('screenSizeSaveFailed', handleScreenSizeSaveFailed);
+
+    // Cleanup event listeners
+    return () => {
+      window.removeEventListener('operationsSaved', handleOperationsSaved);
+      window.removeEventListener('operationsSaveFailed', handleOperationsSaveFailed);
+      window.removeEventListener('screenSizeSaved', handleScreenSizeSaved);
+      window.removeEventListener('screenSizeSaveFailed', handleScreenSizeSaveFailed);
+    };
+  }, []);
 
   const handleOperationToggle = (operationId) => {
     const updatedOperations = operations.map(op =>
@@ -28,6 +85,16 @@ const ConfigPanel = ({
           <h3>Dashboard Configuration</h3>
           <button onClick={onClose} className="close-btn">×</button>
         </div>
+
+        {/* Save Status Indicator */}
+        {saveStatus.visible && (
+          <div className={`save-status ${saveStatus.type}`}>
+            <span className="status-icon">
+              {saveStatus.type === 'success' ? '✓' : '⚠'}
+            </span>
+            <span className="status-message">{saveStatus.message}</span>
+          </div>
+        )}
 
         <div className="config-tabs">
           <button

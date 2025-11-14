@@ -248,7 +248,7 @@ class OperatorAttendanceGrid {
         
         try {
             const response = await frappe.call({
-                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.operator_attendance.get_operator_attendance_grid',
+                method: 'erpnext_trackerx_customization.api.operator_attendance.get_operator_attendance_grid',
                 args: { date: selectedDate }
             });
             
@@ -314,7 +314,7 @@ class OperatorAttendanceGrid {
         
         try {
             const response = await frappe.call({
-                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.operator_attendance.save_operator_attendance_bulk',
+                method: 'erpnext_trackerx_customization.api.operator_attendance.save_operator_attendance_bulk',
                 args: { records: changes }
             });
             

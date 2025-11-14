@@ -141,7 +141,7 @@ class ProductionTargetManager {
         this.showLoading(true);
         try {
             const response = await frappe.call({
-                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.get_production_data'
+                method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.get_production_data'
             });
 
             this.data = response.message;
@@ -475,7 +475,7 @@ class ProductionTargetManager {
         
         try {
             const response = await frappe.call({
-                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.bulk_update_configurations',
+                method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.bulk_update_configurations',
                 args: {
                     configurations: changes
                 }
@@ -511,7 +511,7 @@ class ProductionTargetManager {
 
         try {
             const response = await frappe.call({
-                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.calculate_sam',
+                method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.calculate_sam',
                 args: {
                     physical_cell: physicalCell,
                     style: style
@@ -548,7 +548,7 @@ class ProductionTargetManager {
     async showHistory(physicalCell, style) {
         try {
             const response = await frappe.call({
-                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.api.production_target_configuration_manager.get_configuration_history',
+                method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.get_configuration_history',
                 args: {
                     physical_cell: physicalCell,
                     style: style
