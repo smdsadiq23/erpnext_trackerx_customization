@@ -66,10 +66,7 @@ class SimpleProductionTargetManager {
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-6">
-                                    <label class="form-label">Physical Cell</label>
-                                    <select class="form-control" id="physical-cell-select">
-                                        <option value="">Select Physical Cell...</option>
-                                    </select>
+                                    <div id="physical-cell-container"></div>
                                 </div>
                                 <div class="col-6">
                                     <div class="cell-info" style="display: none;">
@@ -85,10 +82,16 @@ class SimpleProductionTargetManager {
 						<div class="card-body" id="style-card">
                             <div class="row">
                                 <div class="col-6">
-                                    <label class="form-label">Style</label>
-                                    <select class="form-control" id="style-select">
-                                        <option value="">Select Style...</option>
-                                    </select>
+                                    <div id="style-container"></div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="style-info" style="display: none;">
+                                        <label class="form-label">Style Information</label>
+                                        <div class="info-display">
+                                            <span class="badge badge-success" id="style-code-badge"></span>
+                                            <span class="badge badge-primary" id="style-number-badge"></span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -222,25 +225,8 @@ class SimpleProductionTargetManager {
     bindEvents() {
         const self = this;
 
-        // Physical Cell selection change
-        $(this.page.body).on('change', '#physical-cell-select', function() {
-            const cellName = $(this).val();
-            if (cellName) {
-                self.onCellSelected(cellName);
-            } else {
-                self.hideStylesTable();
-            }
-        });
-
-		// style selection change
-		$(this.page.body).on('change', '#style-select', function() {
-            const styleName = $(this).val();
-            if (styleName) {
-                self.onStyleSelected(styleName);
-            } else {
-                self.hideStylesTable();
-            }
-        });
+        // Note: Physical Cell and Style selection events are now handled
+        // by the autocomplete fields in setupAutocompleteFields()
 
         // Bulk update inputs
         $(this.page.body).on('input', '#bulk-sam, #bulk-operator, #bulk-efficiency, #bulk-target', function() {
@@ -280,21 +266,29 @@ class SimpleProductionTargetManager {
 
     async loadInitialData() {
         try {
-            // OPTIMIZED: Load only physical cells initially - 95% faster!
-            const response = await frappe.call({
-                method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.get_physical_cells_only'
-            });
+            this.showLoading(true, 'Loading cells and styles...');
 
-            this.data.physical_cells = response.message;
-            // Styles and SAMs will be loaded progressively when cell/style selected
-            this.data.styles = [];
+            // Load both physical cells and ALL styles in parallel
+            const [cellsResponse, stylesResponse] = await Promise.all([
+                frappe.call({
+                    method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.get_physical_cells_only'
+                }),
+                frappe.call({
+                    method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.get_all_styles'
+                })
+            ]);
+
+            this.data.physical_cells = cellsResponse.message || [];
+            this.data.styles = stylesResponse.message || [];
             this.data.sams = {};
 
-            this.populatePhysicalCellDropdown();
+            this.setupAutocompleteFields();
             this.updateLastUpdated();
+            this.showLoading(false);
 
         } catch (error) {
             console.error('Error loading initial data:', error);
+            this.showLoading(false);
             frappe.msgprint({
                 title: 'Error',
                 message: 'Failed to load initial data. Please refresh the page.',
@@ -303,23 +297,74 @@ class SimpleProductionTargetManager {
         }
     }
 
-    populatePhysicalCellDropdown() {
-        const select = $(this.page.body).find('#physical-cell-select');
-        select.empty().append('<option value="">Select Physical Cell...</option>');
+    setupAutocompleteFields() {
+        // Setup Physical Cell Autocomplete
+        this.setupPhysicalCellAutocomplete();
 
-        this.data.physical_cells.forEach(cell => {
-            select.append(`<option value="${cell.name}">${cell.name}</option>`);
+        // Setup Style Autocomplete
+        this.setupStyleAutocomplete();
+
+        // Show style selection immediately (no longer need to wait for cell selection)
+        this.showStyleDropDown();
+    }
+
+    setupPhysicalCellAutocomplete() {
+        const container = $(this.page.body).find('#physical-cell-container');
+        container.empty();
+
+        // Create autocomplete field for Physical Cell
+        this.physicalCellField = frappe.ui.form.make_control({
+            parent: container[0],
+            df: {
+                label: 'Physical Cell',
+                fieldname: 'physical_cell',
+                fieldtype: 'Autocomplete',
+                placeholder: 'Type to search physical cells...',
+                options: this.data.physical_cells.map(cell => ({
+                    label: `${cell.name} (${cell.operator_count || 0} operators)`,
+                    value: cell.name,
+                    description: cell.supported_operation_group || 'No operation group'
+                })),
+                change: () => {
+                    const value = this.physicalCellField.get_value();
+                    if (value) {
+                        this.onCellSelected(value);
+                    }
+                }
+            },
+            render_input: true
         });
     }
 
-	  populatedStyleDropdown() {
-        const select = $(this.page.body).find('#style-select');
-        select.empty().append('<option value="">Select Style...</option>');
+    setupStyleAutocomplete() {
+        const container = $(this.page.body).find('#style-container');
+        container.empty();
 
-        this.data.styles.forEach(style => {
-            select.append(`<option value="${style.name}">${style.name}</option>`);
+        // Create autocomplete field for Style
+        this.styleField = frappe.ui.form.make_control({
+            parent: container[0],
+            df: {
+                label: 'Style',
+                fieldname: 'style',
+                fieldtype: 'Autocomplete',
+                placeholder: 'Type to search styles...',
+                options: this.data.styles.map(style => ({
+                    label: `${style.item_name} (${style.name})`,
+                    value: style.name,
+                    description: style.style_number || style.item_code || ''
+                })),
+                change: () => {
+                    const value = this.styleField.get_value();
+                    if (value) {
+                        this.onStyleSelected(value);
+                    }
+                }
+            },
+            render_input: true
         });
     }
+
+    // Legacy dropdown methods removed - now using autocomplete fields
 
 	showStyleDropDown() {
 		(this.page.body).find('#style-card').show();
@@ -335,31 +380,10 @@ class SimpleProductionTargetManager {
         $(this.page.body).find('#operation-group-badge').text(`Group: ${this.selectedCell.supported_operation_group || 'None'}`);
         $(this.page.body).find('.cell-info').show();
 
-        // OPTIMIZED: Load only compatible styles for this cell
-        this.showLoading(true, 'Loading compatible styles...');
-
-        try {
-            const response = await frappe.call({
-                method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.get_compatible_styles',
-                args: { cell_name: cellName }
-            });
-
-            this.data.styles = response.message || [];
-            this.populatedStyleDropdown();
-            this.showStyleDropDown();
-
-            // Hide style table until style is selected
-            this.hideStylesTable();
-
-        } catch (error) {
-            console.error('Error loading compatible styles:', error);
-            frappe.msgprint({
-                title: 'Error',
-                message: 'Failed to load compatible styles for this cell.',
-                indicator: 'red'
-            });
-        } finally {
-            this.showLoading(false);
+        // No longer load compatible styles - user can select any style
+        // If both cell and style are selected, load configuration
+        if (this.selectedCell && this.selectedStyle) {
+            this.loadConfiguration();
         }
     }
 
@@ -367,15 +391,28 @@ class SimpleProductionTargetManager {
         this.selectedStyle = this.data.styles.find(s => s.name === styleName);
         if (!this.selectedStyle) return;
 
-        // OPTIMIZED: Load configuration for this specific cell-style pair only
-        this.showLoading(true, 'Loading style configuration...');
+        // Update style info display
+        $(this.page.body).find('#style-code-badge').text(`Code: ${this.selectedStyle.item_code || 'N/A'}`);
+        $(this.page.body).find('#style-number-badge').text(`Style: ${this.selectedStyle.style_number || 'N/A'}`);
+        $(this.page.body).find('.style-info').show();
+
+        // If both cell and style are selected, load configuration
+        if (this.selectedCell && this.selectedStyle) {
+            this.loadConfiguration();
+        }
+    }
+
+    async loadConfiguration() {
+        if (!this.selectedCell || !this.selectedStyle) return;
+
+        this.showLoading(true, 'Loading configuration...');
 
         try {
             const response = await frappe.call({
                 method: 'erpnext_trackerx_customization.api.production_target_configuration_manager.get_style_configuration',
                 args: {
                     cell_name: this.selectedCell.name,
-                    style_name: styleName
+                    style_name: this.selectedStyle.name
                 }
             });
 
@@ -384,17 +421,16 @@ class SimpleProductionTargetManager {
             this.showStylesTable();
 
         } catch (error) {
-            console.error('Error loading style configuration:', error);
+            console.error('Error loading configuration:', error);
             frappe.msgprint({
                 title: 'Error',
-                message: 'Failed to load configuration for this style.',
+                message: 'Failed to load configuration for this cell-style combination.',
                 indicator: 'red'
             });
         } finally {
             this.showLoading(false);
         }
     }
-
 
     // REMOVED: loadCellConfigurations() - replaced with get_style_configuration API
 

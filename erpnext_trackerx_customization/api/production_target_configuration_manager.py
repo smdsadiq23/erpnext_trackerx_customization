@@ -533,42 +533,25 @@ def get_physical_cells_only():
         frappe.throw(_("Error fetching physical cells: {0}").format(str(e)))
 
 @frappe.whitelist()
-def get_compatible_styles(cell_name):
-    """Get styles compatible with selected physical cell - smart filtering"""
+def get_all_styles():
+    """Get all finished goods styles for autocomplete - no filtering"""
     try:
-        # Get cell's operation group
-        cell_operation_group = frappe.db.get_value('Physical Cell', cell_name, 'supported_operation_group')
-
-        if not cell_operation_group:
-            return []
-
-        # Get operations for this group
-        operations = frappe.get_all('Operation',
-            filters={'custom_operation_group': cell_operation_group},
-            pluck='name'
-        )
-
-        if not operations:
-            return []
-
-        # Get styles that have compatible operations
-        compatible_styles = frappe.db.sql("""
+        styles = frappe.db.sql("""
             SELECT DISTINCT
                 i.name,
                 i.item_name,
-                i.custom_style_master as style_number
+                i.custom_style_master as style_number,
+                i.item_code
             FROM `tabItem` i
-            INNER JOIN `tabBOM Operation` bo ON bo.parent = i.name
             WHERE i.custom_select_master = 'Finished Goods'
-              AND bo.operation IN %(operations)s
             ORDER BY i.item_name
-        """, {'operations': operations}, as_dict=True)
+        """, as_dict=True)
 
-        return compatible_styles
+        return styles
 
     except Exception as e:
-        frappe.log_error(f"Error in get_compatible_styles for {cell_name}: {str(e)}")
-        frappe.throw(_("Error fetching compatible styles: {0}").format(str(e)))
+        frappe.log_error(f"Error in get_all_styles: {str(e)}")
+        frappe.throw(_("Error fetching all styles: {0}").format(str(e)))
 
 @frappe.whitelist()
 def get_style_configuration(cell_name, style_name):
