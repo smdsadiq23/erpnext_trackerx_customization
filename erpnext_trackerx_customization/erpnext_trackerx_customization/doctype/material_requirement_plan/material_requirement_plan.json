@@ -13,6 +13,8 @@
   "material_requirement_plan_type",
   "customer",
   "company",
+  "strategic_business_unit",
+  "factory_business_unit",
   "column_break_2",
   "transaction_date",
   "schedule_date",
@@ -365,13 +367,25 @@
    "fieldtype": "Table",
    "label": "Items Summary",
    "options": "Material Request Item Summary"
+  },
+  {
+   "fieldname": "strategic_business_unit",
+   "fieldtype": "Link",
+   "label": "Strategic Business Unit",
+   "options": "Strategic Business Unit"
+  },
+  {
+   "fieldname": "factory_business_unit",
+   "fieldtype": "Link",
+   "label": "Factory Business Unit",
+   "options": "Factory Business Unit"
   }
  ],
  "icon": "fa fa-ticket",
  "idx": 70,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-13 12:54:24.986009",
+ "modified": "2025-11-15 17:33:27.242651",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Material Requirement Plan",
