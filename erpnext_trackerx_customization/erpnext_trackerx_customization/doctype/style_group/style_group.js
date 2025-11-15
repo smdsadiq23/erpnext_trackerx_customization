@@ -206,18 +206,18 @@ function set_default_company(frm) {
     }
 }
 
-function set_company_filter(frm) {
-    /**
-     * Set filters for company field to show only non-group companies
-     */
-    frm.set_query('company', function() {
-        return {
-            filters: {
-                'is_group': 0  // Show only leaf companies, not group companies
-            }
-        };
-    });
-}
+// function set_company_filter(frm) {
+//     /**
+//      * Set filters for company field to show only non-group companies
+//      */
+//     frm.set_query('company', function() {
+//         return {
+//             filters: {
+//                 'is_group': 0  // Show only leaf companies, not group companies
+//             }
+//         };
+//     });
+// }
 
 
 function setup_form_layout(frm) {
