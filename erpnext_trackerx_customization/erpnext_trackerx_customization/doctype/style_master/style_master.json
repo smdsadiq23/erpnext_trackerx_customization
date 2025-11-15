@@ -92,27 +92,27 @@
   {
    "fieldname": "bu",
    "fieldtype": "Link",
-   "label": "BU",
+   "label": "Business Unit",
    "options": "Company",
    "reqd": 1
   },
   {
    "fieldname": "sbu",
    "fieldtype": "Link",
-   "label": "SBU",
+   "label": "Strategic Business Unit",
    "options": "Strategic Business Unit"
   },
   {
    "fieldname": "fbu",
    "fieldtype": "Link",
-   "label": "FBU",
+   "label": "Factory Business Unit",
    "options": "Factory Business Unit"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-14 18:22:25.090018",
+ "modified": "2025-11-15 14:40:02.293339",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Style Master",
