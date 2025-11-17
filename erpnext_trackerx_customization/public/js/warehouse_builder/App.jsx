@@ -7,13 +7,24 @@ export function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [warehouseTypes, setWarehouseTypes] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [strategicBusinessUnits, setSBUs] = useState([]);
+  const [factoryBusinessUnits, setFBUs] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, node: null });
 
   // 🔹 Modal state
   const [showModal, setShowModal] = useState(false);
   const [selectedParent, setSelectedParent] = useState(null);
-  const [form, setForm] = useState({ warehouse_name: "", warehouse_type: "" });
+  const [form, setForm] = useState({
+    warehouse_name: "",
+    warehouse_type: "",
+    business_unit: "",
+    strategic_business_unit: "",
+    factory: "",
+    capacity: "",
+    capacity_unit: ""
+  });
 
   // 🔹 Fetch Warehouses (reusable)
   async function fetchWarehouses() {
@@ -31,7 +42,19 @@ export function App() {
           //   "disabled",
           //   "warehouse_type",
           // ],
-          fields: ["*"],
+          fields: [
+            "name",
+            "warehouse_name",
+            "parent_warehouse",
+            "is_group",
+            "disabled",
+            "warehouse_type",
+            "capacity",
+            "capacity_unit",
+            "business_unit",
+            "strategic_business_unit",
+            "factory"
+          ],
           filters: [["disabled", "!=", 1]],
           limit_page_length: 1000,
         },
@@ -94,6 +117,68 @@ export function App() {
     fetchWarehouseTypes();
   }, []);
 
+  // 🔹 Fetch Companies
+  useEffect(() => {
+    async function fetchCompanies() {
+      try {
+        const res = await frappe.call({
+          method: "frappe.client.get_list",
+          args: {
+            doctype: "Company",
+            fields: ["name", "company_name"],
+            limit_page_length: 1000,
+          },
+        });
+        setCompanies(res.message || []);
+      } catch (err) {
+        console.error("❌ Error fetching Companies:", err);
+      }
+    }
+    fetchCompanies();
+  }, []);
+
+  // 🔹 Fetch Strategic Business Units
+  useEffect(() => {
+    async function fetchSBUs() {
+      try {
+        const res = await frappe.call({
+          method: "frappe.client.get_list",
+          args: {
+            doctype: "Strategic Business Unit",
+            fields: ["name", "sbu_name", "company"],
+            filters: [["is_active", "=", 1]],
+            limit_page_length: 1000,
+          },
+        });
+        setSBUs(res.message || []);
+      } catch (err) {
+        console.error("❌ Error fetching Strategic Business Units:", err);
+      }
+    }
+    fetchSBUs();
+  }, []);
+
+  // 🔹 Fetch Factory Business Units
+  useEffect(() => {
+    async function fetchFBUs() {
+      try {
+        const res = await frappe.call({
+          method: "frappe.client.get_list",
+          args: {
+            doctype: "Factory Business Unit",
+            fields: ["name", "factory_name", "company", "sbu"],
+            filters: [["is_active", "=", 1]],
+            limit_page_length: 1000,
+          },
+        });
+        setFBUs(res.message || []);
+      } catch (err) {
+        console.error("❌ Error fetching Factory Business Units:", err);
+      }
+    }
+    fetchFBUs();
+  }, []);
+
   function toggleExpand(name) {
     setExpanded((prev) => ({ ...prev, [name]: !prev[name] }));
   }
@@ -101,7 +186,15 @@ export function App() {
   // 🔹 Open Add Child modal
   function handleAddChild(node) {
     setSelectedParent(node);
-    setForm({ warehouse_name: "", warehouse_type: "", capacity: "", capacity_unit: "" });
+    setForm({
+      warehouse_name: "",
+      warehouse_type: "",
+      business_unit: "",
+      strategic_business_unit: "",
+      factory: "",
+      capacity: "",
+      capacity_unit: ""
+    });
     setIsEditing(false);
     setShowModal(true);
   }
@@ -112,6 +205,9 @@ export function App() {
     setForm({
       warehouse_name: node.warehouse_name || "",
       warehouse_type: node.warehouse_type || "",
+      business_unit: node.business_unit || "",
+      strategic_business_unit: node.strategic_business_unit || "",
+      factory: node.factory || "",
       capacity: node.capacity || "",
       capacity_unit: node.capacity_unit || "",
     });
@@ -137,6 +233,9 @@ export function App() {
             fieldname: {
               warehouse_name: form.warehouse_name,
               warehouse_type: form.warehouse_type || "Stores",
+              business_unit: form.business_unit || "",
+              strategic_business_unit: form.strategic_business_unit || "",
+              factory: form.factory || "",
               capacity: Number(form.capacity) || 0,
               capacity_unit: form.capacity_unit || "",
             },
@@ -152,6 +251,9 @@ export function App() {
               doctype: "Warehouse",
               warehouse_name: form.warehouse_name,
               warehouse_type: form.warehouse_type || "Stores",
+              business_unit: form.business_unit || "",
+              strategic_business_unit: form.strategic_business_unit || "",
+              factory: form.factory || "",
               parent_warehouse: selectedParent?.name,
               is_group: 0,
               capacity: Number(form.capacity) || 0,
@@ -270,6 +372,22 @@ export function App() {
             <div>
               <strong>{node.warehouse_name || node.name}</strong>
               <div style={{ fontSize: 12, color: "#888" }}>{node.name}</div>
+              {/* Business Unit Info */}
+              {node.business_unit && (
+                <div style={{ fontSize: 11, color: "#666" }}>
+                  Business Unit: {node.business_unit}
+                </div>
+              )}
+              {node.strategic_business_unit && (
+                <div style={{ fontSize: 11, color: "#666" }}>
+                  SBU: {node.strategic_business_unit}
+                </div>
+              )}
+              {node.factory && (
+                <div style={{ fontSize: 11, color: "#666" }}>
+                  Factory: {node.factory}
+                </div>
+              )}
               {(node.capacity || node.capacity_unit) && (
                 <div style={{ fontSize: 12, color: "#555" }}>
                   Capacity: {node.capacity || "0"} {node.capacity_unit || ""}
@@ -376,6 +494,64 @@ export function App() {
                   ))}
                 </select>
               </div>
+
+              {/* Business Unit Field */}
+              <div style={{ marginBottom: 10 }}>
+                <label>Business Unit</label>
+                <select
+                  value={form.business_unit}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, business_unit: e.target.value }))
+                  }
+                  style={{ width: "100%", padding: 6, marginTop: 4 }}
+                >
+                  <option value="">-- Select Business Unit --</option>
+                  {companies.map((company) => (
+                    <option key={company.name} value={company.name}>
+                      {company.company_name || company.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Strategic Business Unit Field */}
+              <div style={{ marginBottom: 10 }}>
+                <label>Strategic Business Unit</label>
+                <select
+                  value={form.strategic_business_unit}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, strategic_business_unit: e.target.value }))
+                  }
+                  style={{ width: "100%", padding: 6, marginTop: 4 }}
+                >
+                  <option value="">-- Select Strategic Business Unit --</option>
+                  {strategicBusinessUnits.map((sbu) => (
+                    <option key={sbu.name} value={sbu.name}>
+                      {sbu.sbu_name} ({sbu.company})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Factory Business Unit Field */}
+              <div style={{ marginBottom: 10 }}>
+                <label>Factory</label>
+                <select
+                  value={form.factory}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, factory: e.target.value }))
+                  }
+                  style={{ width: "100%", padding: 6, marginTop: 4 }}
+                >
+                  <option value="">-- Select Factory --</option>
+                  {factoryBusinessUnits.map((factory) => (
+                    <option key={factory.name} value={factory.name}>
+                      {factory.factory_name} ({factory.company})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div style={{ marginBottom: 10 }}>
                 <label>Capacity</label>
                 <input

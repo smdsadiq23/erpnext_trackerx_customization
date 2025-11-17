@@ -3,12 +3,12 @@ from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 def execute():
     """
-    Comprehensive warehouse fields setup for storage capacity and barcode/QR code functionality.
+    Comprehensive warehouse fields setup for storage capacity, business unit integration, and barcode/QR code functionality.
     This function consolidates warehouse customizations and removes deprecated fields.
     """
 
     try:
-        frappe.logger().info("Setting up warehouse fields (capacity + barcode/QR code)...")
+        frappe.logger().info("Setting up warehouse fields (business unit integration + capacity + barcode/QR code)...")
 
         # Step 1: Remove deprecated fields from old warehouse_customization
         deprecated_fields = [
@@ -33,12 +33,44 @@ def execute():
         # Step 2: Define consolidated custom fields for Warehouse doctype
         custom_fields = {
             "Warehouse": [
+                # Business Unit Integration Section
+                {
+                    "fieldname": "business_unit",
+                    "label": "Business Unit",
+                    "fieldtype": "Link",
+                    "options": "Company",
+                    "insert_after": "company",
+                    "description": "Business Unit for this warehouse",
+                    "in_filter": 1,
+                    "in_standard_filter": 1
+                },
+                {
+                    "fieldname": "strategic_business_unit",
+                    "label": "Strategic Business Unit",
+                    "fieldtype": "Link",
+                    "options": "Strategic Business Unit",
+                    "insert_after": "business_unit",
+                    "description": "Strategic Business Unit for this warehouse",
+                    "in_filter": 1,
+                    "in_standard_filter": 1
+                },
+                {
+                    "fieldname": "factory",
+                    "label": "Factory",
+                    "fieldtype": "Link",
+                    "options": "Factory Business Unit",
+                    "insert_after": "strategic_business_unit",
+                    "description": "Factory Business Unit for this warehouse",
+                    "in_filter": 1,
+                    "in_standard_filter": 1
+                },
+
                 # Storage & Capacity Section
                 {
                     "fieldname": "warehouse_storage_section",
                     "label": "Storage & Capacity",
                     "fieldtype": "Section Break",
-                    "insert_after": "company",
+                    "insert_after": "factory",
                     "collapsible": 1,
                     "description": "Warehouse storage capacity and unit of measurement"
                 },
@@ -114,17 +146,20 @@ def execute():
         # Step 3: Create/update the consolidated custom fields
         create_custom_fields(custom_fields, ignore_validate=True)
 
-        capacity_field_count = 3  # storage_section, capacity, capacity_unit
-        barcode_field_count = 6   # section, barcode, column_break, qr_display, barcode_image, qr_image
-        total_field_count = capacity_field_count + barcode_field_count
+        business_unit_field_count = 3  # business_unit, strategic_business_unit, factory
+        capacity_field_count = 3       # storage_section, capacity, capacity_unit
+        barcode_field_count = 6        # section, barcode, column_break, qr_display, barcode_image, qr_image
+        total_field_count = business_unit_field_count + capacity_field_count + barcode_field_count
 
         frappe.logger().info(f"Successfully created {total_field_count} warehouse fields")
 
         # Success messages
+        print(f"✅ Business Unit Integration: Created {business_unit_field_count} business unit fields")
         print(f"✅ Warehouse Storage: Created {capacity_field_count} capacity/storage fields")
         print(f"✅ Warehouse Barcode: Created {barcode_field_count} barcode/QR code fields")
         print(f"📊 Total: {total_field_count} warehouse fields configured")
-        print(f"🔗 Capacity Unit: Now links to UOM doctype for better integration")
+        print(f"🔗 Business Unit: Links to Company, Strategic Business Unit, Factory Business Unit")
+        print(f"🔗 Capacity Unit: Links to UOM doctype for better integration")
 
         return True
 
@@ -160,4 +195,62 @@ def cleanup_old_warehouse_fields():
 
     except Exception as e:
         print(f"❌ Cleanup error: {str(e)}")
+        return False
+
+def create_warehouse_business_unit_fields():
+    """
+    Alternative function to create business unit fields manually via console.
+    Usage: bench --site trackerx.local console
+    >>> from erpnext_trackerx_customization.setup.warehouse_fields import create_warehouse_business_unit_fields
+    >>> create_warehouse_business_unit_fields()
+    """
+    try:
+        business_unit_fields = {
+            "Warehouse": [
+                {
+                    "fieldname": "business_unit",
+                    "label": "Business Unit",
+                    "fieldtype": "Link",
+                    "options": "Company",
+                    "insert_after": "company",
+                    "description": "Business Unit for this warehouse",
+                    "in_filter": 1,
+                    "in_standard_filter": 1,
+                    "reqd": 0
+                },
+                {
+                    "fieldname": "strategic_business_unit",
+                    "label": "Strategic Business Unit",
+                    "fieldtype": "Link",
+                    "options": "Strategic Business Unit",
+                    "insert_after": "business_unit",
+                    "description": "Strategic Business Unit for this warehouse",
+                    "in_filter": 1,
+                    "in_standard_filter": 1,
+                    "reqd": 0
+                },
+                {
+                    "fieldname": "factory",
+                    "label": "Factory",
+                    "fieldtype": "Link",
+                    "options": "Factory Business Unit",
+                    "insert_after": "strategic_business_unit",
+                    "description": "Factory Business Unit for this warehouse",
+                    "in_filter": 1,
+                    "in_standard_filter": 1,
+                    "reqd": 0
+                }
+            ]
+        }
+
+        create_custom_fields(business_unit_fields, ignore_validate=True)
+
+        print("✅ Warehouse business unit fields created successfully!")
+        print("📋 Fields added:")
+        for field in business_unit_fields["Warehouse"]:
+            print(f"   - {field['label']} ({field['fieldname']})")
+
+        return True
+    except Exception as e:
+        print(f"❌ Error creating business unit fields: {str(e)}")
         return False
