@@ -10,6 +10,8 @@ export function App() {
   const [companies, setCompanies] = useState([]);
   const [strategicBusinessUnits, setSBUs] = useState([]);
   const [factoryBusinessUnits, setFBUs] = useState([]);
+  const [userInfo, setUserInfo] = useState(null);
+  const [permissionError, setPermissionError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, node: null });
 
@@ -26,42 +28,21 @@ export function App() {
     capacity_unit: ""
   });
 
-  // 🔹 Fetch Warehouses (reusable)
+  // 🔹 Fetch Warehouses (permission-aware)
   async function fetchWarehouses() {
     setLoading(true);
+    setPermissionError(null);
     try {
       const res = await frappe.call({
-        method: "frappe.client.get_list",
-        args: {
-          doctype: "Warehouse",
-          // fields: [
-          //   "name",
-          //   "warehouse_name",
-          //   "parent_warehouse",
-          //   "is_group",
-          //   "disabled",
-          //   "warehouse_type",
-          // ],
-          fields: [
-            "name",
-            "warehouse_name",
-            "parent_warehouse",
-            "is_group",
-            "disabled",
-            "warehouse_type",
-            "capacity",
-            "capacity_unit",
-            "business_unit",
-            "strategic_business_unit",
-            "factory"
-          ],
-          filters: [["disabled", "!=", 1]],
-          limit_page_length: 1000,
-        },
+        method: "erpnext_trackerx_customization.api.warehouse_permissions.get_permitted_warehouses"
       });
 
       const list = res.message || [];
       setItems(list);
+
+      if (list.length === 0) {
+        setPermissionError("No warehouses found. Please check your permissions or contact your administrator.");
+      }
 
       // build tree
       const map = {};
@@ -86,7 +67,11 @@ export function App() {
       setTree(roots);
     } catch (err) {
       console.error("❌ fetchWarehouses error:", err);
-      setError(err);
+      if (err.message && err.message.includes('permission')) {
+        setPermissionError("You don't have permission to access warehouses. Please contact your administrator.");
+      } else {
+        setError(err);
+      }
     } finally {
       setLoading(false);
     }
@@ -97,17 +82,27 @@ export function App() {
     fetchWarehouses();
   }, []);
 
+  // 🔹 Fetch User Info and Permissions
+  useEffect(() => {
+    async function fetchUserInfo() {
+      try {
+        const res = await frappe.call({
+          method: "erpnext_trackerx_customization.api.warehouse_permissions.get_user_permission_info"
+        });
+        setUserInfo(res.message || {});
+      } catch (err) {
+        console.error("❌ Error fetching user info:", err);
+      }
+    }
+    fetchUserInfo();
+  }, []);
+
   // 🔹 Fetch Warehouse Types
   useEffect(() => {
     async function fetchWarehouseTypes() {
       try {
         const res = await frappe.call({
-          method: "frappe.client.get_list",
-          args: {
-            doctype: "Warehouse Type",
-            fields: ["name"],
-            limit_page_length: 1000,
-          },
+          method: "erpnext_trackerx_customization.api.warehouse_permissions.get_warehouse_types"
         });
         setWarehouseTypes(res.message || []);
       } catch (err) {
@@ -117,63 +112,49 @@ export function App() {
     fetchWarehouseTypes();
   }, []);
 
-  // 🔹 Fetch Companies
+  // 🔹 Fetch Permitted Companies
   useEffect(() => {
     async function fetchCompanies() {
       try {
         const res = await frappe.call({
-          method: "frappe.client.get_list",
-          args: {
-            doctype: "Company",
-            fields: ["name", "company_name"],
-            limit_page_length: 1000,
-          },
+          method: "erpnext_trackerx_customization.api.warehouse_permissions.get_permitted_companies"
         });
         setCompanies(res.message || []);
       } catch (err) {
-        console.error("❌ Error fetching Companies:", err);
+        console.error("❌ Error fetching permitted companies:", err);
+        setCompanies([]);
       }
     }
     fetchCompanies();
   }, []);
 
-  // 🔹 Fetch Strategic Business Units
+  // 🔹 Fetch Permitted Strategic Business Units
   useEffect(() => {
     async function fetchSBUs() {
       try {
         const res = await frappe.call({
-          method: "frappe.client.get_list",
-          args: {
-            doctype: "Strategic Business Unit",
-            fields: ["name", "sbu_name", "company"],
-            filters: [["is_active", "=", 1]],
-            limit_page_length: 1000,
-          },
+          method: "erpnext_trackerx_customization.api.warehouse_permissions.get_permitted_business_units"
         });
         setSBUs(res.message || []);
       } catch (err) {
-        console.error("❌ Error fetching Strategic Business Units:", err);
+        console.error("❌ Error fetching permitted SBUs:", err);
+        setSBUs([]);
       }
     }
     fetchSBUs();
   }, []);
 
-  // 🔹 Fetch Factory Business Units
+  // 🔹 Fetch Permitted Factory Business Units
   useEffect(() => {
     async function fetchFBUs() {
       try {
         const res = await frappe.call({
-          method: "frappe.client.get_list",
-          args: {
-            doctype: "Factory Business Unit",
-            fields: ["name", "factory_name", "company", "sbu"],
-            filters: [["is_active", "=", 1]],
-            limit_page_length: 1000,
-          },
+          method: "erpnext_trackerx_customization.api.warehouse_permissions.get_permitted_factories"
         });
         setFBUs(res.message || []);
       } catch (err) {
-        console.error("❌ Error fetching Factory Business Units:", err);
+        console.error("❌ Error fetching permitted factories:", err);
+        setFBUs([]);
       }
     }
     fetchFBUs();
@@ -215,7 +196,21 @@ export function App() {
     setShowModal(true);
   }
 
-  // 🔹 Submit (Add + Edit)
+  // 🔹 Validate Warehouse Permissions
+  async function validateWarehousePermission(warehouse_name) {
+    try {
+      const res = await frappe.call({
+        method: "erpnext_trackerx_customization.api.warehouse_permissions.validate_warehouse_permission",
+        args: { warehouse_name: warehouse_name }
+      });
+      return res.message || { allowed: false, reason: "Unknown error" };
+    } catch (err) {
+      console.error("❌ Permission validation error:", err);
+      return { allowed: false, reason: "Permission check failed" };
+    }
+  }
+
+  // 🔹 Submit (Add + Edit) with Permission Validation
   async function handleSubmit(e) {
     e.preventDefault();
     if (!form.warehouse_name) {
@@ -224,6 +219,23 @@ export function App() {
     }
 
     try {
+      // Validate permissions for edit operations
+      if (isEditing && selectedParent) {
+        const permissionCheck = await validateWarehousePermission(selectedParent.name);
+        if (!permissionCheck.allowed) {
+          frappe.msgprint(`Permission denied: ${permissionCheck.reason}`);
+          return;
+        }
+      }
+
+      // Validate permissions for parent warehouse on create
+      if (!isEditing && selectedParent) {
+        const permissionCheck = await validateWarehousePermission(selectedParent.name);
+        if (!permissionCheck.allowed) {
+          frappe.msgprint(`Cannot create warehouse under this parent: ${permissionCheck.reason}`);
+          return;
+        }
+      }
       if (isEditing) {
         await frappe.call({
           method: "frappe.client.set_value",
@@ -241,6 +253,17 @@ export function App() {
             },
           },
         });
+
+        // Log activity
+        await frappe.call({
+          method: "erpnext_trackerx_customization.api.warehouse_permissions.log_warehouse_activity",
+          args: {
+            activity_type: "Updated",
+            warehouse_name: selectedParent.name,
+            details: `Updated warehouse: ${form.warehouse_name}`
+          }
+        });
+
         frappe.msgprint(`✅ Updated Warehouse: ${form.warehouse_name}`);
       } else {
 
@@ -261,6 +284,17 @@ export function App() {
             },
           },
         });
+
+        // Log activity
+        await frappe.call({
+          method: "erpnext_trackerx_customization.api.warehouse_permissions.log_warehouse_activity",
+          args: {
+            activity_type: "Created",
+            warehouse_name: res.message.name,
+            details: `Created warehouse: ${form.warehouse_name} under parent: ${selectedParent?.name || 'Root'}`
+          }
+        });
+
         frappe.msgprint(`✅ Created Warehouse: ${res.message.warehouse_name}`);
 
         // 🔹 ensure parent becomes group
@@ -286,10 +320,17 @@ export function App() {
     }
   }
 
-  // 🔹 Handle delete
+  // 🔹 Handle delete with Permission Validation
   async function handleDelete(node) {
     if (!node?.name) {
       frappe.msgprint("❌ Invalid warehouse selected for deletion");
+      return;
+    }
+
+    // Validate permissions before deletion
+    const permissionCheck = await validateWarehousePermission(node.name);
+    if (!permissionCheck.allowed) {
+      frappe.msgprint(`Cannot delete warehouse: ${permissionCheck.reason}`);
       return;
     }
 
@@ -300,6 +341,16 @@ export function App() {
           doctype: "Warehouse",
           name: node.name, // ✅ always use name
         },
+      });
+
+      // Log activity
+      await frappe.call({
+        method: "erpnext_trackerx_customization.api.warehouse_permissions.log_warehouse_activity",
+        args: {
+          activity_type: "Deleted",
+          warehouse_name: node.name,
+          details: `Deleted warehouse: ${node.warehouse_name}`
+        }
       });
 
       frappe.msgprint(`🗑 Deleted Warehouse: ${node.warehouse_name}`);
@@ -420,6 +471,57 @@ export function App() {
 
   return (
     <div style={{ padding: 12 }}>
+      {/* User Permission Context */}
+      {userInfo && (
+        <div style={{
+          padding: "10px",
+          background: userInfo.is_system_manager ? "#e8f5e8" : "#f8f9fa",
+          marginBottom: "10px",
+          borderRadius: "4px",
+          fontSize: "12px",
+          border: `1px solid ${userInfo.is_system_manager ? "#4caf50" : "#dee2e6"}`
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <strong>👤 User:</strong> {userInfo.user || 'Unknown'}
+              {userInfo.is_system_manager && (
+                <span style={{ marginLeft: "10px", color: "#4caf50", fontWeight: "bold" }}>
+                  🔑 System Manager
+                </span>
+              )}
+            </div>
+            <div>
+              <strong>🏢 Companies:</strong> {userInfo.permitted_companies_count || 0}
+              {userInfo.is_system_manager && (
+                <span style={{ marginLeft: "5px", color: "#666", fontSize: "11px" }}>
+                  (All companies visible)
+                </span>
+              )}
+            </div>
+          </div>
+          {userInfo.permitted_companies && userInfo.permitted_companies.length > 0 && !userInfo.is_system_manager && (
+            <div style={{ marginTop: "5px", color: "#666" }}>
+              <strong>Permitted:</strong> {userInfo.permitted_companies.slice(0, 3).join(", ")}
+              {userInfo.permitted_companies.length > 3 && ` (+${userInfo.permitted_companies.length - 3} more)`}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Permission Error Message */}
+      {permissionError && (
+        <div style={{
+          padding: "10px",
+          background: "#ffebee",
+          marginBottom: "10px",
+          borderRadius: "4px",
+          border: "1px solid #f44336",
+          color: "#d32f2f"
+        }}>
+          <strong>⚠️ Permission Issue:</strong> {permissionError}
+        </div>
+      )}
+
       <div
         style={{
           border: "1px solid #e6e6e6",
