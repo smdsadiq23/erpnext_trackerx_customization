@@ -3680,7 +3680,7 @@
   "label": "GSM",
   "length": 0,
   "link_filters": null,
-  "mandatory_depends_on": null,
+  "mandatory_depends_on": "eval: ['Fabrics'].includes(doc.custom_select_master) ",
   "modified": "2025-07-22 21:52:47.378691",
   "module": "Erpnext Trackerx Customization",
   "name": "Item-custom_gsm",
