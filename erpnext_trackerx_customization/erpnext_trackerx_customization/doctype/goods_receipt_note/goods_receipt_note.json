@@ -63,6 +63,7 @@
   "section_break0",
   "total_qty",
   "total_net_weight",
+  "total_received_quantity",
   "column_break_43",
   "base_total",
   "base_net_total",
@@ -1404,13 +1405,18 @@
    "label": "Factory Business Unit",
    "options": "Factory Business Unit",
    "reqd": 1
+  },
+  {
+   "fieldname": "total_received_quantity",
+   "fieldtype": "Float",
+   "label": "Total Received Quantity"
   }
  ],
  "grid_page_length": 50,
  "icon": "fa fa-truck",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-15 17:22:51.152166",
+ "modified": "2025-11-20 16:01:20.376840",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Note",
