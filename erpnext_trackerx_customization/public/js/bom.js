@@ -488,8 +488,6 @@ function calculate_qty(cdt, cdn) {
 }
 
 function set_item_code_filters(frm) {
-    if(true)
-        return
     const table_field_map = {
         'custom_fabrics_items': 'Fabrics',
         'custom_yarns_items': 'Yarns',
