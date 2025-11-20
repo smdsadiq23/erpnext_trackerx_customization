@@ -61,8 +61,8 @@ def custom_search_link(
         }.items() if k in allowed
     }
 
-    # ✅ FIX: Ensure `user` is passed if expected by original_search_link
-    if "user" in allowed:
-        passthrough.setdefault("user", frappe.session.user)
+    # # ✅ FIX: Ensure `user` is passed if expected by original_search_link
+    # if "user" in allowed:
+    #     passthrough.setdefault("user", frappe.session.user)
      
     return original_search_link(**passthrough)
