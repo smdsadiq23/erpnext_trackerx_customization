@@ -1,0 +1,48 @@
+import frappe
+
+def copy_role_permissions(source_role, target_role):
+    # Get all DocTypes that have permissions defined for the source role
+    docnames = frappe.db.sql("""
+        SELECT DISTINCT parent 
+        FROM `tabDocPerm` 
+        WHERE role = %s AND parenttype = 'DocType'
+    """, (source_role,), pluck="parent")
+
+    count = 0
+    for dt in docnames:
+        try:
+            doctype = frappe.get_doc("DocType", dt)
+            # Check if target role already has a permission rule
+            existing = [p for p in doctype.permissions if p.role == target_role]
+            if existing:
+                print(f"⏭️  Skipped {dt}: {target_role} already has permissions")
+                continue
+
+            # Find source role permissions
+            source_perms = [p for p in doctype.permissions if p.role == source_role]
+            if not source_perms:
+                continue
+
+            # Copy each permission row
+            for sp in source_perms:
+                new_perm = doctype.append("permissions", {})
+                # Copy all fields
+                for field in sp.as_dict():
+                    if field in ("name", "owner", "creation", "modified", "modified_by", "docstatus", "idx", "parent", "parentfield", "parenttype"):
+                        continue
+                    new_perm.set(field, sp.get(field))
+                new_perm.role = target_role
+
+            # Save the DocType with new permissions
+            doctype.save(ignore_permissions=True)
+            print(f"✅ Copied permissions for {dt}")
+            count += 1
+
+        except Exception as e:
+            print(f"❌ Failed for {dt}: {str(e)}")
+
+    print(f"\n🎉 Done! Copied permissions to {count} DocTypes.")
+    frappe.db.commit()
+
+# Usage
+# copy_role_permissions("System Manager", "Custom Admin")
