@@ -379,7 +379,7 @@ Standards: Industry Standard AQL {inspection.aql_level} - {inspection.aql_value}
                 
                 # Test 5: Write permissions for Inspector
                 inspection_doc = context['inspection_doc']
-                if isinstance(inspection_doc, dict) and inspection_doc.get('inspection_status') != 'Submitted':
+                if isinstance(inspection_doc, dict) and inspection_doc.get('inspection_status') != 'Accepted':
                     assert context.get('can_write', False), "Inspector should have write permission on non-submitted inspection"
                 
                 print("   ✅ Inspector permissions properly configured")
@@ -529,9 +529,9 @@ Standards: Industry Standard AQL {inspection.aql_level} - {inspection.aql_value}
             
             # Test 4: Verify inspection status after submission
             updated_inspection = frappe.get_doc("Fabric Inspection", inspection_name)
-            assert updated_inspection.inspection_status == "Submitted", f"Expected Submitted, got {updated_inspection.inspection_status}"
+            assert updated_inspection.inspection_status == "Accepted", f"Expected Accepted, got {updated_inspection.inspection_status}"
             assert updated_inspection.submitted_by == "Administrator", f"Submitted by field incorrect"
-            print("   ✅ Inspection status updated to Submitted")
+            print("   ✅ Inspection status updated to Accepted")
             
             self.test_results['passed'] += 4
             
@@ -753,7 +753,7 @@ Standards: Industry Standard AQL {inspection.aql_level} - {inspection.aql_value}
             assert inspection.has_permission("read"), "Should have read permission"
             
             # Check write permission based on status
-            if inspection.inspection_status != "Submitted":
+            if inspection.inspection_status != "Accepted":
                 assert inspection.has_permission("write"), "Should have write permission for non-submitted documents"
             
             print("   ✅ Permission validation successful")
@@ -817,7 +817,7 @@ Standards: Industry Standard AQL {inspection.aql_level} - {inspection.aql_value}
             
             # Test 4: Workflow state validation
             # Check that inspection cannot be modified after submission
-            if inspection.inspection_status == "Submitted":
+            if inspection.inspection_status == "Accepted":
                 try:
                     inspection.inspection_result = "Modified"
                     inspection.save()
