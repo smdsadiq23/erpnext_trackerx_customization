@@ -393,7 +393,6 @@ def get_operations_from_scan_logs(wo_name):
                     ON isl.production_item = pi.name
             WHERE tbc.work_order = %s
                 AND tbc.parentfield = 'component_bundle_configurations'
-                AND tbc.activation_status = 'Completed'
                 AND isl.operation IS NOT NULL
                 AND isl.operation != ''
             ORDER BY isl.operation
@@ -446,7 +445,6 @@ def calculate_progress_for_dynamic_operations(wo_name, operations_list, size_qty
                     AND isl.status IN ('Counted','Activated','Pass','QC Reject','SP Reject')
             WHERE tbc.work_order = %(wo_name)s
                 AND tbc.parentfield = 'component_bundle_configurations'
-                AND tbc.activation_status = 'Completed'
                 AND isl.operation IN %(operations)s
         """, {
             'wo_name': wo_name,

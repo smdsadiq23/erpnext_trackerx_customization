@@ -1728,7 +1728,7 @@ def quality_inspector_submit(inspection_id=None, final_remarks=None):
 
         if inspection_result == 'Accepted':
             # Case 1: Accepted - Submit and create Purchase Receipt
-            inspection.inspection_status = 'Submitted'
+            inspection.inspection_status = 'Accepted'
             inspection.submitted_by = frappe.session.user
             inspection.submitted_date = frappe.utils.now()
 
