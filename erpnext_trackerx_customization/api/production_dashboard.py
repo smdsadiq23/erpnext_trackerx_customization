@@ -393,7 +393,6 @@ def get_operations_from_scan_logs(wo_name):
                     ON isl.production_item = pi.name
             WHERE tbc.work_order = %s
                 AND tbc.parentfield = 'component_bundle_configurations'
-                AND tbc.activation_status = 'Completed'
                 AND isl.operation IS NOT NULL
                 AND isl.operation != ''
             ORDER BY isl.operation
