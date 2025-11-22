@@ -174,19 +174,29 @@ function setMeasurementUploadAttachExtensionRestriction(frm) {
 
 function setItemNameAndItemNumberProps(frm){
     let read_only_value = 1;
-    const reqd_value = 1;
-        if(frm.doc.custom_select_master != 'Finished Goods'){
+    let brand_rqd = 1;
+    // const reqd_value = 1;
+    
+        if(frm.doc.custom_select_master == 'Finished Goods'){
+            read_only_value = 1;
+            brand_rqd = 1
+        }
+        else if(frm.doc.custom_select_master == 'Fabrics'){
             read_only_value = 0;
+            brand_rqd = 1
         }
         else{
-            read_only_value = 1;
+            read_only_value = 0;
+            brand_rqd = 0
         }
         frm.set_df_property("item_name", "read_only", read_only_value);
         frm.set_df_property("custom_item_number", "read_only", read_only_value);
         frm.refresh_field("item_name");
         frm.refresh_field("custom_item_number");
-        frm.set_df_property("custom_preferred_supplier", "reqd", reqd_value);
-        frm.refresh_field("custom_preferred_supplier");        
+        frm.set_df_property("brand", "reqd", brand_rqd);
+        frm.refresh_field("brand");   
+        // frm.set_df_property("custom_preferred_supplier", "reqd", reqd_value);
+        // frm.refresh_field("custom_preferred_supplier");        
 }
 
 function setFieldsToReadyOnly(frm) {
