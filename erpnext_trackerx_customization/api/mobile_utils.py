@@ -1669,14 +1669,24 @@ def build_dynamic_query(doctype, where_clause="1=1", sort_by="creation", sort_or
     table_name = safe_table_name(doctype)
     child_table = f"`tab{doctype} Item`" if frappe.db.table_exists(f"{doctype} Item") else None
 
+    # Check if is_return column exists in the table
+    columns = frappe.db.sql(f"SHOW COLUMNS FROM {table_name}", as_dict=True)
+    existing_columns = [col["Field"] for col in columns]
+    has_is_return = "is_return" in existing_columns
+
     # Build SELECT fields dynamically (skip None values)
     select_fields = [
         f"doc.name AS id",
         *(f"doc.{v} AS {k}" for k, v in fields.items() if v),
         "doc.docstatus",
-        """CASE
+        f"""CASE
             WHEN doc.docstatus = 0 THEN 'Draft'
             WHEN doc.docstatus = 1 AND IFNULL(doc.is_return, 0) = 1 THEN 'Return'
+            WHEN doc.docstatus = 1 THEN 'Submitted'
+            WHEN doc.docstatus = 2 THEN 'Cancelled'
+            ELSE 'Unknown'
+        END AS status""" if has_is_return else """CASE
+            WHEN doc.docstatus = 0 THEN 'Draft'
             WHEN doc.docstatus = 1 THEN 'Submitted'
             WHEN doc.docstatus = 2 THEN 'Cancelled'
             ELSE 'Unknown'
