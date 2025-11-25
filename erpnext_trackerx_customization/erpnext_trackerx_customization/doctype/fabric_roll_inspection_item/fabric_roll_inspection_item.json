@@ -16,6 +16,7 @@
   "inspection_method",
   "inspection_percentage",
   "inspected",
+  "autopicked",
   "section_break_roll_info",
   "diameter_inches",
   "inspected_gsm",
@@ -128,6 +129,16 @@
    "fieldtype": "Check",
    "label": "Inspected",
    "in_list_view": 1,
+   "permlevel": 0
+  },
+  {
+   "fieldname": "autopicked",
+   "fieldtype": "Check",
+   "label": "Auto Picked",
+   "description": "Automatically selected for inspection based on AQL sampling",
+   "depends_on": "eval:frappe.get_doc(parent).inspection_type == 'AQL Based'",
+   "in_list_view": 1,
+   "read_only": 1,
    "permlevel": 0
   },
   {

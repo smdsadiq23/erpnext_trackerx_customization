@@ -100,6 +100,9 @@ class FabricInspection(Document):
                     self.required_sample_rolls = sample_data.get('sample_rolls', 0)
                     self.required_sample_meters = sample_data.get('sample_meters', 0)
 
+                    # Trigger automatic roll picking based on AQL requirements
+                    self.auto_pick_rolls_for_aql()
+
         elif self.inspection_type == '100% Inspection':
             # Auto-set to 100% inspection values
             self.required_sample_size = 100
@@ -148,7 +151,20 @@ class FabricInspection(Document):
             if total_meters:
                 sample_meters = total_meters * self.sampling_percentage / 100
                 self.required_sample_meters = sample_meters
-    
+
+    def auto_pick_rolls_for_aql(self):
+        """
+        Automatically pick rolls for inspection based on AQL configuration
+        Called when AQL configuration is validated and sample rolls are calculated
+        """
+        try:
+            if self.inspection_type == 'AQL Based' and self.required_sample_rolls:
+                from erpnext_trackerx_customization.erpnext_trackerx_customization.utils.aql.roll_picker import trigger_autopick_on_aql_change
+                trigger_autopick_on_aql_change(self)
+        except Exception as e:
+            frappe.logger().warning(f"Auto-pick failed for {self.name}: {str(e)} - Continuing without auto-pick")
+            # Don't fail validation if auto-pick fails
+
     def calculate_roll_results(self):
         """Calculate results for each inspected roll"""
         if not self.fabric_rolls_tab:
