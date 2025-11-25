@@ -709,6 +709,10 @@ class FabricInspection(Document):
     def calculate_aql_sample_size_inline(self, lot_size, aql_level, aql_value, inspection_regime='Normal'):
         """Dynamic AQL sample size calculation using AQL Table doctype"""
         try:
+            # Step 0: Handle small lots (2-3 units) with intelligent sampling
+            if lot_size <= 3:
+                return self.handle_small_lot_sampling(lot_size, aql_level, aql_value, inspection_regime)
+
             # Step 1: Find the appropriate sample code letter based on lot size and inspection level
             sample_code_letter = self.get_sample_code_for_lot_size_inline(lot_size, aql_level, inspection_regime)
 
@@ -769,6 +773,66 @@ class FabricInspection(Document):
                 'reject_number': 1,
                 'sample_code': 'A'
             }
+
+    def handle_small_lot_sampling(self, lot_size, aql_level, aql_value, inspection_regime='Normal'):
+        """
+        Handle sampling for small lots (≤3 units) with intelligent logic
+        Uses reduced sampling to avoid 100% inspection for very small lots
+        """
+        frappe.logger().info(f"Handling small lot sampling: {lot_size} units, AQL {aql_level}")
+
+        # For single unit lots - 100% inspection is unavoidable
+        if lot_size == 1:
+            return {
+                'sample_size': 100.0,
+                'sample_rolls': 1,
+                'sample_meters': 50,  # Default roll length
+                'accept_number': 0,
+                'reject_number': 1,
+                'sample_code': 'A-SINGLE'
+            }
+
+        # For 2-3 unit lots - use 1 sample (50% or 33% sampling)
+        elif lot_size <= 3:
+            sample_size_percent = (1 / lot_size) * 100
+
+            # Get AQL criteria for acceptance/rejection numbers
+            # Use standard Code A criteria but with 1 sample
+            try:
+                from erpnext_trackerx_customization.erpnext_trackerx_customization.doctype.aql_table.aql_table import AQLTable
+                aql_criteria = AQLTable.get_aql_criteria('A', aql_value, inspection_regime)
+
+                if aql_criteria:
+                    accept_number = aql_criteria['acceptance_number']
+                    reject_number = aql_criteria['rejection_number']
+                else:
+                    # Fallback values
+                    accept_number = 0
+                    reject_number = 1
+
+            except Exception:
+                # Fallback if AQL criteria not found
+                accept_number = 0
+                reject_number = 1
+
+            return {
+                'sample_size': round(sample_size_percent, 2),
+                'sample_rolls': 1,  # Always 1 sample for small lots
+                'sample_meters': 50,  # Default roll length
+                'accept_number': accept_number,
+                'reject_number': reject_number,
+                'sample_code': f'A-SMALL-{lot_size}'
+            }
+
+        # This shouldn't happen, but fallback
+        return {
+            'sample_size': 100.0,
+            'sample_rolls': lot_size,
+            'sample_meters': lot_size * 50,
+            'accept_number': 0,
+            'reject_number': 1,
+            'sample_code': 'A-FALLBACK'
+        }
 
     def get_sample_code_for_lot_size_inline(self, lot_size, inspection_level, inspection_regime='Normal'):
         """Find appropriate sample code letter for given lot size from AQL Table"""

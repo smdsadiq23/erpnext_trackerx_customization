@@ -6,9 +6,29 @@ def get_permitted_warehouses():
     """
     Get warehouses based on user permissions and roles.
     Respects company permissions and role-based access.
+    Fixed to ensure parent nodes are included for proper tree structure.
     """
     try:
-        # Use DatabaseQuery which automatically applies user permissions
+        # Get user roles to check for System Manager privileges
+        user_roles = frappe.get_roles(frappe.session.user)
+        is_system_manager = 'System Manager' in user_roles or 'Administrator' in user_roles
+
+        if is_system_manager:
+            # System Managers can see all warehouses - no permission filtering needed
+            warehouses = frappe.get_all('Warehouse',
+                fields=[
+                    'name', 'warehouse_name', 'parent_warehouse', 'is_group',
+                    'disabled', 'warehouse_type', 'capacity', 'capacity_unit',
+                    'business_unit', 'strategic_business_unit', 'factory', 'company'
+                ],
+                filters={'disabled': 0},
+                order_by='warehouse_name',
+                limit_page_length=1000
+            )
+            frappe.logger().info(f"System Manager {frappe.session.user} returned all {len(warehouses)} warehouses")
+            return warehouses
+
+        # For non-System Managers, use permission-aware query
         query = DatabaseQuery('Warehouse')
         query.fields = [
             'name', 'warehouse_name', 'parent_warehouse', 'is_group',
@@ -19,16 +39,42 @@ def get_permitted_warehouses():
         query.limit_page_length = 1000
 
         # This automatically applies user permissions
-        warehouses = query.execute()
+        permitted_warehouses = query.execute()
 
-        # If no warehouses returned and user is not System Manager, explain why
-        if not warehouses:
-            user_roles = frappe.get_roles(frappe.session.user)
-            if 'System Manager' not in user_roles and 'Administrator' not in user_roles:
-                frappe.logger().info(f"No warehouses returned for user {frappe.session.user} - check user permissions")
+        # IMPORTANT FIX: Ensure parent nodes are included for tree structure
+        # Get all parent warehouse names that are referenced by permitted warehouses
+        parent_warehouse_names = set()
+        for warehouse in permitted_warehouses:
+            if warehouse.parent_warehouse:
+                parent_warehouse_names.add(warehouse.parent_warehouse)
 
-        frappe.logger().info(f"Returned {len(warehouses)} warehouses for user {frappe.session.user}")
-        return warehouses
+        # Find any missing parent nodes that might have been filtered out
+        missing_parents = []
+        if parent_warehouse_names:
+            existing_names = {w.name for w in permitted_warehouses}
+            missing_parent_names = parent_warehouse_names - existing_names
+
+            if missing_parent_names:
+                # Fetch missing parent nodes without permission filtering
+                # This is essential for tree structure to work properly
+                missing_parents = frappe.get_all('Warehouse',
+                    fields=[
+                        'name', 'warehouse_name', 'parent_warehouse', 'is_group',
+                        'disabled', 'warehouse_type', 'capacity', 'capacity_unit',
+                        'business_unit', 'strategic_business_unit', 'factory', 'company'
+                    ],
+                    filters={
+                        'name': ['in', list(missing_parent_names)],
+                        'disabled': 0
+                    }
+                )
+                frappe.logger().info(f"Added {len(missing_parents)} missing parent nodes for tree structure")
+
+        # Combine permitted warehouses with their required parent nodes
+        all_warehouses = permitted_warehouses + missing_parents
+
+        frappe.logger().info(f"Returned {len(all_warehouses)} warehouses for user {frappe.session.user} ({len(permitted_warehouses)} permitted + {len(missing_parents)} parent nodes)")
+        return all_warehouses
 
     except Exception as e:
         error_msg = f"Error in get_permitted_warehouses: {str(e)}"
