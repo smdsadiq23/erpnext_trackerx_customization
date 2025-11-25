@@ -60,4 +60,9 @@ def custom_search_link(
             "ignore_user_permissions": ignore_user_permissions,
         }.items() if k in allowed
     }
+
+    # # ✅ FIX: Ensure `user` is passed if expected by original_search_link
+    # if "user" in allowed:
+    #     passthrough.setdefault("user", frappe.session.user)
+     
     return original_search_link(**passthrough)

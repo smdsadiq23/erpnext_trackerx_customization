@@ -150,6 +150,7 @@ frappe.ui.form.on("Goods Receipt Note", {
             frappe.model.set_value(cdt, cdn, 'accepted_warehouse', frm.doc.set_warehouse);
         }
         set_item_code_query(frm);
+        update_total_received_quantity(frm);
     }
 });
 
@@ -184,10 +185,17 @@ function set_item_code_query(frm) {
 
 // --- Goods Receipt Item Child Table Events ---
 frappe.ui.form.on("Goods Receipt Item", {
+    items_add(frm, cdt, cdn) {
+        update_total_received_quantity(frm);
+    },    
+    items_remove(frm) {
+        update_total_received_quantity(frm);
+    },    
     received_quantity(frm, cdt, cdn) {
         const row = locals[cdt][cdn];
         const amount = (row.received_quantity || 0) * (row.rate || 0);
         frappe.model.set_value(cdt, cdn, 'amount', amount);
+        update_total_received_quantity(frm);
     },
     rate(frm, cdt, cdn) {
         const row = locals[cdt][cdn];
@@ -223,6 +231,14 @@ frappe.ui.form.on("Goods Receipt Item", {
             });
     }    
 });
+
+function update_total_received_quantity(frm) {
+    let total = 0;
+    (frm.doc.items || []).forEach(row => {
+        total += flt(row.received_quantity);
+    });
+    frm.set_value('total_received_quantity', total);
+}
 
 // --- Checklist Table Events ---
 frappe.ui.form.on('Goods Receipt Document Checklist', {

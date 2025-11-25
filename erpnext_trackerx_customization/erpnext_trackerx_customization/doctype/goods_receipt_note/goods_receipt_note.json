@@ -32,6 +32,8 @@
   "set_posting_time",
   "column_break_12",
   "company",
+  "strategic_business_unit",
+  "factory_business_unit",
   "apply_putaway_rule",
   "is_return",
   "return_against",
@@ -61,6 +63,7 @@
   "section_break0",
   "total_qty",
   "total_net_weight",
+  "total_received_quantity",
   "column_break_43",
   "base_total",
   "base_net_total",
@@ -326,7 +329,7 @@
    "fieldname": "company",
    "fieldtype": "Link",
    "in_standard_filter": 1,
-   "label": "Company",
+   "label": "Business Unit",
    "oldfieldname": "company",
    "oldfieldtype": "Link",
    "options": "Company",
@@ -1389,13 +1392,31 @@
    "label": "OCN",
    "options": "Sales Order",
    "reqd": 1
+  },
+  {
+   "fieldname": "strategic_business_unit",
+   "fieldtype": "Link",
+   "label": "Strategic Business Unit",
+   "options": "Strategic Business Unit"
+  },
+  {
+   "fieldname": "factory_business_unit",
+   "fieldtype": "Link",
+   "label": "Factory Business Unit",
+   "options": "Factory Business Unit",
+   "reqd": 1
+  },
+  {
+   "fieldname": "total_received_quantity",
+   "fieldtype": "Float",
+   "label": "Total Received Quantity"
   }
  ],
  "grid_page_length": 50,
  "icon": "fa fa-truck",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-15 08:16:52.268933",
+ "modified": "2025-11-20 16:01:20.376840",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Note",

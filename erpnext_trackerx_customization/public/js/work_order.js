@@ -6,6 +6,8 @@ frappe.ui.form.on('Work Order', {
         // Clear existing sales orders when production item changes
         frm.clear_table("custom_sales_orders");
         frm.refresh_field("custom_sales_orders");
+        frm.clear_table("custom_work_order_line_items");
+        frm.refresh_field("custom_work_order_line_items");        
         
         // Set filter for the child table
         set_sales_order_filter(frm);
