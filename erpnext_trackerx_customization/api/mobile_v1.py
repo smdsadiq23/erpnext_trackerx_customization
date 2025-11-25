@@ -1016,7 +1016,8 @@ def build_roll_details(inspection):
             "width": flt(roll.roll_width or 0),
             "gsm": flt(roll.gsm or 0),
             "status": "Inspected" if roll.inspected else "Pending",
-            "result": roll.roll_result or "Pending"
+            "result": roll.roll_result or "Pending",
+            "autopicked": bool(getattr(roll, 'autopicked', 0))
         })
     return rolls
 
@@ -2251,6 +2252,7 @@ def build_detailed_roll_info(roll):
         "inspected": bool(roll.inspected),
         "roll_result": roll.roll_result or "Pending",
         "roll_grade": roll.roll_grade or "",
+        "autopicked": bool(getattr(roll, 'autopicked', 0)),
 
         # Defects
         "defects": build_roll_defects(roll),
@@ -2270,7 +2272,8 @@ def build_roll_summary(roll):
         "total_points": flt(roll.total_points_auto or 0),
         "points_per_100_sqm": flt(roll.points_per_100_sqm or 0),
         "status": "Inspected" if roll.inspected else "Pending",
-        "result": roll.roll_result or "Pending"
+        "result": roll.roll_result or "Pending",
+        "autopicked": bool(getattr(roll, 'autopicked', 0))
     }
 
 def build_roll_defects(roll):
@@ -2285,3 +2288,222 @@ def build_roll_defects(roll):
             "points_auto": flt(defect_row.points_auto or 0)
         })
     return defects
+
+# ===========================
+# AUTOPICK ROLL MANAGEMENT APIs
+# ===========================
+
+@frappe.whitelist()
+def toggle_roll_autopick(inspection_id=None, roll_id=None, autopicked=None):
+    """
+    Toggle or set autopicked flag for a specific roll
+    Allows manual override of AQL-based auto-selection
+    """
+    try:
+        # Validate required parameters
+        validation_errors = []
+
+        if not inspection_id:
+            validation_errors.append({
+                "field": "inspection_id",
+                "code": "MISSING_REQUIRED_PARAMETER",
+                "message": "Inspection ID is required"
+            })
+
+        if not roll_id:
+            validation_errors.append({
+                "field": "roll_id",
+                "code": "MISSING_REQUIRED_PARAMETER",
+                "message": "Roll ID is required"
+            })
+
+        if autopicked is None:
+            validation_errors.append({
+                "field": "autopicked",
+                "code": "MISSING_REQUIRED_PARAMETER",
+                "message": "Autopicked flag value is required"
+            })
+
+        if validation_errors:
+            return {
+                "success": False,
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Required parameters are missing",
+                    "details": "Please provide all required parameters",
+                    "validation_errors": validation_errors
+                },
+                "timestamp": frappe.utils.now(),
+                "data": None
+            }
+
+        # Get inspection document
+        inspection = frappe.get_doc("Fabric Inspection", inspection_id)
+
+        # Check permissions
+        if not inspection.has_permission("write"):
+            frappe.throw(_("You do not have permission to modify this inspection"))
+
+        # Find the roll
+        roll_item = None
+        for roll in inspection.fabric_rolls_tab or []:
+            if roll.name == roll_id or getattr(roll, 'roll_number', '') == roll_id:
+                roll_item = roll
+                break
+
+        if not roll_item:
+            return {
+                "success": False,
+                "error": {
+                    "code": "ROLL_NOT_FOUND",
+                    "message": f"Roll with ID '{roll_id}' not found in inspection",
+                    "details": f"Available rolls: {len(inspection.fabric_rolls_tab or [])}"
+                },
+                "timestamp": frappe.utils.now()
+            }
+
+        # Update autopicked flag
+        previous_value = getattr(roll_item, 'autopicked', 0)
+        roll_item.autopicked = 1 if autopicked else 0
+
+        # Save the inspection
+        inspection.save()
+
+        return {
+            "success": True,
+            "message": f"Roll autopick flag updated successfully",
+            "data": {
+                "inspection_id": inspection_id,
+                "roll_id": roll_item.name,
+                "roll_number": roll_item.roll_number,
+                "previous_autopicked": bool(previous_value),
+                "current_autopicked": bool(roll_item.autopicked),
+                "action": "enabled" if roll_item.autopicked else "disabled"
+            }
+        }
+
+    except Exception as e:
+        # Log technical details
+        short_error = str(e)[:100] + "..." if len(str(e)) > 100 else str(e)
+        error_msg = f"Toggle roll autopick failed: {short_error}"
+
+        try:
+            frappe.log_error(error_msg, title="Toggle Roll Autopick Error")
+        except Exception:
+            pass
+
+        # Determine user-friendly error message
+        if "does not exist" in str(e).lower() or "not found" in str(e).lower():
+            user_message = "The specified inspection or roll was not found"
+            error_code = "RESOURCE_NOT_FOUND"
+        elif "permission" in str(e).lower():
+            user_message = "You do not have permission to modify this inspection"
+            error_code = "PERMISSION_DENIED"
+        else:
+            user_message = "An error occurred while updating roll autopick flag"
+            error_code = "INTERNAL_ERROR"
+
+        return {
+            "success": False,
+            "error": {
+                "code": error_code,
+                "message": user_message,
+                "details": "Please check your request and try again"
+            },
+            "timestamp": frappe.utils.now(),
+            "data": {
+                "inspection_id": inspection_id,
+                "roll_id": roll_id,
+                "request_id": frappe.generate_hash(length=8)
+            }
+        }
+
+@frappe.whitelist()
+def refresh_auto_pick(inspection_id=None):
+    """
+    Refresh/re-run auto-picking for an inspection
+    Useful when inspection configuration changes
+    """
+    try:
+        if not inspection_id:
+            return {
+                "success": False,
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "Inspection ID is required",
+                    "details": "Please provide a valid inspection ID"
+                },
+                "timestamp": frappe.utils.now()
+            }
+
+        # Import and use the roll picker API
+        from erpnext_trackerx_customization.erpnext_trackerx_customization.utils.aql.roll_picker import auto_pick_rolls_for_inspection
+        result = auto_pick_rolls_for_inspection(inspection_id)
+
+        return result
+
+    except Exception as e:
+        frappe.log_error(f"Error refreshing auto-pick: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Error refreshing auto-pick: {str(e)}"
+        }
+
+@frappe.whitelist()
+def force_autopick_update(inspection_id=None):
+    """
+    Force update autopicked flags for an existing inspection
+    This is a workaround for inspections created before autopick feature
+    """
+    try:
+        if not inspection_id:
+            return {
+                "success": False,
+                "message": "Inspection ID is required"
+            }
+
+        # Get inspection
+        inspection = frappe.get_doc("Fabric Inspection", inspection_id)
+
+        # Check if it's AQL based and has sample rolls configured
+        if inspection.inspection_type != 'AQL Based' or not inspection.required_sample_rolls:
+            return {
+                "success": False,
+                "message": f"Inspection {inspection_id} is not AQL Based or missing sample roll configuration"
+            }
+
+        # Import and use the roll picker
+        from erpnext_trackerx_customization.erpnext_trackerx_customization.utils.aql.roll_picker import IntelligentRollPicker
+
+        picker = IntelligentRollPicker(inspection)
+        selected_rolls = picker.auto_pick_rolls()
+
+        # Update all rolls
+        updated_count = 0
+        for roll in inspection.fabric_rolls_tab:
+            if roll.name in selected_rolls:
+                roll.autopicked = 1
+                updated_count += 1
+            else:
+                roll.autopicked = 0
+
+        # Save the inspection
+        inspection.save()
+
+        return {
+            "success": True,
+            "message": f"Force updated autopick flags for {inspection_id}",
+            "data": {
+                "inspection_id": inspection_id,
+                "total_rolls": len(inspection.fabric_rolls_tab),
+                "autopicked_rolls": updated_count,
+                "selected_roll_ids": selected_rolls
+            }
+        }
+
+    except Exception as e:
+        frappe.log_error(f"Error force updating autopick: {str(e)}")
+        return {
+            "success": False,
+            "message": f"Error force updating autopick: {str(e)}"
+        }
