@@ -320,16 +320,19 @@ function convert_tree_to_table(frm) {
       frappe.throw('Atleast one line item is required!');
     }
 
-
     // Build map of new items
     frm.tree_data.forEach(item => {
-        if(item.sizes.length < 1){
-          frappe.throw('Size details required for Line items');
-        }
         if(!item.item_code)
         {
           frappe.throw('Item code is mandatory, Pleae choose valid Finished Goods Item');
         }
+        if(!item.custom_lineitem)
+        {
+          frappe.throw('Line Item is required');
+        }        
+        if(item.sizes.length < 1){
+          frappe.throw('Size details required for Line items');
+        }        
         item.sizes.forEach(size => {
 
             if(size.custom_order_qty <= 0){
