@@ -20,6 +20,7 @@ def validate(doc, method):
     validate_work_order_no(doc)
     calculate_total_qty(doc)
     validate_and_update_sales_order_items(doc)
+    validate_work_order(doc)
 
     #copy sales orders to sales order
     if doc.custom_work_order_line_items:
@@ -94,6 +95,14 @@ def update_sales_order_pending_qty_by_work_order(doc):
 
 def calculate_total_qty(doc):
     doc.qty = sum(flt(item.work_order_allocated_qty) for item in doc.custom_work_order_line_items)
+
+
+def validate_work_order(doc):
+    for row in doc.get('required_items') or []:
+        if row.get('available_qty_at_source_warehouse') is None:
+            row.available_qty_at_source_warehouse = 0.0
+        if row.get('available_qty_at_wip_warehouse') is None:
+            row.available_qty_at_wip_warehouse = 0.0    
 
 def validate_and_update_sales_order_items(doc):
     if not doc.custom_work_order_line_items:
