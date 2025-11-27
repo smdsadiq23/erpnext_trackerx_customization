@@ -29,10 +29,21 @@ class StyleGroup(Document):
 		"""Validate components table"""
 		if self.components:
 			component_names = []
+			main_components = []
+
 			for component in self.components:
+				# Check for duplicate component names
 				if component.component_name in component_names:
 					frappe.throw(f"Duplicate component name '{component.component_name}' found")
 				component_names.append(component.component_name)
+
+				# Check for multiple main components
+				if component.is_main:
+					main_components.append(component.component_name)
+
+			# Ensure only one component is marked as main
+			if len(main_components) > 1:
+				frappe.throw(f"Only one component can be marked as 'is main'. Found multiple: {', '.join(main_components)}")
 
 	def set_default_company(self):
 		"""Set default company if not already set"""
