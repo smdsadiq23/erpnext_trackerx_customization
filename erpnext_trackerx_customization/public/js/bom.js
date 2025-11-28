@@ -328,7 +328,7 @@ function merge_custom_items_into_items(frm)
     ];
 
     const required_fields = [
-        'custom_supplier',
+        // 'custom_supplier',
         'item_code',
         'uom',
         'custom_net_qty',
