@@ -4,12 +4,12 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import get_time
 
 DEFAULT_NAME = 'QR/Barcode Cut Bundle Activation'
 
 class PhysicalCell(Document):
 
-	
 
 	def validate(self):
 		self.validate_for_operations_from_supported_operation_group()
@@ -73,38 +73,58 @@ class PhysicalCell(Document):
 							row.operation, row.idx, self.supported_operation_group
 						)
 					)
-
 	
-	def  validate_for_physical_cell_timings(self):
-		if not self.start_time or not self.end_time:
+	def validate_for_physical_cell_timings(self):
+		"""Ensure cell start/end times are present and logically ordered.
+
+		We normalise using get_time because DB can store Time as timedelta/time/str.
+		"""
+		start = get_time(self.start_time) if self.start_time else None
+		end = get_time(self.end_time) if self.end_time else None
+
+		if not start or not end:
 			frappe.throw(
-				f"Cell timing is mandatory, Please provide valid start and end time"
+				"Cell timing is mandatory, Please provide valid start and end time"
 			)
-		
-		if self.start_time >= self.end_time:
-			frappe.throw(
-				f"Cell Start time should be before end time"
-			)
+
+		# Non-overnight shift: start must be strictly before end
+		if start >= end:
+			frappe.throw("Cell Start time should be before end time")
 
 	def validate_for_cell_break_timings(self):
+		if not self.cell_breaks:
+			return
 
-		if self.cell_breaks:
-			for cell_break in self.cell_breaks:
-				if cell_break.break_start >= cell_break.break_end:
-					frappe.throw(
-						f"Invalid Break Time, Start time should be before the end time at row: {cell_break.idx}"
-					)
+		# Normalise cell timings once
+		cell_start = get_time(self.start_time) if self.start_time else None
+		cell_end = get_time(self.end_time) if self.end_time else None
 
-				if cell_break.break_start < self.start_time:
-					frappe.throw(
-						f"Invalid break time at row: {cell_break.idx}, Break time should be within the cell timings, Cannot start before cell timing"
-					)
-				
-				if cell_break.break_end > self.end_time:
-					frappe.throw(
-						f"Invalid break time at row: {cell_break.idx}, Break time should be within the cell timings, Cannot end after cell timing"
-					)
-				
+		for cell_break in self.cell_breaks:
+			b_start = (
+				get_time(cell_break.break_start) if cell_break.break_start else None
+			)
+			b_end = get_time(cell_break.break_end) if cell_break.break_end else None
 
+			if not b_start or not b_end:
+				frappe.throw(
+					f"Invalid Break Time, both start and end time are required at row: {cell_break.idx}"
+				)
 
+			if b_start >= b_end:
+				frappe.throw(
+					f"Invalid Break Time, Start time should be before the end time at row: {cell_break.idx}"
+				)
 
+			if cell_start and b_start < cell_start:
+				frappe.throw(
+					f"Invalid break time at row: {cell_break.idx}, "
+					f"Break time should be within the cell timings, "
+					f"Cannot start before cell timing"
+				)
+
+			if cell_end and b_end > cell_end:
+				frappe.throw(
+					f"Invalid break time at row: {cell_break.idx}, "
+					f"Break time should be within the cell timings, "
+					f"Cannot end after cell timing"
+				)
