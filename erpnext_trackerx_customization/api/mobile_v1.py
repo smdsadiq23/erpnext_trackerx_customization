@@ -290,7 +290,9 @@ def get_inspection_details(inspection_id=None):
                 "aql_value": inspection.aql_value or "",
                 "inspection_regime": inspection.inspection_regime or "Normal",
                 "sampling_percentage": flt(getattr(inspection, 'sampling_percentage', 0)),
-                "sample_rolls_text": generate_sample_rolls_text(inspection)
+                "sample_rolls_text": generate_sample_rolls_text(inspection),
+                "no_of_rolls_to_be_inspected": str(inspection.required_sample_rolls or 0),
+                "sample_size_to_be_inspected": calculate_sample_size_based_on_uom(inspection)
             },
             "general_details": {
                 "supplier": inspection.supplier or "",
@@ -1042,6 +1044,69 @@ def build_physical_testing(inspection):
     # Sort by display_order
     tests.sort(key=lambda x: x['display_order'])
     return tests
+
+def calculate_sample_size_based_on_uom(inspection):
+    """
+    Calculate sample_size_to_be_inspected based on AQL logic and UOM
+    Returns: "19kg" or "25 Meter" based on UOM
+    """
+    try:
+        if inspection.inspection_type == "AQL Based":
+            # Use required_sample_meters from AQL calculation
+            sample_amount = flt(getattr(inspection, 'required_sample_meters', 0))
+
+            # If no AQL sample meters calculated, fallback to autopicked quantity
+            if not sample_amount:
+                sample_amount = calculate_autopicked_quantity(inspection)
+
+            unit_of_measure = getattr(inspection, 'unit_of_measure', None)
+
+            if unit_of_measure in ["Kilogram", "Kg", "kg", "KG"]:
+                return f"{sample_amount:.0f}kg"
+            elif unit_of_measure in ["Meter", "Metre", "m", "M"]:
+                return f"{sample_amount:.0f} Meter"
+            else:
+                return f"{sample_amount:.2f} {unit_of_measure or ''}".strip()
+
+        elif inspection.inspection_type == "100% Inspection":
+            total_quantity = flt(inspection.total_quantity or 0)
+            unit_display = standardize_uom_display(getattr(inspection, 'unit_of_measure', None))
+            return f"{total_quantity:.0f}{unit_display}"
+
+        else:
+            # Custom sampling - calculate from autopicked rolls
+            autopicked_quantity = calculate_autopicked_quantity(inspection)
+            unit_display = standardize_uom_display(getattr(inspection, 'unit_of_measure', None))
+            return f"{autopicked_quantity:.0f}{unit_display}"
+
+    except Exception as e:
+        # Fallback to basic display
+        frappe.log_error(f"Error calculating sample size: {str(e)}")
+        return "0 units"
+
+def standardize_uom_display(unit_of_measure):
+    """
+    Standardize UOM display for mobile
+    """
+    if not unit_of_measure:
+        return ""
+
+    mapping = {
+        "Kilogram": "kg", "Kg": "kg", "KG": "kg", "kg": "kg",
+        "Meter": " Meter", "Metre": " Meter", "M": " Meter", "m": " Meter",
+        "Piece": " pcs", "Pieces": " pcs", "PCS": " pcs", "pcs": " pcs"
+    }
+    return mapping.get(unit_of_measure, f" {unit_of_measure}")
+
+def calculate_autopicked_quantity(inspection):
+    """
+    Calculate total quantity from autopicked rolls
+    """
+    total = 0
+    for roll in inspection.fabric_rolls_tab or []:
+        if getattr(roll, 'autopicked', 0):
+            total += flt(getattr(roll, 'roll_length', 0))
+    return total
 
 def calculate_summary_counts(inspection):
     """Calculate summary counts for checklist"""

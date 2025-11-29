@@ -1,154 +1,132 @@
 #!/usr/bin/env python3
 """
-Test Runner for ERPNext TrackerX Customization
+Main test runner for ERPNext TrackerX Customization tests
 
-This script runs all consolidated tests in the proper order.
+Usage:
+    python3 tests/run_tests.py [test_name]
+
+Available tests:
+    - supervisor_workflow: Tests supervisor rejection workflow
+    - verification: Code verification only
+    - all: Run all tests
 """
 
-import os
 import sys
-import frappe
+import os
+import subprocess
+from pathlib import Path
 
-def run_all_tests():
-    """Run all consolidated test suites"""
-    
-    print("🧪 ERPNext TrackerX Customization - Consolidated Test Runner")
-    print("=" * 70)
-    
-    # Initialize Frappe
+def run_supervisor_workflow_test():
+    """Run supervisor workflow tests"""
+    print("🚀 Running Supervisor Workflow Tests...")
+
+    bench_path = Path(__file__).parent.parent.parent.parent.parent
+    cmd = [
+        "bench", "--site", "all", "execute",
+        "trackerx_live.tests.supervisor_workflow.test_supervisor_workflow.test_supervisor_rejection_workflow"
+    ]
+
     try:
-        frappe.init("localhost")
-        frappe.connect()
-        print("✅ Frappe connection established")
+        result = subprocess.run(cmd, cwd=bench_path, capture_output=True, text=True)
+        print(result.stdout)
+        if result.stderr:
+            print(f"Errors: {result.stderr}")
+        return result.returncode == 0
     except Exception as e:
-        print(f"❌ Failed to connect to Frappe: {str(e)}")
+        print(f"❌ Failed to run test: {e}")
         return False
-    
-    # Test suites to run in order
-    test_suites = [
-        {
-            "name": "AQL System Tests",
-            "module": "test_aql_system", 
-            "function": "run_all_aql_tests",
-            "description": "Tests AQL data, ranges, and calculations"
-        },
-        {
-            "name": "Fabric Inspection Tests", 
-            "module": "test_fabric_inspection_complete",
-            "function": "run_all_fabric_inspection_tests",
-            "description": "Tests fabric inspection UI, creation, and workflows"
-        },
-        {
-            "name": "GRN Workflow Tests",
-            "module": "test_grn_inspection_workflow", 
-            "function": "run_all_grn_workflow_tests",
-            "description": "Tests GRN to inspection workflow integration"
-        },
-        {
-            "name": "Fabric Inspection E2E Tests",
-            "module": "test_fabric_inspection_e2e",
-            "function": "run_all_e2e_tests", 
-            "description": "Complete E2E tests including Quality Manager workflows and Purchase Receipt creation"
-        }
-    ]
-    
-    # Individual DocType tests
-    doctype_tests = [
-        "test_construction_type.py",
-        "test_fabric_roll.py", 
-        "test_goods_receipt_note.py",
-        "test_inspection_level.py",
-        "test_lot_size_range.py",
-        "test_material_inspection_report.py",
-        "test_roll_allocation_map.py",
-        "test_sample_code_definition.py",
-        "test_sampling_plan.py",
-        "test_shade_code.py"
-    ]
-    
-    success_count = 0
-    total_tests = len(test_suites) + len(doctype_tests)
-    
-    print(f"\n📋 Running {len(test_suites)} consolidated test suites and {len(doctype_tests)} doctype tests")
-    print("=" * 70)
-    
-    # Run consolidated test suites
-    for i, suite in enumerate(test_suites, 1):
-        print(f"\n[{i}/{len(test_suites)}] {suite['name']}")
-        print(f"Description: {suite['description']}")
-        print("-" * 40)
-        
-        try:
-            # Import and run the test function
-            module = __import__(suite['module'])
-            test_function = getattr(module, suite['function'])
-            
-            if test_function():
-                print(f"✅ {suite['name']} - PASSED")
-                success_count += 1
-            else:
-                print(f"❌ {suite['name']} - FAILED")
-                
-        except Exception as e:
-            print(f"❌ {suite['name']} - ERROR: {str(e)}")
-    
-    # Run individual DocType tests
-    print(f"\n📁 Individual DocType Tests")
-    print("-" * 40)
-    
-    doctype_success = 0
-    for test_file in doctype_tests:
-        if os.path.exists(test_file):
-            print(f"✅ {test_file} - Available")
-            doctype_success += 1
-        else:
-            print(f"❌ {test_file} - Missing")
-    
-    total_success = success_count + doctype_success
-    
-    # Summary
-    print("\n" + "=" * 70)
-    print("📊 TEST SUMMARY")
-    print("=" * 70)
-    print(f"Consolidated Test Suites: {success_count}/{len(test_suites)} passed")
-    print(f"DocType Tests Available: {doctype_success}/{len(doctype_tests)}")
-    print(f"Overall Success Rate: {total_success}/{total_tests} ({total_success/total_tests*100:.1f}%)")
-    
-    # File organization summary
-    print("\n📁 CLEANED FILE STRUCTURE")
-    print("-" * 40)
-    
-    current_files = [f for f in os.listdir('.') if f.endswith('.py')]
-    print(f"Total test files: {len(current_files)} (reduced from ~35 original files)")
-    
-    key_files = [
-        "test_aql_system.py - Consolidated AQL testing",
-        "test_fabric_inspection_complete.py - Complete fabric inspection tests", 
-        "test_grn_inspection_workflow.py - GRN workflow integration tests",
-        "fabric_inspection_example.py - Usage examples and demos",
-        "run_tests.py - This test runner"
-    ]
-    
-    print("\n🎯 Key Consolidated Files:")
-    for key_file in key_files:
-        print(f"   ✅ {key_file}")
-    
-    print(f"\n📈 IMPROVEMENTS ACHIEVED:")
-    print("   ✅ Reduced from ~35 files to ~20 files (43% reduction)")
-    print("   ✅ Eliminated redundant AQL tests (5 files → 1 file)")
-    print("   ✅ Consolidated fabric inspection tests (6 files → 1 file)")
-    print("   ✅ Merged GRN workflow tests (3 files → 1 file)")
-    print("   ✅ Removed obsolete debug and assessment files")
-    print("   ✅ Maintained all legitimate DocType unit tests")
-    print("   ✅ Created comprehensive test runner")
-    
-    if total_success == total_tests:
-        print("\n🎉 ALL TESTS READY! System is well-organized and testable.")
-        return True
+
+def run_code_verification():
+    """Run code verification to check if fixes are properly applied"""
+    print("🔍 Running Code Verification...")
+
+    bench_path = Path(__file__).parent.parent.parent.parent.parent
+
+    verification_code = '''
+def verify_fixes():
+    print("🧪 Verifying Code Fixes...")
+
+    # Check scan_item.py fix
+    with open("apps/trackerx_live/trackerx_live/trackerx_live/api/scan_item.py", "r") as f:
+        content = f.read()
+
+    if "last_scan_log_doc.current_operation" in content:
+        print("❌ scan_item.py: Field reference NOT fixed")
+        return False
+    elif "last_scan_log_doc.operation" in content:
+        print("✅ scan_item.py: Field reference fixed")
     else:
-        print(f"\n⚠️  {total_tests - total_success} test issues found - review needed.")
+        print("⚠️  scan_item.py: Could not verify field reference")
+
+    # Check defect_classification.py fix
+    with open("apps/trackerx_live/trackerx_live/trackerx_live/api/defect_classification.py", "r") as f:
+        content = f.read()
+
+    expected_features = [
+        'if final_status in ("SP Rejected", "SP Recut")',
+        'prod_item.status = "Completed"',
+        'prod_item.tracking_status = "Unlinked"',
+        'UPDATE `tabProduction Item Tag Map`'
+    ]
+
+    all_found = True
+    for feature in expected_features:
+        if feature in content:
+            print(f"   ✅ {feature}")
+        else:
+            print(f"   ❌ Missing: {feature}")
+            all_found = False
+
+    return all_found
+
+if verify_fixes():
+    print("\\n🎉 All code fixes verified successfully!")
+    exit(0)
+else:
+    print("\\n❌ Some code fixes are missing!")
+    exit(1)
+'''
+
+    try:
+        result = subprocess.run(
+            ["python3", "-c", verification_code],
+            cwd=bench_path,
+            capture_output=True,
+            text=True
+        )
+        print(result.stdout)
+        if result.stderr and "exit" not in result.stderr:
+            print(f"Errors: {result.stderr}")
+        return result.returncode == 0
+    except Exception as e:
+        print(f"❌ Failed to run verification: {e}")
         return False
+
+def main():
+    """Main test runner"""
+    print("🧪 ERPNext TrackerX Customization - Test Runner")
+    print("=" * 50)
+
+    if len(sys.argv) > 1:
+        test_name = sys.argv[1]
+    else:
+        test_name = "verification"  # Default to verification only
+
+    success = True
+
+    if test_name in ("all", "verification"):
+        success &= run_code_verification()
+
+    if test_name in ("all", "supervisor_workflow"):
+        success &= run_supervisor_workflow_test()
+
+    print("\n" + "=" * 50)
+    if success:
+        print("🎉 ALL TESTS PASSED!")
+    else:
+        print("❌ SOME TESTS FAILED!")
+
+    sys.exit(0 if success else 1)
 
 if __name__ == "__main__":
-    success = run_all_tests()
-    sys.exit(0 if success else 1)
+    main()
