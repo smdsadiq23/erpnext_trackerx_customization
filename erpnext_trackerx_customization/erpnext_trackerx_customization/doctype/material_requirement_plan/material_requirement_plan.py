@@ -42,7 +42,7 @@ class MaterialRequirementPlan(BuyingController):
 		letter_head: DF.Link | None
 		material_requirement_plan_type: DF.Literal[
 			"Purchase", "Material Transfer", "Material Issue", "Manufacture", "Customer Provided"
-		]
+		] # type: ignore
 		naming_series: DF.Literal["MAT-MR-.YYYY.-"]
 		per_ordered: DF.Percent
 		per_received: DF.Percent
@@ -65,7 +65,7 @@ class MaterialRequirementPlan(BuyingController):
 			"Issued",
 			"Transferred",
 			"Received",
-		]
+		] # type: ignore
 		tc_name: DF.Link | None
 		terms: DF.TextEditor | None
 		title: DF.Data | None
@@ -382,14 +382,25 @@ def set_missing_values(source, target_doc):
 
 
 def update_item(obj, target, source_parent):
-	target.conversion_factor = obj.conversion_factor
+    target.conversion_factor = obj.conversion_factor
 
-	qty = obj.quantity or obj.received_qty
-	# target.qty = flt(flt(obj.stock_qty) - flt(qty)) / target.conversion_factor
-	target.qty = flt(qty)
-	target.stock_qty = target.qty * target.conversion_factor
-	if getdate(target.schedule_date) < getdate(nowdate()):
-		target.schedule_date = None
+    qty = obj.quantity or obj.received_qty
+    # target.qty = flt(flt(obj.stock_qty) - flt(qty)) / target.conversion_factor
+    target.qty = flt(qty)
+    target.stock_qty = target.qty * target.conversion_factor
+    if getdate(target.schedule_date) < getdate(nowdate()):
+        target.schedule_date = None
+
+    # --- TrackerX customization: link PO Item back to MRP summary row ---
+    # This ensures the same behaviour as get_items_from_material_requirement_plan()
+    # when source_table == "Items Summary"
+    if target.doctype == "Purchase Order Item":
+        # Child row in Material Request Item Summary
+        target.custom_reference_id = obj.name
+        target.custom_reference_type = "MRP"
+        # Parent MRP document
+        target.custom_reference_parent_id = source_parent.name
+
 
 
 def get_list_context(context=None):
