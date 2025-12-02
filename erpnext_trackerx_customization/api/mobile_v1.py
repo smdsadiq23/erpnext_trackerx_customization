@@ -234,6 +234,40 @@ def get_inspection_list(status=None, search=None, page=1, limit=20, sort_by="cre
 # INSPECTION DETAILS APIs
 # ===========================
 
+def get_item_fabric_details(item_code):
+    """Fetch fabric-specific details from Item master"""
+    if not item_code:
+        return {}
+
+    try:
+        item_doc = frappe.get_doc("Item", item_code)
+
+        # Handle construction type link field
+        construction_type_name = ""
+        if hasattr(item_doc, 'custom_construction_type_link') and item_doc.custom_construction_type_link:
+            try:
+                construction_doc = frappe.get_doc("Construction Type", item_doc.custom_construction_type_link)
+                construction_type_name = getattr(construction_doc, 'construction_type', item_doc.custom_construction_type_link)
+            except Exception:
+                construction_type_name = item_doc.custom_construction_type_link
+
+        return {
+            "gsm": getattr(item_doc, 'custom_gsm', '') or '',
+            "dia": flt(getattr(item_doc, 'custom_dia', 0)) or 0.0,
+            "width": getattr(item_doc, 'custom_width', '') or '',
+            "material_composition": getattr(item_doc, 'custom_material_composition', '') or '',
+            "construction_type": construction_type_name
+        }
+    except Exception as e:
+        frappe.log_error(f"Error fetching fabric details for item {item_code}: {str(e)}")
+        return {
+            "gsm": '',
+            "dia": 0.0,
+            "width": '',
+            "material_composition": '',
+            "construction_type": ''
+        }
+
 @frappe.whitelist()
 def get_inspection_details(inspection_id=None):
     """Get complete inspection details for mobile app"""
@@ -263,6 +297,9 @@ def get_inspection_details(inspection_id=None):
                 # Force reload defects for each roll
                 roll_doc = frappe.get_doc("Fabric Roll Inspection Item", roll.name)
                 roll.defects = roll_doc.defects
+
+        # Get fabric details from item master
+        fabric_details = get_item_fabric_details(inspection.item_code)
 
         # Build response data
         response_data = {
@@ -305,7 +342,13 @@ def get_inspection_details(inspection_id=None):
                     inspection.total_quantity,
                     getattr(inspection, 'unit_of_measure', None),
                     inspection.total_rolls
-                )
+                ),
+                # New fabric-specific fields from Item master
+                "gsm": fabric_details.get("gsm", ""),
+                "dia": fabric_details.get("dia", 0.0),
+                "width": fabric_details.get("width", ""),
+                "material_composition": fabric_details.get("material_composition", ""),
+                "construction_type": fabric_details.get("construction_type", "")
             },
             "roll_details": build_roll_details(inspection),
             "physical_testing": build_physical_testing(inspection),
