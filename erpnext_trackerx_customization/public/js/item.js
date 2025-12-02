@@ -9,22 +9,6 @@ frappe.ui.form.on('Item', {
 
     refresh: function(frm) {
 
-        // Always remove stray dropdowns first
-        $('#custom-master-type-select').remove();
-
-        // Hide in-form field always
-        if (frm.fields_dict.custom_select_master) {
-            frm.toggle_display('custom_select_master', false);
-        }
-
-        // Show dropdown only when creating new Item
-        if (frm.is_new()) {
-            insertDropdownInHeading(frm, getMasterOptions(frm));
-            $('#custom-master-type-select').show().prop('disabled', false);
-        } else {
-            $('#custom-master-type-select').remove();
-        }
-
         // Add "Copy from Style Master" button to custom_bom_operations grid
         if (frm.fields_dict.custom_bom_operations) {
             if (!frm.custom_bom_operations_button_added) {
@@ -81,9 +65,8 @@ frappe.ui.form.on('Item', {
     custom_select_master: function(frm) {
         setTimeout(function() {
             updateItemLabels(frm);
-            setDefaultUOM(frm);        
+            setDefaultUOM(frm);
         }, 300);
-        $('#custom-master-type-select').val(frm.doc.custom_select_master);
         
         // --- New Logic: Filter 'construction_type' Link field ---
         // This function will be called on refresh and when custom_select_master changes
@@ -249,52 +232,10 @@ function getMasterOptions(frm) {
     return [];
 }
 
-// --- Utility: Inject dropdown in the page header with CSS for mobile ---
-function insertDropdownInHeading(frm, options) {
-    $('#custom-master-type-select').remove();
-    if (!options || options.length === 0) return;
-    const current = frm.doc.custom_select_master || options[0];
-
-    // Add custom style (only once)
-    if (!$('#custom-master-type-css').length) {
-        $('head').append(`
-            <style id="custom-master-type-css">
-                #custom-master-type-select {
-                    z-index: 1051 !important;
-                }
-                @media (max-width: 575px) {
-                    #custom-master-type-select {
-                        width: 110px !important;
-                    }
-                }
-            </style>
-        `);
-    }
-
-    let html = `<select id="custom-master-type-select" class="form-control"
-        style="
-            width: 150px; 
-            min-width: 110px;
-            max-width: 45vw;
-            z-index: 1051; 
-        ">`
-        + options.map(opt => `<option value="${opt}"${opt === current ? ' selected' : ''}>${opt}</option>`).join('')
-        + `</select>`;
-
-    $('.page-title .title-area').append(html);
-
-    $('#custom-master-type-select').on('change', function() {
-        let val = $(this).val();
-        if (val && val !== frm.doc.custom_select_master) {
-            frm.set_value('custom_select_master', val);
-            frm.refresh_field('custom_select_master');
-        }
-    });
-}
 
 // --- Label Update Logic (only change heading in new mode) ---
 function updateItemLabels(frm) {
-    let masterLabel = ( $('#custom-master-type-select').val() || frm.doc.custom_select_master || "Item").trim();
+    let masterLabel = (frm.doc.custom_select_master || "Item").trim();
     let wordBoundaryRegex = /\bItem\b/gi;
 
     isMachineOrSpareParts = ['Machines', 'Spare Parts'].includes(masterLabel);
@@ -376,10 +317,6 @@ function updateItemLabels(frm) {
     
 }
 
-// --- SPA safety: Remove injected dropdown on route change ---
-frappe.router.on('change', () => {
-    $('#custom-master-type-select').remove();
-});
 
 function machinesAndSparePartsChanges(frm)
 {
@@ -475,10 +412,10 @@ function filterCustomSelectMasterOptionsBasedOnRole(frm) {
     }
 
     if (allowed_options.length > 0) {
-        updateInjectedDropdown(allowed_options);
-    } else {
-        // No match: show all
-     
+        // Update the form field options instead of header dropdown
+        const options = allowed_options.join('\n');
+        frm.set_df_property('custom_select_master', 'options', options);
+        frm.refresh_field('custom_select_master');
     }
 
     updateItemLabels(frm);
@@ -486,22 +423,6 @@ function filterCustomSelectMasterOptionsBasedOnRole(frm) {
     
 }
 
-function updateInjectedDropdown(options) {
-    const $dropdown = $('#custom-master-type-select');
-    const $dropdownOld = $('#custom_select_master');
-
-
-    if (!$dropdown.length) return;
-
-    const currentVal = $dropdown.val();
-
-    let html = options.map(opt => {
-        const selected = (opt === currentVal) ? ' selected' : '';
-        return `<option value="${opt}"${selected}>${opt}</option>`;
-    }).join('');
-
-    $dropdown.html(html);
-}
 
 function setItemMasterOptions(frm){
     console.log("Getting Item Master from the constants")
