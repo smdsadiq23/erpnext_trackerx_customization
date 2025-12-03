@@ -268,6 +268,80 @@ def get_item_fabric_details(item_code):
             "construction_type": ''
         }
 
+def get_business_unit_details(grn_reference):
+    """Fetch business unit details from GRN and related doctypes"""
+    if not grn_reference:
+        return {}
+
+    try:
+        # Get GRN document
+        grn_doc = frappe.get_doc("Goods Receipt Note", grn_reference)
+
+        # Initialize response
+        bu_details = {
+            "business_unit_code": "",
+            "business_unit_name": "",
+            "strategic_business_unit_code": "",
+            "strategic_business_unit_name": "",
+            "factory_business_unit_code": "",
+            "factory_business_unit_name": ""
+        }
+
+        # Get Company (Business Unit) details
+        if grn_doc.company:
+            try:
+                company_doc = frappe.get_doc("Company", grn_doc.company)
+                bu_details.update({
+                    "business_unit_code": getattr(company_doc, 'abbr', '') or grn_doc.company,
+                    "business_unit_name": getattr(company_doc, 'company_name', '') or grn_doc.company
+                })
+            except Exception:
+                bu_details.update({
+                    "business_unit_code": grn_doc.company,
+                    "business_unit_name": grn_doc.company
+                })
+
+        # Get Strategic Business Unit details
+        if grn_doc.strategic_business_unit:
+            try:
+                sbu_doc = frappe.get_doc("Strategic Business Unit", grn_doc.strategic_business_unit)
+                bu_details.update({
+                    "strategic_business_unit_code": getattr(sbu_doc, 'sbu_code', '') or '',
+                    "strategic_business_unit_name": getattr(sbu_doc, 'sbu_name', '') or grn_doc.strategic_business_unit
+                })
+            except Exception:
+                bu_details.update({
+                    "strategic_business_unit_code": "",
+                    "strategic_business_unit_name": grn_doc.strategic_business_unit
+                })
+
+        # Get Factory Business Unit details
+        if grn_doc.factory_business_unit:
+            try:
+                fbu_doc = frappe.get_doc("Factory Business Unit", grn_doc.factory_business_unit)
+                bu_details.update({
+                    "factory_business_unit_code": getattr(fbu_doc, 'factory_code', '') or '',
+                    "factory_business_unit_name": getattr(fbu_doc, 'factory_name', '') or grn_doc.factory_business_unit
+                })
+            except Exception:
+                bu_details.update({
+                    "factory_business_unit_code": "",
+                    "factory_business_unit_name": grn_doc.factory_business_unit
+                })
+
+        return bu_details
+
+    except Exception as e:
+        frappe.log_error(f"Error fetching business unit details for GRN {grn_reference}: {str(e)}")
+        return {
+            "business_unit_code": "",
+            "business_unit_name": "",
+            "strategic_business_unit_code": "",
+            "strategic_business_unit_name": "",
+            "factory_business_unit_code": "",
+            "factory_business_unit_name": ""
+        }
+
 @frappe.whitelist()
 def get_inspection_details(inspection_id=None):
     """Get complete inspection details for mobile app"""
@@ -300,6 +374,9 @@ def get_inspection_details(inspection_id=None):
 
         # Get fabric details from item master
         fabric_details = get_item_fabric_details(inspection.item_code)
+
+        # Get business unit details from GRN
+        business_unit_details = get_business_unit_details(inspection.grn_reference)
 
         # Build response data
         response_data = {
@@ -343,6 +420,13 @@ def get_inspection_details(inspection_id=None):
                     getattr(inspection, 'unit_of_measure', None),
                     inspection.total_rolls
                 ),
+                # New business unit fields from GRN
+                "business_unit_code": business_unit_details.get("business_unit_code", ""),
+                "business_unit_name": business_unit_details.get("business_unit_name", ""),
+                "strategic_business_unit_code": business_unit_details.get("strategic_business_unit_code", ""),
+                "strategic_business_unit_name": business_unit_details.get("strategic_business_unit_name", ""),
+                "factory_business_unit_code": business_unit_details.get("factory_business_unit_code", ""),
+                "factory_business_unit_name": business_unit_details.get("factory_business_unit_name", ""),
                 # New fabric-specific fields from Item master
                 "gsm": fabric_details.get("gsm", ""),
                 "dia": fabric_details.get("dia", 0.0),
