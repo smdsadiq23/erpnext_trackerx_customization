@@ -1,3 +1,4 @@
+import frappe
 """
 Configuration file for customizing mobile form and list views per doctype
 """
@@ -177,3 +178,41 @@ def get_field_mobile_config(fieldname: str, fieldtype: str, config: Dict, field:
         mobile_config["ui_props"] = {}
     
     return mobile_config
+
+
+def get_hide_settings(doctype: str) -> Dict:
+    """
+    Get hide settings for a doctype from Mobile Meta Layout
+    
+    Args:
+        doctype (str): Document type name
+    
+    Returns:
+        dict: Dictionary with keys 'tabs', 'sections', 'fields' containing sets of hidden items
+    """
+    try:
+        hide_settings = {
+            "tabs": set(),
+            "sections": set(),
+            "fields": set()
+        }
+        
+        # Check if hide settings exist for this doctype
+        if frappe.db.exists("Mobile Meta Layout", doctype):
+            doc = frappe.get_doc("Mobile Meta Layout", doctype)
+            
+            for item in doc.hidden_items:
+                if item.enabled:  # Only include if hide is enabled
+                    item_type = item.item_type.lower()
+                    if item_type == "tab":
+                        hide_settings["tabs"].add(item.item_name)
+                    elif item_type == "section":
+                        hide_settings["sections"].add(item.item_name)
+                    elif item_type == "field":
+                        hide_settings["fields"].add(item.item_name)
+        
+        return hide_settings
+    
+    except Exception as e:
+        frappe.log_error(f"Error getting hide settings for {doctype}: {str(e)}", "Mobile Meta Layout Error")
+        return {"tabs": set(), "sections": set(), "fields": set()}
