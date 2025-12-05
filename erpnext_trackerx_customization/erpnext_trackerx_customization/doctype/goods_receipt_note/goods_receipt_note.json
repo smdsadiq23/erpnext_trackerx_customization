@@ -1403,8 +1403,7 @@
    "fieldname": "factory_business_unit",
    "fieldtype": "Link",
    "label": "Factory Business Unit",
-   "options": "Factory Business Unit",
-   "reqd": 1
+   "options": "Factory Business Unit"
   },
   {
    "fieldname": "total_received_quantity",
@@ -1416,7 +1415,7 @@
  "icon": "fa fa-truck",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-11-20 16:01:20.376840",
+ "modified": "2025-12-05 10:53:02.726210",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Note",
