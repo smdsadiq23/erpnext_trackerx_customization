@@ -13,7 +13,7 @@ import math
 # Whitelist of allowed doctypes for security
 ALLOWED_DOCTYPES = {
     'Purchase Receipt', 'Goods Receipt Note', 'Purchase Order', 
-    'Material Request', 'Stock Entry', 'Delivery Note', 'Sales Invoice', 'Wh Material Picking'
+    'Material Request', 'Stock Entry', 'Delivery Note', 'Sales Invoice', 'Wh Material Picking', "Warehouse"
 }
 
 # Allowed sort fields to prevent injection
