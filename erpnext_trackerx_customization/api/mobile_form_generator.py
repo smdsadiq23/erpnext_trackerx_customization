@@ -3,7 +3,7 @@ from frappe import _
 from frappe.utils import getdate, nowdate, now_datetime
 import json
 from typing import Dict, List, Optional, Any
-from .mobile_view_config import get_view_config, get_field_mobile_config
+from .mobile_view_config import get_view_config, get_field_mobile_config, get_hide_settings
 
 @frappe.whitelist()
 def get_mobile_view(doctype: str, action: str = "form", docname: Optional[str] = None):
@@ -126,58 +126,94 @@ def _build_tabs_from_meta(meta, config: Dict, doc: Optional[Any] = None) -> List
     tabs = []
     tab_config = config.get("tabs", {})
     
+    # Get hide settings
+    hide_settings = get_hide_settings(meta.name)
+    
+    # Store section/tab fieldnames and labels separately
+    section_info = {}  # {fieldname: label}
+    tab_info = {}      # {fieldname: label}
+    
     # Get all fields grouped by section
     fields_by_section = {}
-    current_tab = None
-    current_section = None
+    current_tab_fieldname = None
+    current_tab_label = None
+    current_section_fieldname = None
+    current_section_label = None
     
     for field in meta.fields:
         # Skip system fields
         if field.fieldtype in ["Section Break", "Column Break", "Tab Break"]:
             if field.fieldtype == "Tab Break":
-                current_tab = field.label or field.fieldname
-                current_section = None
+                current_tab_fieldname = field.fieldname
+                current_tab_label = field.label or field.fieldname
+                tab_info[field.fieldname] = current_tab_label
+                current_section_fieldname = None
+                current_section_label = None
             elif field.fieldtype == "Section Break":
-                current_section = field.label or field.fieldname
+                current_section_fieldname = field.fieldname
+                current_section_label = field.label or field.fieldname
+                section_info[field.fieldname] = current_section_label
             continue
         
         # Skip hidden fields unless configured
         if field.hidden and not config.get("include_hidden_fields", False):
             continue
         
-        # Determine tab and section
-        tab_name = current_tab or "details"
-        section_name = current_section or "basic_info"
+        # Skip if field is in hide settings
+        if field.fieldname in hide_settings["fields"]:
+            continue
         
-        if tab_name not in fields_by_section:
-            fields_by_section[tab_name] = {}
-        if section_name not in fields_by_section[tab_name]:
-            fields_by_section[tab_name][section_name] = []
+        # Determine tab and section - use fieldname for identification
+        tab_fieldname = current_tab_fieldname or "details"
+        section_fieldname = current_section_fieldname or "basic_info"
+        
+        # Skip if tab is hidden (check by fieldname)
+        if tab_fieldname in hide_settings["tabs"]:
+            continue
+        
+        # Skip if section is hidden (check by fieldname)
+        if section_fieldname in hide_settings["sections"]:
+            continue
+        
+        if tab_fieldname not in fields_by_section:
+            fields_by_section[tab_fieldname] = {}
+        if section_fieldname not in fields_by_section[tab_fieldname]:
+            fields_by_section[tab_fieldname][section_fieldname] = []
         
         # Build field config
         field_config = _build_field_config(field, meta, config, doc)
         if field_config:
-            fields_by_section[tab_name][section_name].append(field_config)
+            fields_by_section[tab_fieldname][section_fieldname].append(field_config)
     
     # Convert to tabs structure
     tab_idx = 0
-    for tab_name, sections in fields_by_section.items():
+    for tab_fieldname, sections in fields_by_section.items():
+        # Skip hidden tabs
+        if tab_fieldname in hide_settings["tabs"]:
+            continue
+            
         tab_id = f"tab_{tab_idx}"
-        tab_config_data = tab_config.get(tab_name, {})
+        tab_label = tab_info.get(tab_fieldname, tab_fieldname)
+        tab_config_data = tab_config.get(tab_fieldname, {}) or tab_config.get(tab_label, {})
         
         sections_list = []
         section_idx = 0
-        for section_name, fields in sections.items():
+        for section_fieldname, fields in sections.items():
+            # Skip hidden sections
+            if section_fieldname in hide_settings["sections"]:
+                continue
+                
             if not fields:  # Skip empty sections
                 continue
             
             section_id = f"section_{section_idx}"
-            section_config = tab_config_data.get("sections", {}).get(section_name, {})
+            section_label = section_info.get(section_fieldname, section_fieldname)
+            section_config = tab_config_data.get("sections", {}).get(section_fieldname, {}) or tab_config_data.get("sections", {}).get(section_label, {})
             
             sections_list.append({
                 "id": section_id,
-                "name": section_name.lower().replace(" ", "_"),
-                "title": section_config.get("title", section_name),
+                "name": section_fieldname.lower().replace(" ", "_"),  # Use fieldname for name
+                "title": section_config.get("title", section_label),  # Use label for title
                 "collapsible": section_config.get("collapsible", False),
                 "collapsed": section_config.get("collapsed", False),
                 "fields": fields
@@ -187,8 +223,8 @@ def _build_tabs_from_meta(meta, config: Dict, doc: Optional[Any] = None) -> List
         if sections_list:  # Only add tab if it has sections
             tabs.append({
                 "id": tab_id,
-                "name": tab_name.lower().replace(" ", "_"),
-                "title": tab_config_data.get("title", tab_name),
+                "name": tab_fieldname.lower().replace(" ", "_"),  # Use fieldname for name
+                "title": tab_config_data.get("title", tab_label),  # Use label for title
                 "active": tab_idx == 0,
                 "sections": sections_list
             })
