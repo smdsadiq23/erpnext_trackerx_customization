@@ -17,25 +17,41 @@ class IntelligentRollPicker:
 
     def auto_pick_rolls(self):
         """
-        Automatically pick rolls for inspection based on diversity and AQL requirements
+        Automatically pick rolls for inspection based on inspection type
         Returns list of roll names that should be marked as autopicked
+
+        Supports:
+        - AQL Based: Uses intelligent diversity-based sampling
+        - 100% Inspection: Picks ALL rolls
+        - Custom Sampling: Picks based on sampling percentage or required sample count
         """
         if not self.inspection_doc.fabric_rolls_tab:
             return []
 
-        if self.inspection_doc.inspection_type != 'AQL Based':
-            return []
+        inspection_type = self.inspection_doc.inspection_type
 
-        # If sample size >= total rolls, pick all rolls
-        if self.required_sample_rolls >= self.total_rolls:
-            return [roll.name for roll in self.inspection_doc.fabric_rolls_tab]
+        if inspection_type == 'AQL Based':
+            # Existing AQL logic with intelligent sampling
+            if self.required_sample_rolls >= self.total_rolls:
+                selected_rolls = [roll.name for roll in self.inspection_doc.fabric_rolls_tab]
+            else:
+                selected_rolls = self._diversity_based_selection()
 
-        # Use diversity-based stratified sampling
-        selected_rolls = self._diversity_based_selection()
+        elif inspection_type == '100% Inspection':
+            # Pick ALL rolls for 100% inspection
+            selected_rolls = [roll.name for roll in self.inspection_doc.fabric_rolls_tab]
+
+        elif inspection_type == 'Custom Sampling':
+            # Pick based on custom sampling configuration
+            selected_rolls = self._custom_sampling_selection()
+
+        else:
+            # Fallback for any other inspection type
+            selected_rolls = []
 
         # Log the autopicking decision
         frappe.logger().info(f"Auto-picked {len(selected_rolls)} rolls out of {self.total_rolls} "
-                           f"for inspection {self.inspection_doc.name}")
+                           f"for {inspection_type} inspection {self.inspection_doc.name}")
 
         return selected_rolls
 
@@ -89,6 +105,45 @@ class IntelligentRollPicker:
                 selected_rolls.extend([roll.name for roll in additional])
 
         return selected_rolls[:self.required_sample_rolls]
+
+    def _custom_sampling_selection(self):
+        """
+        Select rolls for custom sampling based on sampling percentage or sample count
+        Uses intelligent sampling for representative quality assessment
+        """
+        rolls = list(self.inspection_doc.fabric_rolls_tab)
+
+        # If no rolls, return empty
+        if not rolls:
+            return []
+
+        # Check if we have a sampling percentage defined
+        sampling_percentage = flt(getattr(self.inspection_doc, 'sampling_percentage', 0))
+
+        # Calculate required samples based on percentage or use required_sample_rolls
+        if sampling_percentage > 0:
+            # Calculate based on percentage
+            calculated_samples = max(1, round((sampling_percentage / 100) * self.total_rolls))
+            required_samples = min(calculated_samples, self.total_rolls)
+        else:
+            # Use required_sample_rolls field
+            required_samples = min(self.required_sample_rolls, self.total_rolls)
+
+        # If sample count >= total rolls, pick all
+        if required_samples >= self.total_rolls:
+            return [roll.name for roll in rolls]
+
+        # Use diversity-based selection for representative sampling
+        # Temporarily update required_sample_rolls for the selection logic
+        original_required = self.required_sample_rolls
+        self.required_sample_rolls = required_samples
+
+        selected_rolls = self._diversity_based_selection()
+
+        # Restore original value
+        self.required_sample_rolls = original_required
+
+        return selected_rolls
 
     def _create_strata(self, rolls):
         """
@@ -192,12 +247,16 @@ def auto_pick_rolls_for_inspection(inspection_id):
         }
 
 
-def trigger_autopick_on_aql_change(inspection_doc):
+def trigger_autopick_on_inspection_change(inspection_doc):
     """
-    Trigger auto-picking when AQL configuration changes
+    Trigger auto-picking when inspection configuration changes
+    Works for AQL Based, 100% Inspection, and Custom Sampling
     Called from Fabric Inspection validate method
     """
-    if inspection_doc.inspection_type == 'AQL Based' and inspection_doc.required_sample_rolls:
+    # Check if inspection type supports auto-picking
+    supported_types = ['AQL Based', '100% Inspection', 'Custom Sampling']
+
+    if inspection_doc.inspection_type in supported_types:
         picker = IntelligentRollPicker(inspection_doc)
         selected_roll_names = picker.auto_pick_rolls()
 
@@ -211,4 +270,11 @@ def trigger_autopick_on_aql_change(inspection_doc):
                 roll.autopicked = 1
 
         frappe.logger().info(f"Auto-picked {len(selected_roll_names)} rolls "
-                           f"for inspection {inspection_doc.name}")
+                           f"for {inspection_doc.inspection_type} inspection {inspection_doc.name}")
+
+# Backward compatibility - keep old function name as alias
+def trigger_autopick_on_aql_change(inspection_doc):
+    """
+    Backward compatibility function - redirects to new function
+    """
+    return trigger_autopick_on_inspection_change(inspection_doc)

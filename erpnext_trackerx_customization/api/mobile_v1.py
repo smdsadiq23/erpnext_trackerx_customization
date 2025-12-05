@@ -7,6 +7,30 @@ import json
 # UTILITY FUNCTIONS
 # ===========================
 
+def get_effective_unit_of_measure(inspection_uom, item_code):
+    """
+    Get effective UOM with fallback to Item master when inspection UOM is None
+
+    Args:
+        inspection_uom (str): UOM from inspection record
+        item_code (str): Item code to fetch UOM from
+
+    Returns:
+        str: Effective unit of measure
+    """
+    if inspection_uom and str(inspection_uom).strip():
+        return str(inspection_uom).strip()
+
+    # Fallback to Item master stock UOM
+    if item_code:
+        try:
+            item_uom = frappe.db.get_value("Item", item_code, "stock_uom")
+            return item_uom if item_uom else ""
+        except Exception:
+            pass
+
+    return ""
+
 def format_total_rolls_display(total_quantity, unit_of_measure, total_rolls):
     """
     Format total rolls display as: "500kg (1 Roll)" or "1500.5 Meter (3 Rolls)"
@@ -202,7 +226,10 @@ def get_inspection_list(status=None, search=None, page=1, limit=20, sort_by="cre
         for inspection in inspections:
             inspection['total_rolls'] = format_total_rolls_display(
                 inspection.get('total_quantity'),
-                inspection.get('unit_of_measure'),
+                get_effective_unit_of_measure(
+                    inspection.get('unit_of_measure'),
+                    inspection.get('item_code')
+                ),
                 inspection.get('total_rolls')
             )
 
@@ -255,6 +282,7 @@ def get_item_fabric_details(item_code):
             "gsm": getattr(item_doc, 'custom_gsm', '') or '',
             "dia": flt(getattr(item_doc, 'custom_dia', 0)) or 0.0,
             "width": getattr(item_doc, 'custom_width', '') or '',
+            "shade": getattr(item_doc, 'custom_yarn_shade', '') or '',
             "material_composition": getattr(item_doc, 'custom_material_composition', '') or '',
             "construction_type": construction_type_name
         }
@@ -264,6 +292,7 @@ def get_item_fabric_details(item_code):
             "gsm": '',
             "dia": 0.0,
             "width": '',
+            "shade": '',
             "material_composition": '',
             "construction_type": ''
         }
@@ -417,7 +446,10 @@ def get_inspection_details(inspection_id=None):
                 "total_quantity": flt(inspection.total_quantity or 0),
                 "total_rolls": format_total_rolls_display(
                     inspection.total_quantity,
-                    getattr(inspection, 'unit_of_measure', None),
+                    get_effective_unit_of_measure(
+                        getattr(inspection, 'unit_of_measure', None),
+                        inspection.item_code
+                    ),
                     inspection.total_rolls
                 ),
                 # New business unit fields from GRN
@@ -1276,6 +1308,9 @@ def get_roll_details(inspection_id, roll_id=None):
                 # Convert to proper objects
                 roll.defects = [frappe._dict(d) for d in defects_data]
 
+        # Get fabric details from Item master for consistent actual values
+        fabric_details = get_item_fabric_details(inspection.item_code)
+
         # Get specific roll or all rolls
         if roll_id:
             # Find specific roll
@@ -1290,7 +1325,7 @@ def get_roll_details(inspection_id, roll_id=None):
 
                 # Try matching by both name and roll_number
                 if roll.name == roll_id or getattr(roll, 'roll_number', '') == roll_id:
-                    roll_data = build_detailed_roll_info(roll)
+                    roll_data = build_detailed_roll_info(roll, fabric_details)
                     break
 
             if not roll_data:
@@ -1378,6 +1413,9 @@ def save_roll_details(inspection_id=None, roll_id=None, roll_data=None):
         # Check permissions
         if not inspection.has_permission("write"):
             frappe.throw(_("You do not have permission to modify this inspection"))
+
+        # Get fabric details from Item master for consistent actual values
+        fabric_details = get_item_fabric_details(inspection.item_code)
 
         # Find the roll item in the parent's child table
         roll_item = None
@@ -1570,7 +1608,7 @@ def save_roll_details(inspection_id=None, roll_id=None, roll_data=None):
         return {
             "success": True,
             "message": "Roll details saved successfully",
-            "data": build_detailed_roll_info(reloaded_roll)
+            "data": build_detailed_roll_info(reloaded_roll, fabric_details)
         }
 
     except Exception as e:
@@ -2410,8 +2448,11 @@ def create_purchase_receipt_mobile(inspection_doc):
 # ROLL HELPER FUNCTIONS
 # ===========================
 
-def build_detailed_roll_info(roll):
+def build_detailed_roll_info(roll, fabric_details=None):
     """Build detailed roll information for API response"""
+    # Use fabric details from Item master if available, otherwise fall back to roll values
+    fabric_details = fabric_details or {}
+
     return {
         "roll_id": roll.name,
         "roll_number": roll.roll_number,
@@ -2427,13 +2468,13 @@ def build_detailed_roll_info(roll):
         # Roll information fields
         "diameter_inches": flt(roll.diameter_inches or 0),
         "inspected_gsm": flt(roll.inspected_gsm or 0),
-        "actual_gsm": flt(roll.actual_gsm or 0),
+        "actual_gsm": fabric_details.get("gsm") or flt(roll.actual_gsm or 0),
         "inspected_length_m": flt(roll.inspected_length_m or 0),
-        "actual_length_m": flt(roll.actual_length_m or 0),
+        "actual_length_m": fabric_details.get("dia") or flt(roll.actual_length_m or 0),
         "inspected_width_m": flt(roll.inspected_width_m or 0),
-        "actual_width_m": flt(roll.actual_width_m or 0),
+        "actual_width_m": fabric_details.get("width") or flt(roll.actual_width_m or 0),
         "inspected_shade": roll.inspected_shade or "",
-        "actual_shade": roll.actual_shade or "",
+        "actual_shade": fabric_details.get("shade") or roll.actual_shade or "",
 
         # Calculated fields
         "total_size_inches": flt(roll.total_size_inches or 0),
@@ -2657,11 +2698,12 @@ def force_autopick_update(inspection_id=None):
         # Get inspection
         inspection = frappe.get_doc("Fabric Inspection", inspection_id)
 
-        # Check if it's AQL based and has sample rolls configured
-        if inspection.inspection_type != 'AQL Based' or not inspection.required_sample_rolls:
+        # Check if inspection type supports auto-picking
+        supported_types = ['AQL Based', '100% Inspection', 'Custom Sampling']
+        if inspection.inspection_type not in supported_types:
             return {
                 "success": False,
-                "message": f"Inspection {inspection_id} is not AQL Based or missing sample roll configuration"
+                "message": f"Inspection {inspection_id} has inspection type '{inspection.inspection_type}' which doesn't support auto-picking. Supported types: {', '.join(supported_types)}"
             }
 
         # Import and use the roll picker
@@ -2684,7 +2726,7 @@ def force_autopick_update(inspection_id=None):
 
         return {
             "success": True,
-            "message": f"Force updated autopick flags for {inspection_id}",
+            "message": f"Updated autopick flags for {inspection.inspection_type} inspection {inspection_id}",
             "data": {
                 "inspection_id": inspection_id,
                 "total_rolls": len(inspection.fabric_rolls_tab),
