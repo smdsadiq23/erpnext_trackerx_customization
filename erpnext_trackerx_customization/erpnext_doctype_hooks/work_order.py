@@ -98,11 +98,77 @@ def calculate_total_qty(doc):
 
 
 def validate_work_order(doc):
-    for row in doc.get('required_items') or []:
-        if row.get('available_qty_at_source_warehouse') is None:
-            row.available_qty_at_source_warehouse = 0.0
-        if row.get('available_qty_at_wip_warehouse') is None:
-            row.available_qty_at_wip_warehouse = 0.0    
+    """
+    Defensive validation for Work Order:
+
+    - Normalize None to 0.0 for available qty fields
+    - Ensure available qty fields are non-negative numbers
+    - Optionally ensure required_qty <= total available qty
+    - Clean up bad warehouse values like 0 -> None / ""
+    """
+    for row in doc.get("required_items") or []:
+        # --- 1) Normalize and validate available qty fields ---
+        for field in ("available_qty_at_source_warehouse", "available_qty_at_wip_warehouse"):
+            raw_val = row.get(field)
+
+            # Treat None / empty string as 0
+            if raw_val in (None, ""):
+                val = 0.0
+            else:
+                val = flt(raw_val)
+
+            # Disallow negative values
+            if val < 0:
+                frappe.throw(
+                    _("Row #{0}: {1} cannot be negative (value: {2}) for item {3}.").format(
+                        row.idx,
+                        frappe.bold(field),
+                        val,
+                        frappe.bold(row.item_code or row.name)
+                    )
+                )
+
+            setattr(row, field, val)
+
+        # --- 2) Clean up bad warehouse values like 0 (int) ---
+        # In your JSON we saw `"source_warehouse": 0`, which is not a valid Link.
+        if getattr(row, "source_warehouse", None) == 0:
+            row.source_warehouse = None
+        if getattr(row, "wip_warehouse", None) == 0:
+            row.wip_warehouse = None
+
+        # # --- 3) Business rule: required qty vs available qty (optional but recommended) ---
+        # required_qty = flt(row.get("required_qty"))
+        # total_available = flt(row.available_qty_at_source_warehouse) + flt(row.available_qty_at_wip_warehouse)
+
+        # # If you want hard validation (no over-allocation), keep this block.
+        # # If you only want a warning, you can use frappe.msgprint instead.
+        # if required_qty > total_available and required_qty > 0:
+        #     frappe.throw(
+        #         _(
+        #             "Row #{0}: Required Qty {1} for item {2} "
+        #             "cannot be greater than total available qty ({3}) "
+        #             "at Source + WIP warehouses."
+        #         ).format(
+        #             row.idx,
+        #             frappe.bold(required_qty),
+        #             frappe.bold(row.item_code or row.name),
+        #             frappe.bold(total_available),
+        #         )
+        #     )
+
+        # # --- 4) At least one warehouse must be set if required_qty > 0 ---
+        # if required_qty > 0 and not (row.get("source_warehouse") or row.get("wip_warehouse")):
+        #     frappe.throw(
+        #         _(
+        #             "Row #{0}: Either Source Warehouse or WIP Warehouse must be set "
+        #             "for item {1} when Required Qty is greater than 0."
+        #         ).format(
+        #             row.idx,
+        #             frappe.bold(row.item_code or row.name),
+        #         )
+        #     )
+ 
 
 def validate_and_update_sales_order_items(doc):
     if not doc.custom_work_order_line_items:
