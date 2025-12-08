@@ -77,9 +77,10 @@ frappe.ui.form.on('Work Order', {
                         child.line_item_no = item.custom_lineitem;
                         child.size = item.custom_size;
                         child.qty = item.qty;
-                        child.already_allocated_qty = item.custom_allocated_qty_for_work_order;
-                        child.pending_qty = item.custom_pending_qty_for_work_order;
-                        child.work_order_allocated_qty = 1.0;
+                        child.already_allocated_qty = item.custom_allocated_qty_for_work_order;                        
+                        child.work_order_allocated_qty = item.custom_pending_qty_for_work_order;
+                        //child.pending_qty = item.custom_pending_qty_for_work_order;
+                        child.pending_qty = 0;
                         child.sales_order = item.parent;
                     } else {
                         // Update existing row with fresh data
@@ -89,7 +90,8 @@ frappe.ui.form.on('Work Order', {
                         existing_row.size = item.custom_size;
                         existing_row.qty = item.qty;
                         existing_row.already_allocated_qty = item.custom_allocated_qty_for_work_order;
-                        existing_row.pending_qty = item.custom_pending_qty_for_work_order;
+                        //existing_row.pending_qty = item.custom_pending_qty_for_work_order;
+                        existing_row.pending_qty = i0;
                         existing_row.sales_order = item.parent;
                     }
                 });
