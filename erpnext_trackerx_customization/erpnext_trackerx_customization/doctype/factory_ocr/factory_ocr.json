@@ -13,16 +13,17 @@
   "table_ocn_details",
   "totals_section",
   "total_order_qty",
-  "total_rejected_garments",
+  "total_good_garments",
+  "cut_to_ship_of_order",
   "column_break_jbzz",
   "total_cut_qty",
-  "total_rejected_panels",
+  "total_rejected_garments",
   "column_break_dmzw",
-  "total_ship_qty",
-  "cumulative_total",
+  "total_pack_qty",
+  "total_rejected_panels",
   "column_break_caxu",
-  "total_good_garments",
-  "cut_to_ship_of_order"
+  "total_ship_qty",
+  "cumulative_total"
  ],
  "fields": [
   {
@@ -129,13 +130,19 @@
    "fieldname": "table_ocn_details",
    "fieldtype": "Table",
    "options": "Factory OCR Item"
+  },
+  {
+   "fieldname": "total_pack_qty",
+   "fieldtype": "Int",
+   "label": "Total Pack Qty",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-10-10 10:39:25.191833",
+ "modified": "2025-12-09 16:29:28.106499",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Factory OCR",
@@ -149,7 +156,33 @@
    "print": 1,
    "read": 1,
    "report": 1,
+   "role": "Custom Admin",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
    "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "New Admin",
    "share": 1,
    "submit": 1,
    "write": 1
