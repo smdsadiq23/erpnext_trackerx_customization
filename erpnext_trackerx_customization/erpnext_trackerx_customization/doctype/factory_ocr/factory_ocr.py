@@ -97,14 +97,14 @@ def fetch_sales_order_items_for_factory_ocr(sales_order):
             color = d.color or ""
             cut_map[f"{d.style}||{color}"] = d.cut_qty
 
-    # 3. Fetch SHIP quantity per (style, color) from Tracking
-    ship_map = {}
+    # 3. Fetch Pack quantity per (style, color) from Tracking
+    pack_map = {}
     if unique_styles:
-        ship_data = frappe.db.sql("""
+        pack_data = frappe.db.sql("""
             SELECT 
                 itm.name AS item_code,
                 itm.custom_colour_name AS color,
-                COALESCE(SUM(pi.quantity), 0) AS ship_qty
+                COALESCE(SUM(pi.quantity), 0) AS pack_qty
             FROM `tabTracking Order Bundle Configuration` tbc
             INNER JOIN `tabTracking Order` tor
                 ON tor.name = tbc.parent
@@ -125,9 +125,9 @@ def fetch_sales_order_items_for_factory_ocr(sales_order):
             WHERE tbc.sales_order = %s
             GROUP BY itm.name, itm.custom_colour_name
         """, (sales_order,), as_dict=1)
-        for d in ship_data:
+        for d in pack_data:
             color = d.color or ""
-            ship_map[f"{d.item_code}||{color}"] = d.ship_qty
+            pack_map[f"{d.item_code}||{color}"] = d.pack_qty
 
     # 4. Fetch REJECTION count per (style, color) — MAIN COMPONENT ONLY (garments)
     rejection_garments_map = {}
@@ -206,18 +206,18 @@ def fetch_sales_order_items_for_factory_ocr(sales_order):
         key = f"{item_code}||{color}"
 
         cut_qty = cut_map.get(key, 0.0)
-        ship_qty = ship_map.get(key, 0.0)
+        pack_qty = pack_map.get(key, 0.0)
         rejected_garments = float(rejection_garments_map.get(key, 0))
         # rejected_panels = float(rejection_panels_map.get(key, 0))
 
-        cut_to_ship_percent = (ship_qty / cut_qty * 100) if cut_qty else 0.0
+        cut_to_ship_percent = (pack_qty / cut_qty * 100) if cut_qty else 0.0
 
         result.append({
             "style": item_style_map.get(item_code) or "",
             "colour": color,
             "order_quantity": order_qty,
             "cut_quantity": frappe.utils.flt(cut_qty, 2),
-            "ship_quantity": frappe.utils.flt(ship_qty, 2),
+            "pack_quantity": frappe.utils.flt(pack_qty, 2),
             "rejected_garments": frappe.utils.flt(rejected_garments, 2),
             # "rejected_panels": frappe.utils.flt(rejected_panels, 2),
             "cut_to_ship": frappe.utils.flt(cut_to_ship_percent, 2)

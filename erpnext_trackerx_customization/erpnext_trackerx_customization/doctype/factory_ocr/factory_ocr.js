@@ -29,7 +29,7 @@ frappe.ui.form.on('Factory OCR', {
                             child.colour = row.colour || '';
                             child.order_quantity = row.order_quantity;
                             child.cut_quantity = row.cut_quantity || 0;
-                            child.ship_quantity = row.ship_quantity || 0; 
+                            child.pack_quantity = row.pack_quantity || 0; 
                             child.rejected_garments = row.rejected_garments || 0;
                             // child.rejected_panels = row.rejected_panels || 0;
                             child.cut_to_ship = row.cut_to_ship || 0;
@@ -56,6 +56,9 @@ frappe.ui.form.on('Factory OCR Item', {
         calculate_totals(frm);
     },
     cut_quantity: function(frm, cdt, cdn) {
+        calculate_totals(frm);
+    },
+    pack_quantity: function(frm, cdt, cdn) {
         calculate_totals(frm);
     },
     ship_quantity: function(frm, cdt, cdn) {
@@ -94,6 +97,7 @@ function set_ocn_query(frm) {
 function calculate_totals(frm) {
     let total_order_qty = 0;
     let total_cut_qty = 0;
+    let total_pack_qty = 0;
     let total_ship_qty = 0;
     let total_good_garments = 0;
     let total_rejected_garments = 0;
@@ -102,8 +106,9 @@ function calculate_totals(frm) {
     frm.doc.table_ocn_details.forEach(row => {
         total_order_qty += row.order_quantity || 0;
         total_cut_qty += row.cut_quantity || 0;
+        total_pack_qty += row.pack_quantity || 0;
         total_ship_qty += row.ship_quantity || 0;
-        total_good_garments += row.good_garments || 0; // ❗ Wait — you didn't fetch this!
+        total_good_garments += row.good_garments || 0;
         total_rejected_garments += row.rejected_garments || 0;
         total_rejected_panels += row.rejected_panels || 0;
     });
@@ -111,6 +116,7 @@ function calculate_totals(frm) {
     // ✅ Set parent fields
     frm.set_value('total_order_qty', total_order_qty);
     frm.set_value('total_cut_qty', total_cut_qty);
+    frm.set_value('total_pack_qty', total_pack_qty);
     frm.set_value('total_ship_qty', total_ship_qty);
     frm.set_value('total_good_garments', total_good_garments);
     frm.set_value('total_rejected_garments', total_rejected_garments);
@@ -126,7 +132,7 @@ function calculate_totals(frm) {
 
     // Refresh all fields
     frm.refresh_fields([
-        'total_order_qty', 'total_cut_qty', 'total_ship_qty', 'total_good_garments',
+        'total_order_qty', 'total_cut_qty', 'total_pack_qty', 'total_ship_qty', 'total_good_garments',
         'total_rejected_garments', 'total_rejected_panels', 'cumulative_total', 'cut_to_ship_of_order'
     ]);
 }
@@ -135,6 +141,7 @@ function calculate_totals(frm) {
 function clear_totals(frm) {
     frm.set_value('total_order_qty', 0);
     frm.set_value('total_cut_qty', 0);
+    frm.set_value('total_pack_qty', 0);
     frm.set_value('total_ship_qty', 0);
     frm.set_value('total_good_garments', 0);
     frm.set_value('total_rejected_garments', 0);

@@ -10,6 +10,7 @@
   "colour",
   "order_quantity",
   "cut_quantity",
+  "pack_quantity",
   "ship_quantity",
   "good_garments",
   "rejected_garments",
@@ -85,7 +86,14 @@
    "fieldname": "ship_quantity",
    "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Ship Quantity",
+   "label": "Ship Quantity"
+  },
+  {
+   "columns": 1,
+   "fieldname": "pack_quantity",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Pack Quantity",
    "read_only": 1
   }
  ],
@@ -93,7 +101,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-10-09 11:59:22.893796",
+ "modified": "2025-12-09 16:46:58.163220",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Factory OCR Item",
