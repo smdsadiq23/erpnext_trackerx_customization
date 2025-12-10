@@ -163,7 +163,8 @@ app_include_css = [
     "/assets/erpnext_trackerx_customization/css/production_tv_dashboard.css"
 ]
 app_include_js = [
-    "/assets/erpnext_trackerx_customization/js/process_map.js"
+    "/assets/erpnext_trackerx_customization/js/process_map.js",
+    "/assets/erpnext_trackerx_customization/js/socketio_fix.js"
 ]
 
 
