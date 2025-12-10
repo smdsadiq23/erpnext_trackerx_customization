@@ -21,6 +21,15 @@ frappe.ui.form.on('Work Order', {
     },
 
     refresh: function(frm){
+        // FIX: Disable timeline rendering to prevent version timeline errors
+        if (frm.timeline && frm.timeline.$timeline_items) {
+            try {
+                frm.timeline.$timeline_items.empty();
+            } catch (e) {
+                console.warn('Timeline clearing failed:', e);
+            }
+        }
+
         frm.remove_custom_button('Create Pick List');
         if (frm.doc.docstatus === 1 && frm.doc.status !== "Closed") {
           frm.add_custom_button(__('Create Trims Order'), () => {
