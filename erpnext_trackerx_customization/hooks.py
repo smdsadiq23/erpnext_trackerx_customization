@@ -33,7 +33,7 @@ required_apps = ["erpnext"]
 # ]
 
 
-#Fixtures
+# Fixtures
 fixtures = [
     {
         "dt": "Custom Field",
@@ -124,6 +124,18 @@ fixtures = [
             ]
         ]
     },
+    {
+        "doctype": "Print Format",
+        "filters": [
+            [
+                "name",              
+                "in", 
+                [
+                    "Iridescent GRN Print Format"
+                ]
+             ]
+        ]
+    }    
     # {
     #     "doctype": "Physical Cell Operation",
     #     "filters": [
