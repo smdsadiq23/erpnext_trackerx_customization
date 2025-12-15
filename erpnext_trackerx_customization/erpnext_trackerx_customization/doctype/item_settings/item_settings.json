@@ -7,7 +7,9 @@
  "field_order": [
   "naming_settings_section",
   "enable_custom_item_code",
-  "table_item_code_rule"
+  "table_item_code_rule",
+  "table_item_code_token_rule",
+  "table_item_code_value_map"
  ],
  "fields": [
   {
@@ -25,13 +27,23 @@
    "fieldname": "table_item_code_rule",
    "fieldtype": "Table",
    "options": "Item Code Rule"
+  },
+  {
+   "fieldname": "table_item_code_token_rule",
+   "fieldtype": "Table",
+   "options": "Item Code Token Rule"
+  },
+  {
+   "fieldname": "table_item_code_value_map",
+   "fieldtype": "Table",
+   "options": "Item Code Value Map"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-12-15 17:50:13.095451",
+ "modified": "2025-12-15 18:59:48.742502",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Item Settings",

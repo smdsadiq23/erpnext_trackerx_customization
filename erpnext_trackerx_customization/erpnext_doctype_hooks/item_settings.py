@@ -11,13 +11,11 @@ def _clean(v) -> str:
     return v
 
 def _slug(v: str) -> str:
-    # safe for series key
     v = _clean(v)
     v = re.sub(r"[^A-Za-z0-9]+", "", v)
     return v or "X"
 
 def _get_style_group(doc) -> str:
-    # derived token: {style_group}
     style_master = getattr(doc, "custom_style_master", None) or doc.get("custom_style_master")
     if not style_master:
         return ""
@@ -27,32 +25,122 @@ def _get_style_group(doc) -> str:
     except Exception:
         return ""
 
-def _resolve_token(doc, token: str, prefix: str) -> str:
-    # 1) built-in token
+def _get_doc_value(doc, fieldname: str) -> str:
+    return _clean(getattr(doc, fieldname, None) or doc.get(fieldname))
+
+def _build_token_rules(settings) -> dict:
+    """
+    token_rules[token_name] = {
+      source_field, transform_type, param_1, uppercase
+    }
+    """
+    out = {}
+    for r in (getattr(settings, "table_item_code_token_rule", None) or []):
+        token_name = _clean(getattr(r, "token_name", ""))
+        if not token_name:
+            continue
+        out[token_name] = {
+            "source_field": _clean(getattr(r, "source_field", "")),
+            "transform_type": _clean(getattr(r, "transform_type", "")) or "Direct",
+            "param_1": _clean(getattr(r, "param_1", "")),
+            "uppercase": int(getattr(r, "uppercase", 0)),
+        }
+    return out
+
+def _build_value_map(settings) -> dict:
+    """
+    value_map[token_name][source_value] = shortcode
+    """
+    out = {}
+    for m in (getattr(settings, "table_item_code_value_map", None) or []):
+        token_name = _clean(getattr(m, "token_name", ""))
+        source_value = _clean(getattr(m, "source_value", ""))
+        shortcode = _clean(getattr(m, "shortcode", ""))
+        if not (token_name and source_value and shortcode):
+            continue
+        out.setdefault(token_name, {})[source_value] = shortcode
+    return out
+
+def _apply_transform(raw: str, transform_type: str, param_1: str, uppercase: int, value_map_for_token: dict) -> str:
+    raw = _clean(raw)
+
+    if transform_type == "Direct":
+        val = raw
+
+    elif transform_type == "Slice":
+        try:
+            n = int(param_1 or 0)
+        except Exception:
+            n = 0
+        val = raw[:n] if (raw and n > 0) else ""
+
+    elif transform_type == "Initials":
+        if not raw:
+            val = ""
+        else:
+            words = raw.split()
+            val = "".join(w[0] for w in words if w)
+
+    elif transform_type == "Regex":
+        if not raw or not param_1:
+            val = ""
+        else:
+            m = re.search(param_1, raw)
+            if not m:
+                val = ""
+            else:
+                # if groups exist, return group(1), else entire match
+                val = m.group(1) if m.groups() else m.group(0)
+
+    elif transform_type == "Lookup":
+        # exact match lookup; if not found, fallback to raw
+        val = value_map_for_token.get(raw, raw) if raw else ""
+
+    else:
+        # unknown transform => passthrough
+        val = raw
+
+    val = _clean(val)
+    if uppercase and val:
+        val = val.upper()
+
+    return val
+
+def _resolve_token(doc, token: str, prefix: str, settings, token_rules: dict, value_map: dict) -> str:
+    # Built-ins
     if token == "prefix":
         return _clean(prefix)
 
-    # 2) derived token(s)
+    # Derived
     if token == "style_group":
         return _get_style_group(doc)
 
-    # 3) generic suffix slicing: item_name_3 => first 3 chars of item_name (UPPERCASE)
+    # Generic suffix slicing still supported: item_name_3, custom_field_5, etc.
     m = re.match(r"^(.+)_([0-9]+)$", token)
     if m:
         base_field = m.group(1)
         n = int(m.group(2))
-        base_val = _clean(getattr(doc, base_field, None) or doc.get(base_field))
-        if base_val and n > 0:
-            return _clean(base_val[:n]).upper()
-        return ""
+        base_val = _get_doc_value(doc, base_field)
+        return _clean(base_val[:n]).upper() if base_val and n > 0 else ""
 
-    # 4) default: read from doc field
-    return _clean(getattr(doc, token, None) or doc.get(token))
+    # Settings-driven token rule (NEW)
+    if token in token_rules:
+        rule = token_rules[token]
+        source_field = rule.get("source_field") or token
+        raw = _get_doc_value(doc, source_field)
+        transform_type = rule.get("transform_type") or "Direct"
+        param_1 = rule.get("param_1") or ""
+        uppercase = int(rule.get("uppercase") or 0)
+        vm = value_map.get(token, {})
+        return _apply_transform(raw, transform_type, param_1, uppercase, vm)
 
-def _render_pattern(doc, pattern: str, prefix: str) -> str:
+    # Default: read directly from doc
+    return _get_doc_value(doc, token)
+
+def _render_pattern(doc, pattern: str, prefix: str, settings, token_rules: dict, value_map: dict) -> str:
     def repl(m):
         token = m.group(1)
-        return _resolve_token(doc, token, prefix)
+        return _resolve_token(doc, token, prefix, settings, token_rules, value_map)
 
     return TOKEN_RE.sub(repl, pattern or "")
 
@@ -65,7 +153,9 @@ def generate_item_code_from_settings(doc):
     if not master:
         return None
 
-    # find matching rule
+    token_rules = _build_token_rules(settings)
+    value_map = _build_value_map(settings)
+
     rule = None
     for r in (getattr(settings, "table_item_code_rule", None) or []):
         if _clean(getattr(r, "master", "")) == master:
@@ -75,20 +165,27 @@ def generate_item_code_from_settings(doc):
         return None
 
     prefix = _clean(getattr(rule, "prefix", "")) or master
-    sep = _clean(getattr(rule, "separator", "")) or _clean(getattr(settings, "separator", "")) or "-"
+    sep = "-"  # ignore separator for now
     pattern = _clean(getattr(rule, "pattern", ""))
 
-    base = _clean(_render_pattern(doc, pattern, prefix))
-
-    # Clean up accidental double separators (optional)
+    base = _clean(_render_pattern(doc, pattern, prefix, settings, token_rules, value_map))
     base = re.sub(rf"{re.escape(sep)}+", sep, base).strip(sep).strip()
     if not base:
         return None
 
-    digits = int(getattr(rule, "sequence_digits", 0) or getattr(settings, "sequence_digits", 6) or 6)
+    # ✅ sequence is optional now
+    seq_digits_raw = getattr(rule, "sequence_digits", None)
 
-    # per-rule series key (prevents collisions)
-    series_key = f"{_slug(prefix)}{sep}{_slug(master)}{sep}"   # e.g. "FG-FinishedGoods-"
-    seq = getseries(series_key, digits)
+    try:
+        seq_digits = int(seq_digits_raw) if seq_digits_raw not in (None, "", 0) else 0
+    except Exception:
+        seq_digits = 0
 
-    return f"{base}{sep}{seq}"
+    if seq_digits > 0:
+        series_key = f"{_slug(prefix)}{sep}{_slug(master)}{sep}"
+        seq = getseries(series_key, seq_digits)
+        return f"{base}{sep}{seq}"
+
+    # If no sequence_digits set -> return base only
+    return base
+
