@@ -2,6 +2,7 @@
 
 import frappe
 from erpnext_trackerx_customization.utils.constants import get_constants 
+from erpnext_trackerx_customization.erpnext_doctype_hooks.item_settings import generate_item_code_from_settings
 
 def get_item_permission_query_conditions(user):
     if not user:
@@ -50,17 +51,58 @@ def get_item_permission_query_conditions(user):
 
 
 def autoname(doc, method=None):
+
+    # Debug: entry
+    frappe.log_error(
+        f"Autoname triggered | item_name={doc.get('item_name')} | master={doc.get('custom_select_master')} | manual={doc.get('custom_manual_item_code')}",
+        "Item autoname DEBUG"
+    )
+
+    # 1) Manual override
     if doc.get("custom_manual_item_code"):
         if not doc.item_code:
             frappe.throw("Item Code is mandatory when 'Manual Item Code' is enabled.")
+
         doc.name = doc.item_code
-    else:
-        try:
-            doc.item_code = generate_item_code(doc)
-        except Exception as e:
-            frappe.log_error(f"Item autoname error: {str(e)}", "Item autoname")
-            frappe.throw(f"Failed to generate item code: {str(e)}")
+
+        frappe.log_error(
+            f"Manual item code used | item_code={doc.item_code}",
+            "Item autoname DEBUG"
+        )
+        return
+
+    # 2) Automatic generation
+    try:
+        code = generate_item_code_from_settings(doc)
+
+        if code:
+            frappe.log_error(
+                f"Settings-based code generated | item_code={code}",
+                "Item autoname DEBUG"
+            )
+        else:
+            frappe.log_error(
+                "No settings rule applied, falling back to generate_item_code()",
+                "Item autoname DEBUG"
+            )
+            code = generate_item_code(doc)
+            frappe.log_error(
+                f"Fallback code generated | item_code={code}",
+                "Item autoname DEBUG"
+            )
+
+        doc.item_code = code
         doc.name = doc.item_code
+
+        frappe.log_error(
+            f"Autoname final | name={doc.name} | item_code={doc.item_code}",
+            "Item autoname DEBUG"
+        )
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Item autoname ERROR")
+        frappe.throw(f"Failed to generate item code: {str(e)}")
+
 
 
 def generate_item_code(doc):
