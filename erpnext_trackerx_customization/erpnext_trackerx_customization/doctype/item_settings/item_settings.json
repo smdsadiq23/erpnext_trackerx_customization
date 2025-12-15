@@ -1,0 +1,55 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-12-15 17:43:12.874562",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_settings_section",
+  "enable_custom_item_code",
+  "table_item_code_rule"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "enable_custom_item_code",
+   "fieldtype": "Check",
+   "label": "Enable Custom Item Code"
+  },
+  {
+   "fieldname": "naming_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Naming Settings"
+  },
+  {
+   "fieldname": "table_item_code_rule",
+   "fieldtype": "Table",
+   "options": "Item Code Rule"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-12-15 17:50:13.095451",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Item Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
