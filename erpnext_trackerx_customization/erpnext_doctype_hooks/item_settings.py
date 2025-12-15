@@ -89,15 +89,22 @@ def _apply_transform(raw: str, transform_type: str, param_1: str, uppercase: int
             if not m:
                 val = ""
             else:
-                # if groups exist, return group(1), else entire match
                 val = m.group(1) if m.groups() else m.group(0)
 
     elif transform_type == "Lookup":
-        # exact match lookup; if not found, fallback to raw
-        val = value_map_for_token.get(raw, raw) if raw else ""
+        # ✅ FIX:
+        # If mapped -> shortcode
+        # If not mapped -> fallback to first N chars (param_1), else blank
+        if raw and raw in value_map_for_token:
+            val = value_map_for_token[raw]
+        else:
+            try:
+                n = int(param_1 or 0)
+            except Exception:
+                n = 0
+            val = raw[:n] if (raw and n > 0) else ""
 
     else:
-        # unknown transform => passthrough
         val = raw
 
     val = _clean(val)
@@ -123,7 +130,7 @@ def _resolve_token(doc, token: str, prefix: str, settings, token_rules: dict, va
         base_val = _get_doc_value(doc, base_field)
         return _clean(base_val[:n]).upper() if base_val and n > 0 else ""
 
-    # Settings-driven token rule (NEW)
+    # Settings-driven token rule
     if token in token_rules:
         rule = token_rules[token]
         source_field = rule.get("source_field") or token
@@ -173,7 +180,7 @@ def generate_item_code_from_settings(doc):
     if not base:
         return None
 
-    # ✅ sequence is optional now
+    # ✅ sequence is optional
     seq_digits_raw = getattr(rule, "sequence_digits", None)
 
     try:
@@ -186,6 +193,4 @@ def generate_item_code_from_settings(doc):
         seq = getseries(series_key, seq_digits)
         return f"{base}{sep}{seq}"
 
-    # If no sequence_digits set -> return base only
     return base
-
