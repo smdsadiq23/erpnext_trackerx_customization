@@ -15,15 +15,15 @@ def _slug(v: str) -> str:
     v = re.sub(r"[^A-Za-z0-9]+", "", v)
     return v or "X"
 
-def _get_style_group(doc) -> str:
-    style_master = getattr(doc, "custom_style_master", None) or doc.get("custom_style_master")
-    if not style_master:
-        return ""
-    try:
-        sm = frappe.get_cached_doc("Style Master", style_master)
-        return _clean(getattr(sm, "style_group", "") or sm.name)
-    except Exception:
-        return ""
+# def _get_style_group(doc) -> str:
+#     style_master = getattr(doc, "custom_style_master", None) or doc.get("custom_style_master")
+#     if not style_master:
+#         return ""
+#     try:
+#         sm = frappe.get_cached_doc("Style Master", style_master)
+#         return _clean(getattr(sm, "style_group", "") or sm.name)
+#     except Exception:
+#         return ""
 
 def _get_doc_value(doc, fieldname: str) -> str:
     return _clean(getattr(doc, fieldname, None) or doc.get(fieldname))
@@ -104,6 +104,17 @@ def _apply_transform(raw: str, transform_type: str, param_1: str, uppercase: int
                 n = 0
             val = raw[:n] if (raw and n > 0) else ""
 
+    elif transform_type == "LinkField":
+        # param_1 format: "Doctype:fieldname"  e.g. "Style Master:style_group"
+        if not raw or not param_1 or ":" not in param_1:
+            val = ""
+        else:
+            dt, fieldname = [x.strip() for x in param_1.split(":", 1)]
+            try:
+                val = _clean(frappe.get_cached_value(dt, raw, fieldname))
+            except Exception:
+                val = ""            
+
     else:
         val = raw
 
@@ -118,9 +129,9 @@ def _resolve_token(doc, token: str, prefix: str, settings, token_rules: dict, va
     if token == "prefix":
         return _clean(prefix)
 
-    # Derived
-    if token == "style_group":
-        return _get_style_group(doc)
+    # # Derived
+    # if token == "style_group":
+    #     return _get_style_group(doc)
 
     # Generic suffix slicing still supported: item_name_3, custom_field_5, etc.
     m = re.match(r"^(.+)_([0-9]+)$", token)
