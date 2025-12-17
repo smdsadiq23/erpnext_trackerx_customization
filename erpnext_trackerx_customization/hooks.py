@@ -350,9 +350,9 @@ doc_events= {
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.sales_order.on_submit"
     },
      "Work Order": {
-         "autoname": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.autoname",
+        "autoname": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.autoname",
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.validate",
-        "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_submit",
+        "before_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.before_submit",
         "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.on_trash"
     },
     "Goods Receipt Note": {

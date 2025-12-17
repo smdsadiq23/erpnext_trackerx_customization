@@ -11,6 +11,9 @@ frappe.ui.form.on('Work Order', {
         
         // Set filter for the child table
         set_sales_order_filter(frm);
+
+        // Fetch operation map when production item changes
+        fetch_operation_map(frm);
     },
     
     onload: function(frm) {
@@ -45,6 +48,11 @@ frappe.ui.form.on('Work Order', {
     custom_work_order_line_items: function(frm){
         recalculate_total_qty(frm);
     },
+
+    custom_operation_map_name: function(frm) {
+        load_operations_from_process_map(frm)   
+    },
+
     sync_work_order_line_items(frm) {
         const selected_sales_orders = frm.doc.custom_sales_orders.map(row => row.sales_order);
         if (!selected_sales_orders.length || !frm.doc.production_item) {
@@ -123,10 +131,108 @@ frappe.ui.form.on('Work Order', {
 
                 recalculate_total_qty(frm);
             }
+        });
+    }
+
+});
+
+// Function to fetch operation map from Style Group
+function fetch_operation_map(frm) {
+    if (!frm.doc.production_item) {
+        frm.set_value('custom_operation_map_name', '');
+        return;
+    }
+    
+    frappe.call({
+        method: "frappe.client.get_value",
+        args: {
+            doctype: "Item",
+            filters: { name: frm.doc.production_item },
+            fieldname: ["custom_style_master"]
+        },
+        callback: function(r) {
+            if (r.message && r.message.custom_style_master) {
+                const style_master = r.message.custom_style_master;
+                
+                // Fetch Style Group from Style Master
+                frappe.call({
+                    method: "frappe.client.get_value",
+                    args: {
+                        doctype: "Style Master",
+                        filters: { name: style_master },
+                        fieldname: ["style_group"]
+                    },
+                    callback: function(r2) {
+                        if (r2.message && r2.message.style_group) {
+                            const style_group = r2.message.style_group;
+                            
+                            // Fetch operation_map from Style Group
+                            frappe.call({
+                                method: "frappe.client.get_value",
+                                args: {
+                                    doctype: "Style Group",
+                                    filters: { name: style_group },
+                                    fieldname: ["operation_map"]
+                                },
+                                callback: function(r3) {
+                                    if (r3.message && r3.message.operation_map) {
+                                        frm.set_value('custom_operation_map_name', r3.message.operation_map);
+                                    } else {
+                                        frm.set_value('custom_operation_map_name', '');
+                                        frappe.msgprint(__('Operation Map not found in Style Group'));
+                                    }
+                                }
+                            });
+                        } else {
+                            frm.set_value('custom_operation_map_name', '');
+                            frappe.msgprint(__('Style Group not found in Style Master'));
+                        }
+                    }
+                });
+            } else {
+                frm.set_value('custom_operation_map_name', '');
+                frappe.msgprint(__('Style Master not found in Item'));
+            }
+        }
     });
 }
 
-});
+// Load operations into Work Order child table from Process Map
+function load_operations_from_process_map(frm) {
+    if (!frm.doc.custom_operation_map_name) {
+        frm.clear_table("custom_operations_list");
+        frm.refresh_field("custom_operations_list");
+        return;
+    }
+
+    frappe.call({
+        method: "erpnext_trackerx_customization.erpnext_doctype_hooks.work_order.get_operations_from_process_map",
+        args: {
+            process_map_name: frm.doc.custom_operation_map_name
+        },
+        callback: function(r) {
+            if (r.message && Array.isArray(r.message)) {
+                frm.clear_table("custom_operations_list");
+                r.message.forEach(label => {
+                    let row = frm.add_child("custom_operations_list");
+                    row.operation = label;   // assumes fieldname 'operation' in child doctype
+                    // Optionally set default production_type etc. here
+                    // row.production_type = 'Inhouse';
+                });
+                frm.refresh_field("custom_operations_list");
+            } else {
+                frm.clear_table("custom_operations_list");
+                frm.refresh_field("custom_operations_list");
+                frappe.msgprint(__("No valid operations found in the selected Process Map."));
+            }
+        },
+        error: function() {
+            frm.clear_table("custom_operations_list");
+            frm.refresh_field("custom_operations_list");
+            frappe.msgprint(__("Failed to load operations from Process Map."));
+        }
+    });
+}
 
 function show_create_trims_order_dialogue(frm){
 

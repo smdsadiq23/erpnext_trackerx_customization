@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import get_link_to_form
 
@@ -13,6 +14,7 @@ class StyleGroup(Document):
 		self.validate_style_group_name()
 		self.validate_components()
 		self.set_default_company()
+		self.validate_operation_map_if_work_order_source() 
 
 	def validate_style_group_name(self):
 		"""Ensure style group name is not empty and properly formatted"""
@@ -26,24 +28,46 @@ class StyleGroup(Document):
 			frappe.throw("Style Group Name must be at least 2 characters long")
 
 	def validate_components(self):
-		"""Validate components table"""
-		if self.components:
-			component_names = []
-			main_components = []
+		"""Validate components table: must have at least one component, and exactly one main component."""
+		if not self.components:
+			frappe.throw(_("At least one component must be added to the Style Group."))
 
-			for component in self.components:
-				# Check for duplicate component names
-				if component.component_name in component_names:
-					frappe.throw(f"Duplicate component name '{component.component_name}' found")
-				component_names.append(component.component_name)
+		component_names = []
+		main_components = []
 
-				# Check for multiple main components
-				if component.is_main:
-					main_components.append(component.component_name)
+		for component in self.components:
+			# Check for duplicate component names
+			if not component.component_name:
+				frappe.throw(_("Component name cannot be empty in row {0}.").format(component.idx))
+			
+			if component.component_name in component_names:
+				frappe.throw(_("Duplicate component name '{0}' found.").format(component.component_name))
+			component_names.append(component.component_name)
 
-			# Ensure only one component is marked as main
-			if len(main_components) > 1:
-				frappe.throw(f"Only one component can be marked as 'is main'. Found multiple: {', '.join(main_components)}")
+			if component.is_main:
+				main_components.append(component.component_name)
+
+		# Ensure at least one component is marked as main
+		if not main_components:
+			frappe.throw(_("At least one component must be marked as 'Is Main'."))
+
+		# Ensure only one component is marked as main
+		if len(main_components) > 1:
+			frappe.throw(
+				_("Only one component can be marked as 'Is Main'. Found multiple: {0}").format(
+					", ".join(main_components)
+				)
+			)
+
+	def validate_operation_map_if_work_order_source(self):
+		"""Make operation_map mandatory if TrackerX Live Settings source is 'Work Order'."""
+		settings = frappe.get_single("TrackerX Live Settings")
+		if settings.op_map_source == "Work Order":
+			if not self.operation_map:
+				frappe.throw(
+					_("Operation Map is mandatory in Style Group when operation Map Source is set to 'Work Order'."),
+					title=_("Missing Required Field")
+				)
 
 	def set_default_company(self):
 		"""Set default company if not already set"""
