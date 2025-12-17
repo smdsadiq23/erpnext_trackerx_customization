@@ -13,8 +13,7 @@ class StyleGroup(Document):
 		"""Validate the style group data"""
 		self.validate_style_group_name()
 		self.validate_components()
-		self.set_default_company()
-		self.validate_operation_map_if_work_order_source() 
+		self.set_default_company()		
 
 	def validate_style_group_name(self):
 		"""Ensure style group name is not empty and properly formatted"""
@@ -58,16 +57,6 @@ class StyleGroup(Document):
 					", ".join(main_components)
 				)
 			)
-
-	def validate_operation_map_if_work_order_source(self):
-		"""Make operation_map mandatory if TrackerX Live Settings source is 'Work Order'."""
-		settings = frappe.get_single("TrackerX Live Settings")
-		if settings.op_map_source == "Work Order":
-			if not self.operation_map:
-				frappe.throw(
-					_("Operation Map is mandatory in Style Group when operation Map Source is set to 'Work Order'."),
-					title=_("Missing Required Field")
-				)
 
 	def set_default_company(self):
 		"""Set default company if not already set"""

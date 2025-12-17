@@ -9,11 +9,16 @@ frappe.ui.form.on('Work Order', {
         frm.clear_table("custom_work_order_line_items");
         frm.refresh_field("custom_work_order_line_items");        
         
+        // Clear operation map selection & operations list
+        frm.set_value('custom_operation_map_name', '');
+        frm.clear_table('custom_operations_list');
+        frm.refresh_field('custom_operations_list');
+
         // Set filter for the child table
         set_sales_order_filter(frm);
 
         // Fetch operation map when production item changes
-        fetch_operation_map(frm);
+        filter_operation_map(frm);
     },
     
     onload: function(frm) {
@@ -136,10 +141,18 @@ frappe.ui.form.on('Work Order', {
 
 });
 
-// Function to fetch operation map from Style Group
-function fetch_operation_map(frm) {
+// this now sets a filter on the Link field `custom_operation_map_name`
+// to show only Process Maps where Process Map.style_group == Style Group.name
+function filter_operation_map(frm) {
+    // If no production item, clear field & filter
     if (!frm.doc.production_item) {
         frm.set_value('custom_operation_map_name', '');
+        frm.clear_table('custom_operations_list');
+        frm.refresh_field('custom_operations_list');
+
+        frm.set_query('custom_operation_map_name', () => {
+            return {};
+        });
         return;
     }
     
@@ -151,48 +164,53 @@ function fetch_operation_map(frm) {
             fieldname: ["custom_style_master"]
         },
         callback: function(r) {
-            if (r.message && r.message.custom_style_master) {
-                const style_master = r.message.custom_style_master;
-                
-                // Fetch Style Group from Style Master
-                frappe.call({
-                    method: "frappe.client.get_value",
-                    args: {
-                        doctype: "Style Master",
-                        filters: { name: style_master },
-                        fieldname: ["style_group"]
-                    },
-                    callback: function(r2) {
-                        if (r2.message && r2.message.style_group) {
-                            const style_group = r2.message.style_group;
-                            
-                            // Fetch operation_map from Style Group
-                            frappe.call({
-                                method: "frappe.client.get_value",
-                                args: {
-                                    doctype: "Style Group",
-                                    filters: { name: style_group },
-                                    fieldname: ["operation_map"]
-                                },
-                                callback: function(r3) {
-                                    if (r3.message && r3.message.operation_map) {
-                                        frm.set_value('custom_operation_map_name', r3.message.operation_map);
-                                    } else {
-                                        frm.set_value('custom_operation_map_name', '');
-                                        frappe.msgprint(__('Operation Map not found in Style Group'));
-                                    }
-                                }
-                            });
-                        } else {
-                            frm.set_value('custom_operation_map_name', '');
-                            frappe.msgprint(__('Style Group not found in Style Master'));
-                        }
-                    }
-                });
-            } else {
+            if (!(r.message && r.message.custom_style_master)) {
                 frm.set_value('custom_operation_map_name', '');
+                frm.set_query('custom_operation_map_name', () => {
+                    return {};
+                });
                 frappe.msgprint(__('Style Master not found in Item'));
+                return;
             }
+
+            const style_master = r.message.custom_style_master;
+
+            // Fetch Style Group from Style Master
+            frappe.call({
+                method: "frappe.client.get_value",
+                args: {
+                    doctype: "Style Master",
+                    filters: { name: style_master },
+                    fieldname: ["style_group"]
+                },
+                callback: function(r2) {
+                    if (!(r2.message && r2.message.style_group)) {
+                        frm.set_value('custom_operation_map_name', '');
+                        frm.set_query('custom_operation_map_name', () => {
+                            return {};
+                        });
+                        frappe.msgprint(__('Style Group not found in Style Master'));
+                        return;
+                    }
+
+                    const style_group = r2.message.style_group;
+                    console.log(style_group)
+
+                    // Set query on custom_operation_map_name to filter Process Map by style_group
+                    frm.set_query('custom_operation_map_name', function() {
+                        return {
+                            filters: {
+                                style_group: style_group
+                            }
+                        };
+                    });
+
+                    // Clear any previously selected Process Map that may not match this style_group
+                    if (frm.doc.custom_operation_map_name) {
+                        frm.set_value('custom_operation_map_name', '');
+                    }
+                }
+            });
         }
     });
 }
