@@ -3,6 +3,12 @@ from frappe import _
 from frappe.utils import flt
 from frappe.model.naming import set_name_by_naming_series
 
+from cuttingx.cuttingx.utils.process_map_ops import (
+    get_operations_from_process_map_core,
+    build_operation_map_from_process_map,
+    populate_physical_cell_first_and_last_operations,
+)
+
 def autoname(doc, method):
     """
     Set document name:
@@ -21,15 +27,57 @@ def validate(doc, method):
     calculate_total_qty(doc)
     validate_and_update_sales_order_items(doc)
     validate_work_order(doc)
+    validate_operation_map_required(doc) 
 
     #copy sales orders to sales order
     if doc.custom_work_order_line_items:
         if doc.custom_work_order_line_items[0].sales_order:
             doc.sales_order = doc.custom_work_order_line_items[0].sales_order
-        
+
+def before_submit(doc, method):
+    """
+    On submit:
+    - If TrackerX Live Settings.op_map_source == 'Work Order'
+      and custom_operation_map_name is set, build Operation Map rows
+      and populate Physical Cell first/last operations for this Work Order.
+    """
+    try:
+        settings = frappe.get_single("TrackerX Live Settings")
+        op_map_source = getattr(settings, "op_map_source", None) or "Cut Kit Plan"
+    except Exception:
+        op_map_source = "Cut Kit Plan"
+
+    # Only act in Work Order mode
+    if op_map_source != "Work Order":
+        return
+
+    # If no Process Map selected on Work Order, just skip
+    if not getattr(doc, "custom_operation_map_name", None):
+        return
+
+    # 1) Build Operation Map rows under this Work Order from Process Map
+    #    Uses cuttingx.cuttingx.utils.process_map_ops.build_operation_map_from_process_map
+    build_operation_map_from_process_map(
+        doc,
+        process_map_field="custom_operation_map_name",
+        op_map_child_table="custom_operation_map_list",
+        last_operation_field="custom_last_operation",
+        # If you later add a production_type on WO, pass it here:
+        # production_type=getattr(doc, "custom_production_type", None),
+    )
+
+    # 2) Populate Physical Cell first & last operations from the Operation Map
+    populate_physical_cell_first_and_last_operations(
+        doc,
+        op_map_child_table="custom_operation_map_list",
+        dest_child_table="custom_physical_cell_first_and_last_operation",
+        physical_cell_field="physical_cell",
+        first_op_field="first_operation",
+        last_op_field="last_operation",
+    )
 
 def on_submit(doc, method):
-    pass
+    pass    
 
 def on_trash(doc, method):
     manage_work_order_delete(doc, method)
@@ -244,6 +292,24 @@ def validate_and_update_sales_order_items(doc):
         row.already_allocated_qty = row.qty - row.pending_qty
 
 
+def validate_operation_map_required(doc):
+    """
+    If TrackerX Live Settings.op_map_source == 'Work Order',
+    then Work Order.custom_operation_map_name is mandatory.
+    """
+    try:
+        settings = frappe.get_single("TrackerX Live Settings")
+        op_map_source = getattr(settings, "op_map_source", None) or "Cut Kit Plan"
+    except Exception:
+        # If settings not available, default to CKP and don't block
+        op_map_source = "Cut Kit Plan"
+
+    if op_map_source == "Work Order" and not getattr(doc, "custom_operation_map_name", None):
+        frappe.throw(
+            _("Operation Map is mandatory for Work Order when route source is set to 'Work Order' "
+              "in TrackerX Live Settings."),
+            title=_("Operation Map Required")
+        )        
 
 
 def recalculate_work_orders_pending_qty(sales_orders):
@@ -279,3 +345,17 @@ def recalculate_work_orders_pending_qty(sales_orders):
         })
 
 
+@frappe.whitelist()
+def get_operations_from_process_map(process_map_name):
+    """
+    Whitelisted wrapper that delegates to the shared util.
+
+    For Work Order client scripts, call:
+
+      erpnext_trackerx_customization.overrides.work_order.get_operations_from_process_map
+
+    to get the ordered list of operations from the selected Process Map.
+    """
+    if not process_map_name:
+        return []
+    return get_operations_from_process_map_core(process_map_name)        

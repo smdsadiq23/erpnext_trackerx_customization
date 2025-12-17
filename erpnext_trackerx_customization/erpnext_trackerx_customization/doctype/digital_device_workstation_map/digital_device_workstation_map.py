@@ -15,5 +15,5 @@ class DigitalDeviceWorkstationMap(Document):
 			)
 		if False and existing_map_for_device and self.is_new():
 			frappe.throw(
-				f"This device is aleady configrued to use workstation {existing_map_for_device}, Please remove or unlink it first"
+				f"This device is already configrued to use workstation {existing_map_for_device}, Please remove or unlink it first"
 			)
