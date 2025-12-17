@@ -285,8 +285,8 @@ def get_rate_from_supplier_fg_item_order_method(item_code, supplier, order_metho
 
     if not supplier_fg_item_name:
         frappe.log_error(
-            f"No active 'Supplier FG Items' found for Item: {item_code}, Supplier: {supplier}",
-            "Purchase Order Rate Lookup"
+            message=f"No active 'Supplier FG Items' found for Item: {item_code}, Supplier: {supplier}",
+            title="Purchase Order Rate Lookup"
         )
         return None
 
