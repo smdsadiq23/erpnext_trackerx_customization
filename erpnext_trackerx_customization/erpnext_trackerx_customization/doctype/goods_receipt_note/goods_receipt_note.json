@@ -243,19 +243,15 @@
    "set_only_once": 1
   },
   {
-   "bold": 1,
    "fetch_from": "purchase_order.supplier",
    "fieldname": "supplier",
    "fieldtype": "Link",
-   "in_global_search": 1,
    "label": "Supplier",
    "oldfieldname": "supplier",
    "oldfieldtype": "Link",
    "options": "Supplier",
-   "print_hide": 1,
    "print_width": "150px",
-   "read_only": 1,
-   "search_index": 1,
+   "reqd": 1,
    "width": "150px"
   },
   {
@@ -1400,7 +1396,7 @@
  "icon": "fa fa-truck",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-05 10:53:02.726210",
+ "modified": "2025-12-22 19:05:28.257835",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Note",
