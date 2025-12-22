@@ -24,7 +24,7 @@
     // Override get_host so it ALWAYS uses the browser origin,
     // and lets socket.io use its default /socket.io path.
     frappe.socketio.get_host = function (port = 9000) {
-      const host = window.location.origin; // e.g. https://classicapparel.trackerx.cloud
+      const host = window.location.origin;
       console.log("[socketio_fix] get_host() ->", host);
       return host;
     };
