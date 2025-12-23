@@ -256,7 +256,7 @@
   },
   {
    "depends_on": "supplier",
-   "fetch_from": "purchase_order.supplier_name",
+   "fetch_from": "supplier.supplier_name",
    "fieldname": "supplier_name",
    "fieldtype": "Data",
    "in_global_search": 1,
@@ -1359,8 +1359,7 @@
   {
    "fieldname": "goods_receipt_note_no",
    "fieldtype": "Data",
-   "label": "Goods Receipt Note No",
-   "reqd": 1
+   "label": "Goods Receipt Note No"
   },
   {
    "fieldname": "process_order_number",
@@ -1371,8 +1370,7 @@
    "fieldname": "ocn",
    "fieldtype": "Link",
    "label": "OCN",
-   "options": "Sales Order",
-   "reqd": 1
+   "options": "Sales Order"
   },
   {
    "fieldname": "strategic_business_unit",
@@ -1396,7 +1394,7 @@
  "icon": "fa fa-truck",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-22 19:05:28.257835",
+ "modified": "2025-12-23 12:35:14.740632",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Note",
