@@ -1,70 +1,6 @@
 // Client Script for Work Order
 // Add this to your Work Order doctype's Client Script
 
-// Client Script for Work Order
-
-// Patch the timeline function
-(function() {
-    // Store original function if it exists
-    if (typeof get_version_timeline_content === 'function') {
-        const original = get_version_timeline_content;
-        
-        get_version_timeline_content = function(version_doc, frm) {
-            try {
-                // Add safety checks for row_changed with custom_sales_orders
-                if (version_doc.data) {
-                    const data = JSON.parse(version_doc.data);
-                    
-                    if (data.row_changed && data.row_changed.length) {
-                        // Filter out problematic row_changed entries
-                        data.row_changed = data.row_changed.filter(function(row) {
-                            if (!row || !Array.isArray(row) || row.length < 4) {
-                                return false;
-                            }
-                            
-                            const fieldname = row[0];
-                            // Skip custom_sales_orders as it's causing issues
-                            if (fieldname === 'custom_sales_orders') {
-                                console.warn('Skipping custom_sales_orders in version timeline');
-                                return false;
-                            }
-                            
-                            return true;
-                        });
-                    }
-                }
-                
-                // Call original function
-                return original(version_doc, frm);
-            } catch (error) {
-                console.warn('Version timeline error caught:', error.message);
-                // Return empty array to prevent breaking the timeline
-                return [];
-            }
-        };
-        
-        console.log('get_version_timeline_content patched for Work Order');
-    } else {
-        // Try again after a delay if function not loaded yet
-        setTimeout(() => {
-            if (typeof get_version_timeline_content === 'function') {
-                const original = get_version_timeline_content;
-                
-                get_version_timeline_content = function(version_doc, frm) {
-                    try {
-                        return original(version_doc, frm);
-                    } catch (error) {
-                        console.warn('Version timeline error caught (delayed patch):', error.message);
-                        return [];
-                    }
-                };
-                
-                console.log('get_version_timeline_content patched (delayed)');
-            }
-        }, 500);
-    }
-})();
-
 frappe.ui.form.on('Work Order', {
     production_item: function(frm) {
         // Clear existing sales orders when production item changes
@@ -93,20 +29,16 @@ frappe.ui.form.on('Work Order', {
     },
 
     refresh: function(frm){
-        // FIX: Disable timeline rendering to prevent version timeline errors
+        // Just clear the timeline if it exists
         if (frm.timeline && frm.timeline.$timeline_items) {
-            try {
-                frm.timeline.$timeline_items.empty();
-            } catch (e) {
-                console.warn('Timeline clearing failed:', e);
-            }
+            frm.timeline.$timeline_items.empty();
         }
 
         frm.remove_custom_button('Create Pick List');
         if (frm.doc.docstatus === 1 && frm.doc.status !== "Closed") {
-          frm.add_custom_button(__('Create Trims Order'), () => {
-              show_create_trims_order_dialogue(frm);
-          });
+            frm.add_custom_button(__('Create Trims Order'), () => {
+                show_create_trims_order_dialogue(frm);
+            });
         }
     },
 
@@ -177,7 +109,7 @@ frappe.ui.form.on('Work Order', {
                         existing_row.qty = item.qty;
                         existing_row.already_allocated_qty = item.custom_allocated_qty_for_work_order;
                         //existing_row.pending_qty = item.custom_pending_qty_for_work_order;
-                        existing_row.pending_qty = i0;
+                        existing_row.pending_qty = item.custom_pending_qty_for_work_order;
                         existing_row.sales_order = item.parent;
                     }
                 });
@@ -418,8 +350,7 @@ function create_trims_order(frm, work_center){
 
 function get_raw_materials_from_bom_except_fabrics(bom_no, work_order_line_items) {
 
-    work_order_line_items.forEach(work_order)
-
+    // work_order_line_items.forEach(work_order)
 
     return new Promise((resolve, reject) => {
         frappe.call({
@@ -491,9 +422,6 @@ function recalculate_total_qty(frm) {
     frm.set_value("qty", total_qty);
     frm.refresh_field("qty");
 }
-
-
-
 
 frappe.ui.form.on('Work Order Line Item', {
     work_order_allocated_qty: function(frm, cdt, cdn) {
