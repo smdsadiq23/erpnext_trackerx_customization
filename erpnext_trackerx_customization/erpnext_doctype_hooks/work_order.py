@@ -26,8 +26,7 @@ def validate(doc, method):
     validate_work_order_no(doc)
     calculate_total_qty(doc)
     validate_and_update_sales_order_items(doc)
-    validate_work_order(doc)
-    validate_operation_map_required(doc) 
+    validate_work_order(doc)    
 
     #copy sales orders to sales order
     if doc.custom_work_order_line_items:
@@ -41,6 +40,9 @@ def before_submit(doc, method):
       and custom_operation_map_name is set, build Operation Map rows
       and populate Physical Cell first/last operations for this Work Order.
     """
+
+    validate_operation_map_required(doc) 
+
     try:
         settings = frappe.get_single("TrackerX Live Settings")
         op_map_source = getattr(settings, "op_map_source", None) or "Cut Kit Plan"
@@ -51,9 +53,9 @@ def before_submit(doc, method):
     if op_map_source != "Work Order":
         return
 
-    # If no Process Map selected on Work Order, just skip
-    if not getattr(doc, "custom_operation_map_name", None):
-        return
+    # # If no Process Map selected on Work Order, just skip (not required as we are validating the same via validate_operation_map_required)
+    # if not getattr(doc, "custom_operation_map_name", None):
+    #     return
 
     # 1) Build Operation Map rows under this Work Order from Process Map
     #    Uses cuttingx.cuttingx.utils.process_map_ops.build_operation_map_from_process_map
