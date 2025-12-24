@@ -1,6 +1,43 @@
 // Client Script for Work Order
 // Add this to your Work Order doctype's Client Script
 
+frappe.ready(function() {
+    // Store the original function
+    const original_get_version_timeline_content = window.get_version_timeline_content;
+    
+    // Override with patched version
+    if (original_get_version_timeline_content) {
+        window.get_version_timeline_content = function(version_doc, frm) {
+            if (!version_doc.data) return [];
+            const data = JSON.parse(version_doc.data);
+            
+            // Add safety check for row_changed with custom_sales_orders
+            if (data.row_changed && data.row_changed.length) {
+                // Filter out problematic row_changed entries
+                data.row_changed = data.row_changed.filter(function(row) {
+                    if (!row || !Array.isArray(row) || row.length < 4) {
+                        return false;
+                    }
+                    
+                    const fieldname = row[0];
+                    // Skip custom_sales_orders as it's causing issues
+                    if (fieldname === 'custom_sales_orders') {
+                        console.warn('Skipping custom_sales_orders in version timeline');
+                        return false;
+                    }
+                    
+                    return true;
+                });
+            }
+            
+            // Call original function with cleaned data
+            return original_get_version_timeline_content(version_doc, frm);
+        };
+        
+        console.log('Version timeline patched for custom_sales_orders');
+    }
+});
+
 frappe.ui.form.on('Work Order', {
     production_item: function(frm) {
         // Clear existing sales orders when production item changes
