@@ -1,42 +1,69 @@
 // Client Script for Work Order
 // Add this to your Work Order doctype's Client Script
 
-frappe.ready(function() {
-    // Store the original function
-    const original_get_version_timeline_content = window.get_version_timeline_content;
-    
-    // Override with patched version
-    if (original_get_version_timeline_content) {
-        window.get_version_timeline_content = function(version_doc, frm) {
-            if (!version_doc.data) return [];
-            const data = JSON.parse(version_doc.data);
-            
-            // Add safety check for row_changed with custom_sales_orders
-            if (data.row_changed && data.row_changed.length) {
-                // Filter out problematic row_changed entries
-                data.row_changed = data.row_changed.filter(function(row) {
-                    if (!row || !Array.isArray(row) || row.length < 4) {
-                        return false;
-                    }
+// Client Script for Work Order
+
+// Patch the timeline function
+(function() {
+    // Store original function if it exists
+    if (typeof get_version_timeline_content === 'function') {
+        const original = get_version_timeline_content;
+        
+        get_version_timeline_content = function(version_doc, frm) {
+            try {
+                // Add safety checks for row_changed with custom_sales_orders
+                if (version_doc.data) {
+                    const data = JSON.parse(version_doc.data);
                     
-                    const fieldname = row[0];
-                    // Skip custom_sales_orders as it's causing issues
-                    if (fieldname === 'custom_sales_orders') {
-                        console.warn('Skipping custom_sales_orders in version timeline');
-                        return false;
+                    if (data.row_changed && data.row_changed.length) {
+                        // Filter out problematic row_changed entries
+                        data.row_changed = data.row_changed.filter(function(row) {
+                            if (!row || !Array.isArray(row) || row.length < 4) {
+                                return false;
+                            }
+                            
+                            const fieldname = row[0];
+                            // Skip custom_sales_orders as it's causing issues
+                            if (fieldname === 'custom_sales_orders') {
+                                console.warn('Skipping custom_sales_orders in version timeline');
+                                return false;
+                            }
+                            
+                            return true;
+                        });
                     }
-                    
-                    return true;
-                });
+                }
+                
+                // Call original function
+                return original(version_doc, frm);
+            } catch (error) {
+                console.warn('Version timeline error caught:', error.message);
+                // Return empty array to prevent breaking the timeline
+                return [];
             }
-            
-            // Call original function with cleaned data
-            return original_get_version_timeline_content(version_doc, frm);
         };
         
-        console.log('Version timeline patched for custom_sales_orders');
+        console.log('get_version_timeline_content patched for Work Order');
+    } else {
+        // Try again after a delay if function not loaded yet
+        setTimeout(() => {
+            if (typeof get_version_timeline_content === 'function') {
+                const original = get_version_timeline_content;
+                
+                get_version_timeline_content = function(version_doc, frm) {
+                    try {
+                        return original(version_doc, frm);
+                    } catch (error) {
+                        console.warn('Version timeline error caught (delayed patch):', error.message);
+                        return [];
+                    }
+                };
+                
+                console.log('get_version_timeline_content patched (delayed)');
+            }
+        }, 500);
     }
-});
+})();
 
 frappe.ui.form.on('Work Order', {
     production_item: function(frm) {
