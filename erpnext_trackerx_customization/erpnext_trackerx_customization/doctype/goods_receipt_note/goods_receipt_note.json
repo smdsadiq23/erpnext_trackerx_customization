@@ -1394,7 +1394,7 @@
  "icon": "fa fa-truck",
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-23 12:35:14.740632",
+ "modified": "2025-12-23 14:51:43.256423",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Note",
@@ -1476,6 +1476,5 @@
  "sort_order": "DESC",
  "states": [],
  "timeline_field": "supplier",
- "title_field": "title",
  "track_changes": 1
 }
