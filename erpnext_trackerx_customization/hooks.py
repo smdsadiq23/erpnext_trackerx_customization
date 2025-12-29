@@ -177,7 +177,8 @@ app_include_css = [
 app_include_js = [
     "/assets/erpnext_trackerx_customization/js/process_map.js",
     "/assets/erpnext_trackerx_customization/js/socketio_fix.js",
-    "/assets/erpnext_trackerx_customization/js/work_order_version_timeline_hardfix.js"
+    "/assets/erpnext_trackerx_customization/js/work_order_version_timeline_hardfix.js",
+    "/assets/erpnext_trackerx_customization/js/sales_order_override.js"
 ]
 
 # include js, css files in header of web template
