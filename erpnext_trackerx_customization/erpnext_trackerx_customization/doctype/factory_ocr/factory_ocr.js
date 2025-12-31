@@ -166,10 +166,13 @@ function calculate_totals(frm) {
     let cut_to_ship_of_order = total_cut_qty > 0 ? (total_ship_qty / total_cut_qty * 100) : 0;
     frm.set_value('cut_to_ship_of_order', cut_to_ship_of_order);
 
+    let order_to_ship_total = total_order_qty > 0 ? (total_ship_qty / total_order_qty * 100) : 0;
+    frm.set_value('order_to_ship_total', order_to_ship_total);
+
     // Refresh all fields
     frm.refresh_fields([
         'total_order_qty', 'total_cut_qty', 'total_scan_qty', 'total_pack_qty', 'total_ship_qty', 'total_good_garments',
-        'total_rejected_garments', 'total_rejected_panels', 'cumulative_total', 'cut_to_ship_of_order'
+        'total_rejected_garments', 'total_rejected_panels', 'cumulative_total', 'cut_to_ship_of_order', 'order_to_ship_total'
     ]);
 }
 
@@ -185,8 +188,9 @@ function clear_totals(frm) {
     frm.set_value('total_rejected_panels', 0);
     frm.set_value('cumulative_total', 0);
     frm.set_value('cut_to_ship_of_order', 0);
+    frm.set_value('order_to_ship_total', 0);
     frm.refresh_fields([
         'total_order_qty', 'total_cut_qty', 'total_scan_qty', 'total_pack_qty', 'total_ship_qty', 'total_good_garments',
-        'total_rejected_garments', 'total_rejected_panels', 'cumulative_total', 'cut_to_ship_of_order'
+        'total_rejected_garments', 'total_rejected_panels', 'cumulative_total', 'cut_to_ship_of_order', 'order_to_ship_total'
     ]);
 }
