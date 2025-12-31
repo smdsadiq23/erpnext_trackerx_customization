@@ -57,7 +57,7 @@ def fetch_sales_order_items_for_factory_ocr(sales_order):
 
     # 1. Fetch Sales Order Items (source of truth for (style, color) combos)
     so_items = frappe.db.sql("""
-        SELECT item_code, custom_color, qty
+        SELECT item_code, custom_color, qty, custom_lineitem
         FROM `tabSales Order Item`
         WHERE parent = %s AND docstatus = 1
     """, (sales_order,), as_dict=1)
@@ -65,14 +65,15 @@ def fetch_sales_order_items_for_factory_ocr(sales_order):
     if not so_items:
         return []
 
-    # Build lookup of all (item_code, custom_color) combinations
-    grouped = defaultdict(lambda: {"item_code": "", "custom_color": "", "order_qty": 0})
+    # Build lookup of all (item_code, custom_color, custom_lineitem) combinations
+    grouped = defaultdict(lambda: {"item_code": "", "custom_color": "", "custom_lineitem": "", "order_qty": 0})
     for row in so_items:
         if not row.item_code:
             continue
-        key = f"{row.item_code}||{row.custom_color or ''}"
+        key = f"{row.item_code}||{row.custom_color or ''}||{row.custom_lineitem or ''}"
         grouped[key]["item_code"] = row.item_code
         grouped[key]["custom_color"] = row.custom_color or ""
+        grouped[key]["custom_lineitem"] = row.custom_lineitem or ""
         grouped[key]["order_qty"] += row.qty
 
     unique_styles = list(set(g["item_code"] for g in grouped.values()))
@@ -97,14 +98,14 @@ def fetch_sales_order_items_for_factory_ocr(sales_order):
             color = d.color or ""
             cut_map[f"{d.style}||{color}"] = d.cut_qty
 
-    # 3. Fetch Pack quantity per (style, color) from Tracking
-    pack_map = {}
+    # 3. Fetch Scan quantity per (style, color) from Tracking
+    scan_map = {}
     if unique_styles:
-        pack_data = frappe.db.sql("""
+        scan_data = frappe.db.sql("""
             SELECT 
                 itm.name AS item_code,
                 itm.custom_colour_name AS color,
-                COALESCE(SUM(pi.quantity), 0) AS pack_qty
+                COALESCE(SUM(pi.quantity), 0) AS scan_qty
             FROM `tabTracking Order Bundle Configuration` tbc
             INNER JOIN `tabTracking Order` tor
                 ON tor.name = tbc.parent
@@ -125,9 +126,9 @@ def fetch_sales_order_items_for_factory_ocr(sales_order):
             WHERE tbc.sales_order = %s
             GROUP BY itm.name, itm.custom_colour_name
         """, (sales_order,), as_dict=1)
-        for d in pack_data:
+        for d in scan_data:
             color = d.color or ""
-            pack_map[f"{d.item_code}||{color}"] = d.pack_qty
+            scan_map[f"{d.item_code}||{color}"] = d.scan_qty
 
     # 4. Fetch REJECTION count per (style, color) — MAIN COMPONENT ONLY (garments)
     rejection_garments_map = {}
@@ -159,34 +160,34 @@ def fetch_sales_order_items_for_factory_ocr(sales_order):
             color = d.color or ""
             rejection_garments_map[f"{d.item_code}||{color}"] = d.rejected_count
 
-    # # 5. Fetch REJECTED PANELS count per (style, color) — ALL COMPONENTS
-    # rejection_panels_map = {}
-    # if unique_styles:
-    #     rejection_panels_data = frappe.db.sql("""
-    #         SELECT 
-    #             itm.name AS item_code,
-    #             itm.custom_colour_name AS color,
-    #             COUNT(isl.name) AS rejected_count
-    #         FROM `tabTracking Order` tor
-    #         INNER JOIN `tabTracking Order Bundle Configuration` tbc
-    #             ON tbc.parent = tor.name
-    #             AND tbc.parentfield = 'component_bundle_configurations'
-    #         INNER JOIN `tabItem` itm
-    #             ON itm.name = tor.item
-    #         INNER JOIN `tabProduction Item` pi
-    #             ON pi.tracking_order = tor.name
-    #             AND pi.bundle_configuration = tbc.name
-    #         -- NO is_main filter here → all panels/components
-    #         INNER JOIN `tabItem Scan Log` isl
-    #             ON isl.production_item = pi.name
-    #             AND isl.status LIKE '%%Reject%%'
-    #         WHERE tor.item IS NOT NULL
-    #           AND tbc.sales_order = %s
-    #         GROUP BY itm.name, itm.custom_colour_name
-    #     """, (sales_order,), as_dict=1)
-    #     for d in rejection_panels_data:
-    #         color = d.color or ""
-    #         rejection_panels_map[f"{d.item_code}||{color}"] = d.rejected_count            
+    # 5. Fetch REJECTED PANELS count per (style, color) — ALL COMPONENTS
+    rejection_panels_map = {}
+    if unique_styles:
+        rejection_panels_data = frappe.db.sql("""
+            SELECT 
+                itm.name AS item_code,
+                itm.custom_colour_name AS color,
+                COUNT(isl.name) AS rejected_count
+            FROM `tabTracking Order` tor
+            INNER JOIN `tabTracking Order Bundle Configuration` tbc
+                ON tbc.parent = tor.name
+                AND tbc.parentfield = 'component_bundle_configurations'
+            INNER JOIN `tabItem` itm
+                ON itm.name = tor.item
+            INNER JOIN `tabProduction Item` pi
+                ON pi.tracking_order = tor.name
+                AND pi.bundle_configuration = tbc.name
+            -- NO is_main filter here → all panels/components
+            INNER JOIN `tabItem Scan Log` isl
+                ON isl.production_item = pi.name
+                AND isl.status LIKE '%%Reject%%'
+            WHERE tor.item IS NOT NULL
+              AND tbc.sales_order = %s
+            GROUP BY itm.name, itm.custom_colour_name
+        """, (sales_order,), as_dict=1)
+        for d in rejection_panels_data:
+            color = d.color or ""
+            rejection_panels_map[f"{d.item_code}||{color}"] = d.rejected_panel_count            
 
     # 6. Fetch style master for mapping
     item_style_map = {}
@@ -197,27 +198,29 @@ def fetch_sales_order_items_for_factory_ocr(sales_order):
         )
         item_style_map = {item.name: item.custom_style_master for item in items}
 
-    # 7. Build final result — all quantities now EXACT per (style, color)
+    # 7. Build final result — all quantities now EXACT per (style, color, lineitem)
     result = []
     for group in grouped.values():
         item_code = group["item_code"]
         color = group["custom_color"]
+        lineitem = group["custom_lineitem"]
         order_qty = group["order_qty"]
-        key = f"{item_code}||{color}"
+        key = f"{item_code}||{color}"  # for matching cut/scan/rejection (which don't have lineitem)
 
         cut_qty = cut_map.get(key, 0.0)
-        pack_qty = pack_map.get(key, 0.0)
+        scan_qty = scan_map.get(key, 0.0)
         rejected_garments = float(rejection_garments_map.get(key, 0))
         # rejected_panels = float(rejection_panels_map.get(key, 0))
-
-        cut_to_ship_percent = (pack_qty / cut_qty * 100) if cut_qty else 0.0
+        
+        cut_to_ship_percent = (scan_qty / cut_qty * 100) if cut_qty else 0.0
 
         result.append({
             "style": item_style_map.get(item_code) or "",
             "colour": color,
+            "lineitem": lineitem,
             "order_quantity": order_qty,
             "cut_quantity": frappe.utils.flt(cut_qty, 2),
-            "pack_quantity": frappe.utils.flt(pack_qty, 2),
+            "scan_quantity": frappe.utils.flt(scan_qty, 2),
             "rejected_garments": frappe.utils.flt(rejected_garments, 2),
             # "rejected_panels": frappe.utils.flt(rejected_panels, 2),
             "cut_to_ship": frappe.utils.flt(cut_to_ship_percent, 2)
