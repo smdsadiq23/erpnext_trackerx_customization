@@ -13,17 +13,18 @@
   "table_ocn_details",
   "totals_section",
   "total_order_qty",
-  "total_good_garments",
-  "cut_to_ship_of_order",
+  "total_ship_qty",
+  "cumulative_total",
   "column_break_jbzz",
   "total_cut_qty",
   "total_rejected_garments",
   "column_break_dmzw",
+  "total_scan_qty",
+  "total_good_garments",
+  "column_break_caxu",
   "total_pack_qty",
   "total_rejected_panels",
-  "column_break_caxu",
-  "total_ship_qty",
-  "cumulative_total"
+  "cut_to_ship_of_order"
  ],
  "fields": [
   {
@@ -136,13 +137,18 @@
    "fieldtype": "Int",
    "label": "Total Pack Qty",
    "read_only": 1
+  },
+  {
+   "fieldname": "total_scan_qty",
+   "fieldtype": "Int",
+   "label": "Total Scan Qty"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-12-09 16:29:28.106499",
+ "modified": "2025-12-31 13:53:35.027943",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Factory OCR",
