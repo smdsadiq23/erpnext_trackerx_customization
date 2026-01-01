@@ -561,12 +561,19 @@ const item_link = frappe.ui.form.make_control({
             const item_code = item_link.get_value();
             const item_index = wrapper.data('item-index');
 
+            // Prevent unnecessary updates if value hasn't changed
+            if (item_code === frm.tree_data[item_index].item_code) return;
+
             frm.tree_data[item_index].item_code = item_code;
             frm.tree_data[item_index].sizes = [];
 
             if (!item_code) return;
 
             try {
+                // Show loading indicator
+                const itemElement = $(`.tree-item-header[data-item-index="${item_index}"]`);
+                itemElement.find('.item-link-wrapper').css('opacity', '0.6');
+                
                 // UOM
                 const attrs = await get_item_attributes(item_code);
                 frm.tree_data[item_index].uom = attrs.uom;
@@ -581,11 +588,23 @@ const item_link = frappe.ui.form.make_control({
 
                 frm.tree_data[item_index].custom_style = r.message?.custom_style_master || "";
                 frm.tree_data[item_index].custom_color = r.message?.custom_colour_name || "";
+                
+                // Update only this item's fields
+                update_single_item_display(frm, item_index);
+                
+                // Clear loading indicator
+                itemElement.find('.item-link-wrapper').css('opacity', '1');
+                
             } catch (e) {
                 console.warn(e);
+                // Set defaults on error
+                frm.tree_data[item_index].uom = 'Nos';
+                frm.tree_data[item_index].conversion_factor = 1;
+                frm.tree_data[item_index].custom_style = '';
+                frm.tree_data[item_index].custom_color = '';
+                update_single_item_display(frm, item_index);
             }
 
-            render_tree_view(frm);
             frm.dirty();
         }
     },
@@ -599,6 +618,34 @@ item_link.set_value(item.item_code || "");
     
     // Bind events
     bind_tree_events(frm);
+}
+
+// NEW FUNCTION: Update only a single item's display
+function update_single_item_display(frm, item_index) {
+    const item = frm.tree_data[item_index];
+    const itemElement = $(`.tree-item-header[data-item-index="${item_index}"]`);
+    
+    if (itemElement.length === 0) return;
+    
+    // Update only this item's fields
+    itemElement.find('.style-display').val(item.custom_style || '');
+    itemElement.find('.custom-color-input').val(item.custom_color || '');
+    itemElement.find('.uom-display').val(item.uom || '');
+    itemElement.find('.conversion-factor-display').val(item.conversion_factor || 1);
+    
+    // Update summary displays
+    const summary = calculate_summary(item.sizes);
+    itemElement.find('.total-qty-display').val(summary.total_qty);
+    itemElement.find('.total-rows-display').val(summary.total_rows);
+    itemElement.find('.total-order-qty-display').val(summary.total_order_qty);
+    
+    // Update sizes container if not collapsed
+    if (!item.collapsed) {
+        const sizesContainer = itemElement.siblings('.sizes-container');
+        if (sizesContainer.length > 0) {
+            render_sizes(sizesContainer, item.sizes, item_index);
+        }
+    }
 }
 
 function render_sizes(container, sizes, item_index) {
@@ -655,9 +702,9 @@ function populate_item_dropdown(select_element, selected_value) {
         args: {
             doctype: 'Item',
             fields: ['name', 'item_name'],
-            filters: {
-                custom_select_master: 'Finished Goods'
-            },
+            // filters: {
+            //     custom_select_master: 'Finished Goods'
+            // },
             limit_page_length: 999
         },
         callback: function(r) {
@@ -869,7 +916,11 @@ function add_size(frm, item_index) {
         custom_tolerance_percentage: 0,
         qty: 0
     });
-    render_tree_view(frm);
+    
+    // Update only this item instead of re-rendering everything
+    update_single_item_display(frm, item_index);
+    update_total_qty(frm);
+    frm.dirty();
 }
 
 function remove_item(frm, item_index) {
@@ -881,7 +932,11 @@ function remove_item(frm, item_index) {
 
 function remove_size(frm, item_index, size_index) {
     frm.tree_data[item_index].sizes.splice(size_index, 1);
-    render_tree_view(frm);
+    
+    // Update only this item instead of re-rendering everything
+    update_single_item_display(frm, item_index);
+    update_total_qty(frm);
+    frm.dirty();
 }
 
 // Work Order functions (keeping your existing functionality)
