@@ -59,6 +59,7 @@ frappe.ui.form.on('Factory OCR', {
               child.order_quantity = row.order_quantity;
               child.cut_quantity = row.cut_quantity || 0;
               child.scan_quantity = row.scan_quantity || 0;
+              child.ship_quantity = row.ship_quantity || 0;
               child.rejected_garments = row.rejected_garments || 0;
               child.cut_to_ship_diff = 0;
               child.cut_to_ship = 0;
@@ -401,14 +402,14 @@ function get_factory_ocr_action_card_html(frm) {
             </tr>
           </thead>
           <tbody>
-            ${rowHTML('Total Order Qty', flt(frm.doc.total_order_qty))}
-            ${rowHTML('Total Cut Qty', flt(frm.doc.total_cut_qty))}
-            ${rowHTML('Total Scan Qty', flt(frm.doc.total_scan_qty))}
-            ${rowHTML('Total Pack Qty', flt(frm.doc.total_pack_qty))}
-            ${rowHTML('Total Ship Qty', flt(frm.doc.total_ship_qty))}
-            ${rowHTML('Total Good Garments', flt(frm.doc.total_good_garments))}
-            ${rowHTML('Total Rejected Garments', flt(frm.doc.total_rejected_garments))}
-            ${rowHTML('Total Rejected Panels', flt(frm.doc.total_rejected_panels))}
+            ${rowHTML('Order Qty', flt(frm.doc.total_order_qty))}
+            ${rowHTML('Cut Qty', flt(frm.doc.total_cut_qty))}
+            ${rowHTML('Scan Qty', flt(frm.doc.total_scan_qty))}
+            ${rowHTML('Pack Qty', flt(frm.doc.total_pack_qty))}
+            ${rowHTML('Ship Qty', flt(frm.doc.total_ship_qty))}
+            ${rowHTML('Good Garments', flt(frm.doc.total_good_garments))}
+            ${rowHTML('Rejected Garments', flt(frm.doc.total_rejected_garments))}
+            ${rowHTML('Rejected Panels', flt(frm.doc.total_rejected_panels))}
             ${rowHTML('Cumulative Total', flt(frm.doc.cumulative_total))}
           </tbody>
         </table>

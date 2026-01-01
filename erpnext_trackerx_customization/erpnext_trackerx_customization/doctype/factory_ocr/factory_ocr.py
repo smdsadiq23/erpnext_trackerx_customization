@@ -131,44 +131,68 @@ def _freeze_if_locked(doc: Document):
         frappe.throw(_("This document is locked in '{0}' state. Edits are not allowed.").format(doc.status))
 
 
-def _get_used_group_keys(ocn: str, exclude_factory_ocr: str | None = None) -> set[str]:
+def _get_relevant_factory_ocr_names(ocn: str, exclude_factory_ocr: str | None = None) -> list[str]:
     """
-    Returns used grouped keys for a given OCN (Sales Order):
-      key = style||colour||line_item
-
-    Reads existing Factory OCR Items from all Factory OCRs for that ocn (docstatus < 2).
+    Which Factory OCR docs should consume shipment qty?
+    - count Pending for Approval + Approved
+    - ignore Rejected
     """
     if not ocn:
-        return set()
+        return []
 
-    ocr_filters = {"ocn": ocn, "docstatus": ["<", 2]}
+    filters = {
+        "ocn": ocn,
+        "docstatus": ["<", 2],
+        "status": ["in", ["Pending for Approval", "Approved"]],
+    }
     if exclude_factory_ocr:
-        ocr_filters["name"] = ["!=", exclude_factory_ocr]
+        filters["name"] = ["!=", exclude_factory_ocr]
 
-    ocr_names = frappe.get_all("Factory OCR", filters=ocr_filters, pluck="name") or []
+    return frappe.get_all("Factory OCR", filters=filters, pluck="name") or []
+
+
+def _get_shipped_qty_map(ocn: str, exclude_factory_ocr: str | None = None) -> dict[str, float]:
+    """
+    Map:
+      key = style||colour||line_item  ->  SUM(ship_quantity)
+
+    Counts ship_quantity from Factory OCR Item for relevant OCR docs of that OCN.
+    """
+    ocr_names = _get_relevant_factory_ocr_names(ocn, exclude_factory_ocr=exclude_factory_ocr)
     if not ocr_names:
-        return set()
+        return {}
 
-    rows = frappe.get_all(
-        "Factory OCR Item",
-        filters={"parent": ["in", ocr_names]},
-        fields=["style", "colour", "line_item"],
-    ) or []
+    # NOTE: assumes child doctype is "Factory OCR Item" and fieldnames:
+    # style, colour, line_item, ship_quantity
+    rows = frappe.db.sql("""
+        SELECT
+            COALESCE(style, '') AS style,
+            COALESCE(colour, '') AS colour,
+            COALESCE(line_item, '') AS line_item,
+            COALESCE(SUM(COALESCE(ship_quantity, 0)), 0) AS shipped_qty
+        FROM `tabFactory OCR Item`
+        WHERE parent IN %(parents)s
+        GROUP BY style, colour, line_item
+    """, {"parents": tuple(ocr_names)}, as_dict=1)
 
-    used = set()
-    for r in rows:
-        key = f"{r.get('style') or ''}||{r.get('colour') or ''}||{r.get('line_item') or ''}"
-        used.add(key)
+    shipped_map = {}
+    for r in rows or []:
+        key = f"{r.style}||{r.colour}||{r.line_item}"
+        shipped_map[key] = float(r.shipped_qty or 0)
 
-    return used
+    return shipped_map
 
 
 def _sales_order_has_remaining_groups(sales_order: str) -> bool:
     """
-    Checks if Sales Order has at least one grouped row (style||color||lineitem)
-    that is not yet used in Factory OCR Items for that OCN.
+    A Sales Order should be selectable if ANY grouped key has remaining qty:
+      remaining = order_qty(group) - shipped_qty(group)
+      remaining > 0
     """
-    used_keys = _get_used_group_keys(sales_order)
+    if not sales_order:
+        return False
+
+    shipped_map = _get_shipped_qty_map(sales_order)
 
     so_items = frappe.db.sql("""
         SELECT custom_style, custom_color, custom_lineitem, qty
@@ -179,7 +203,7 @@ def _sales_order_has_remaining_groups(sales_order: str) -> bool:
     if not so_items:
         return False
 
-    grouped = defaultdict(lambda: {"style": "", "custom_color": "", "custom_lineitem": "", "order_qty": 0})
+    grouped = defaultdict(lambda: 0.0)
     for row in so_items:
         style = row.custom_style or ""
         if not style:
@@ -187,15 +211,12 @@ def _sales_order_has_remaining_groups(sales_order: str) -> bool:
         color = row.custom_color or ""
         lineitem = row.custom_lineitem or ""
         key = f"{style}||{color}||{lineitem}"
+        grouped[key] += float(row.qty or 0)
 
-        grouped[key]["style"] = style
-        grouped[key]["custom_color"] = color
-        grouped[key]["custom_lineitem"] = lineitem
-        grouped[key]["order_qty"] += row.qty or 0
-
-    # if ANY key not used => allow SO in query list
-    for key in grouped.keys():
-        if key not in used_keys:
+    for key, order_qty in grouped.items():
+        shipped_qty = float(shipped_map.get(key, 0))
+        remaining = float(order_qty) - shipped_qty
+        if remaining > 0:
             return True
 
     return False
@@ -275,14 +296,12 @@ def sales_order_query_for_factory_ocr(doctype, txt, searchfield, start, page_len
     Return Sales Orders for the given customer that:
       - are submitted (docstatus = 1)
       - match txt
-      - AND have at least one grouped SOI row (style||color||lineitem) not yet used in Factory OCR Item
+      - AND have at least one grouped SOI row (style||color||lineitem) with remaining qty > 0
     """
     customer = filters.get("customer")
     if not customer:
         return []
 
-    # Fetch candidates first (slightly more than page_len to allow filtering)
-    # Then filter using python check.
     candidates = frappe.db.sql("""
         SELECT name, customer, transaction_date
         FROM `tabSales Order`
@@ -294,7 +313,7 @@ def sales_order_query_for_factory_ocr(doctype, txt, searchfield, start, page_len
     """, {
         "customer": customer,
         "txt": "%" + (txt or "") + "%",
-        "limit": int(page_len) * 5,     # buffer for filtering
+        "limit": int(page_len) * 5,
         "offset": int(start)
     }, as_dict=1)
 
@@ -311,16 +330,21 @@ def sales_order_query_for_factory_ocr(doctype, txt, searchfield, start, page_len
 @frappe.whitelist()
 def fetch_sales_order_items_for_factory_ocr(sales_order, factory_ocr=None):
     """
-    Returns grouped rows for Factory OCR Item creation,
-    excluding groups already used in other Factory OCRs of same OCN.
+    Returns grouped rows for Factory OCR Item creation.
 
-    Group key used:
-      style||custom_color||custom_lineitem
+    Rule:
+      A group (style||color||lineitem) is allowed multiple times
+      as long as total shipped qty (sum of ship_quantity) across previous OCRs
+      is < Sales Order grouped order qty.
+
+    Returned:
+      - order_quantity = FULL grouped SO qty
+      - ship_quantity  = REMAINING qty (order_qty - shipped_qty)  ✅
     """
     if not sales_order:
         return []
 
-    used_keys = _get_used_group_keys(sales_order, exclude_factory_ocr=factory_ocr)
+    shipped_map = _get_shipped_qty_map(sales_order, exclude_factory_ocr=factory_ocr)
 
     so_items = frappe.db.sql("""
         SELECT custom_style, custom_color, qty, custom_lineitem
@@ -331,7 +355,8 @@ def fetch_sales_order_items_for_factory_ocr(sales_order, factory_ocr=None):
     if not so_items:
         return []
 
-    grouped = defaultdict(lambda: {"style": "", "custom_color": "", "custom_lineitem": "", "order_qty": 0})
+    # Group Sales Order qty by (style||color||lineitem)
+    grouped = defaultdict(lambda: {"style": "", "custom_color": "", "custom_lineitem": "", "order_qty": 0.0})
     for row in so_items:
         style = row.custom_style or ""
         if not style:
@@ -341,16 +366,25 @@ def fetch_sales_order_items_for_factory_ocr(sales_order, factory_ocr=None):
         lineitem = row.custom_lineitem or ""
         key = f"{style}||{color}||{lineitem}"
 
-        # ✅ exclude already used groups
-        if key in used_keys:
-            continue
-
         grouped[key]["style"] = style
         grouped[key]["custom_color"] = color
         grouped[key]["custom_lineitem"] = lineitem
-        grouped[key]["order_qty"] += row.qty or 0
+        grouped[key]["order_qty"] += float(row.qty or 0)
 
-    unique_styles = list(set(g["style"] for g in grouped.values() if g.get("style")))
+    # Keep only keys with remaining > 0
+    filtered_groups = {}
+    remaining_map = {}
+    for key, g in grouped.items():
+        shipped_qty = float(shipped_map.get(key, 0))
+        remaining = float(g["order_qty"]) - shipped_qty
+        if remaining > 0:
+            filtered_groups[key] = g
+            remaining_map[key] = remaining
+
+    if not filtered_groups:
+        return []
+
+    unique_styles = list(set(g["style"] for g in filtered_groups.values() if g.get("style")))
 
     # 2. CUT qty per (style, color)  (Cut Docket field = style_no)
     cut_map = {}
@@ -369,7 +403,7 @@ def fetch_sales_order_items_for_factory_ocr(sales_order, factory_ocr=None):
             GROUP BY cd.style_no, cd.color
         """, (sales_order,), as_dict=1)
 
-        for d in cut_data:
+        for d in cut_data or []:
             style_no = d.style_no or ""
             color = d.color or ""
             cut_map[f"{style_no}||{color}"] = d.cut_qty or 0
@@ -403,7 +437,7 @@ def fetch_sales_order_items_for_factory_ocr(sales_order, factory_ocr=None):
             GROUP BY itm.custom_style_master, itm.custom_colour_name
         """, (sales_order,), as_dict=1)
 
-        for d in scan_data:
+        for d in scan_data or []:
             style = d.style or ""
             color = d.color or ""
             scan_map[f"{style}||{color}"] = d.scan_qty or 0
@@ -435,24 +469,26 @@ def fetch_sales_order_items_for_factory_ocr(sales_order, factory_ocr=None):
             GROUP BY itm.custom_style_master, itm.custom_colour_name
         """, (sales_order,), as_dict=1)
 
-        for d in rejection_data:
+        for d in rejection_data or []:
             style = d.style or ""
             color = d.color or ""
             rejection_garments_map[f"{style}||{color}"] = d.rejected_count or 0
 
-    # 5. Build result
+    # 5. Build result (order_quantity = full, ship_quantity = remaining)
     result = []
-    for group in grouped.values():
-        style = group["style"]
-        color = group["custom_color"]
-        lineitem = group["custom_lineitem"]
-        order_qty = group["order_qty"]
+    for key, g in filtered_groups.items():
+        style = g["style"]
+        color = g["custom_color"]
+        lineitem = g["custom_lineitem"]
 
-        key = f"{style}||{color}"
+        full_order_qty = float(g["order_qty"])
+        remaining_qty = float(remaining_map.get(key, 0))
 
-        cut_qty = cut_map.get(key, 0.0)
-        scan_qty = scan_map.get(key, 0.0)
-        rejected_garments = float(rejection_garments_map.get(key, 0))
+        style_color_key = f"{style}||{color}"
+
+        cut_qty = cut_map.get(style_color_key, 0.0)
+        scan_qty = scan_map.get(style_color_key, 0.0)
+        rejected_garments = float(rejection_garments_map.get(style_color_key, 0))
 
         cut_to_ship_percent = (scan_qty / cut_qty * 100) if cut_qty else 0.0
 
@@ -460,7 +496,8 @@ def fetch_sales_order_items_for_factory_ocr(sales_order, factory_ocr=None):
             "style": style,
             "colour": color,
             "lineitem": lineitem,
-            "order_quantity": order_qty,
+            "order_quantity": full_order_qty,
+            "ship_quantity": remaining_qty,  
             "cut_quantity": frappe.utils.flt(cut_qty, 2),
             "scan_quantity": frappe.utils.flt(scan_qty, 2),
             "rejected_garments": frappe.utils.flt(rejected_garments, 2),
