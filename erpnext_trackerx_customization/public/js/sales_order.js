@@ -702,9 +702,9 @@ function populate_item_dropdown(select_element, selected_value) {
         args: {
             doctype: 'Item',
             fields: ['name', 'item_name'],
-            // filters: {
-            //     custom_select_master: 'Finished Goods'
-            // },
+            filters: {
+                custom_select_master: 'Finished Goods'
+            },
             limit_page_length: 999
         },
         callback: function(r) {
