@@ -459,10 +459,9 @@ function render_tree_view(frm) {
                     
                     <div class="header-field">
                         <label>Item:</label>
-                        <select class="form-control item-code-select" style="width: 180px;" data-item-index="${item_index}">
-                            <option value="">Select Item</option>
-                        </select>
+                        <div class="item-link-wrapper" data-item-index="${item_index}" style="width: 180px;"></div>
                     </div>
+
 
                     <div class="header-field">
                         <label>Style:</label>
@@ -548,6 +547,54 @@ function render_tree_view(frm) {
         if (!is_collapsed) {
             render_sizes(item_html.find('.sizes-container'), item.sizes, item_index);
         }
+        const wrapper = item_html.find('.item-link-wrapper');
+
+const item_link = frappe.ui.form.make_control({
+    df: {
+        fieldtype: "Link",
+        fieldname: "item_code",
+        options: "Item",
+        placeholder: "Select Item",
+        reqd: 1,
+        
+        change: async function () {
+            const item_code = item_link.get_value();
+            const item_index = wrapper.data('item-index');
+
+            frm.tree_data[item_index].item_code = item_code;
+            frm.tree_data[item_index].sizes = [];
+
+            if (!item_code) return;
+
+            try {
+                // UOM
+                const attrs = await get_item_attributes(item_code);
+                frm.tree_data[item_index].uom = attrs.uom;
+                frm.tree_data[item_index].conversion_factor = attrs.conversion_factor;
+
+                // Style + Color
+                const r = await frappe.db.get_value(
+                    "Item",
+                    item_code,
+                    ["custom_style_master", "custom_colour_name"]
+                );
+
+                frm.tree_data[item_index].custom_style = r.message?.custom_style_master || "";
+                frm.tree_data[item_index].custom_color = r.message?.custom_colour_name || "";
+            } catch (e) {
+                console.warn(e);
+            }
+
+            render_tree_view(frm);
+            frm.dirty();
+        }
+    },
+    parent: wrapper[0],
+    render_input: true
+});
+
+item_link.set_value(item.item_code || "");
+
     });
     
     // Bind events
