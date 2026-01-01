@@ -7,6 +7,7 @@
  "field_order": [
   "section_break_psl6",
   "amended_from",
+  "status",
   "buyer",
   "ocn",
   "ocn_details_section",
@@ -25,7 +26,13 @@
   "order_to_ship_total",
   "column_break_caxu",
   "total_pack_qty",
-  "total_rejected_panels"
+  "total_rejected_panels",
+  "requester_remarks",
+  "approval_section",
+  "column_break_kivv",
+  "approver_remarks",
+  "with_replenishment",
+  "approval_card_html"
  ],
  "fields": [
   {
@@ -151,13 +158,54 @@
    "label": "Order to Ship",
    "precision": "1",
    "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Status",
+   "options": "\nDraft\nPending for Approval\nApproved\nRejected"
+  },
+  {
+   "fieldname": "requester_remarks",
+   "fieldtype": "Small Text",
+   "label": "Requester Remarks"
+  },
+  {
+   "fieldname": "approver_remarks",
+   "fieldtype": "Small Text",
+   "label": "Approver Remarks",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "with_replenishment",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "With Replenishment"
+  },
+  {
+   "fieldname": "approval_card_html",
+   "fieldtype": "HTML",
+   "hidden": 1,
+   "label": "Approval Card",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_kivv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "approval_section",
+   "fieldtype": "Section Break",
+   "label": "Approval Section",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "is_submittable": 1,
  "links": [],
- "modified": "2025-12-31 16:35:14.103574",
+ "modified": "2026-01-01 12:59:19.931697",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Factory OCR",
@@ -173,7 +221,6 @@
    "report": 1,
    "role": "Custom Admin",
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {
@@ -186,7 +233,6 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {
@@ -199,7 +245,6 @@
    "report": 1,
    "role": "New Admin",
    "share": 1,
-   "submit": 1,
    "write": 1
   }
  ],
