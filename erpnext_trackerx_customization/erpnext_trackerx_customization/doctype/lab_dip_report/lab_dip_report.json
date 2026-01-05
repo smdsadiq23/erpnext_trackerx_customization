@@ -1,0 +1,122 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:LB-{supplier}-{colour_no}",
+ "creation": "2026-01-05 14:32:16.984820",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "date_time",
+  "yarn_content",
+  "colour_no",
+  "shade_reference",
+  "approved_date",
+  "ldsent_date",
+  "column_break_ajpm",
+  "supplier",
+  "count_ply",
+  "colour_name",
+  "approved_option",
+  "status",
+  "comments"
+ ],
+ "fields": [
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Supplier(Mill)",
+   "options": "Supplier",
+   "reqd": 1
+  },
+  {
+   "fieldname": "date_time",
+   "fieldtype": "Datetime",
+   "label": "Date and Time"
+  },
+  {
+   "fieldname": "yarn_content",
+   "fieldtype": "Data",
+   "label": "Yarn Content"
+  },
+  {
+   "fieldname": "count_ply",
+   "fieldtype": "Data",
+   "label": "Counts and Ply"
+  },
+  {
+   "fieldname": "colour_no",
+   "fieldtype": "Data",
+   "label": "Colour Number(Pantone)"
+  },
+  {
+   "fieldname": "colour_name",
+   "fieldtype": "Data",
+   "label": "Colour Name"
+  },
+  {
+   "fieldname": "shade_reference",
+   "fieldtype": "Data",
+   "label": "Shade reference number"
+  },
+  {
+   "fieldname": "approved_option",
+   "fieldtype": "Data",
+   "label": "Approved Option"
+  },
+  {
+   "fieldname": "approved_date",
+   "fieldtype": "Date",
+   "label": "Approved Date"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Cancelled\nApproved\nRevised"
+  },
+  {
+   "fieldname": "ldsent_date",
+   "fieldtype": "Date",
+   "label": "Lab Dip Sent date"
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Long Text",
+   "label": "Buyer Colour Comments"
+  },
+  {
+   "fieldname": "column_break_ajpm",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-05 14:43:58.834551",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "LAB DIP REPORT",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
