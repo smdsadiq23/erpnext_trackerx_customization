@@ -7,16 +7,18 @@
  "engine": "InnoDB",
  "field_order": [
   "date_time",
-  "yarn_content",
-  "colour_no",
-  "shade_reference",
-  "approved_date",
-  "ldsent_date",
-  "column_break_ajpm",
+  "merchant",
   "supplier",
+  "buyer",
+  "yarn_content",
   "count_ply",
+  "colour_no",
   "colour_name",
+  "shade_reference",
   "approved_option",
+  "approved_date",
+  "column_break_ajpm",
+  "ldsent_date",
   "status",
   "comments"
  ],
@@ -42,12 +44,14 @@
   {
    "fieldname": "count_ply",
    "fieldtype": "Data",
-   "label": "Counts and Ply"
+   "label": "Counts and Ply",
+   "reqd": 1
   },
   {
    "fieldname": "colour_no",
    "fieldtype": "Data",
-   "label": "Colour Number(Pantone)"
+   "label": "Colour Number(Pantone)",
+   "reqd": 1
   },
   {
    "fieldname": "colour_name",
@@ -78,7 +82,8 @@
   {
    "fieldname": "ldsent_date",
    "fieldtype": "Date",
-   "label": "Lab Dip Sent date"
+   "label": "Lab Dip Sent date",
+   "reqd": 1
   },
   {
    "fieldname": "comments",
@@ -88,15 +93,27 @@
   {
    "fieldname": "column_break_ajpm",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "merchant",
+   "fieldtype": "Select",
+   "label": "Merchant",
+   "options": "Gowri\nKowsalya\nMeena\nRemya\nSushma\nSaranya"
+  },
+  {
+   "fieldname": "buyer",
+   "fieldtype": "Link",
+   "label": "Buyer",
+   "options": "Customer"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-05 14:43:58.834551",
+ "modified": "2026-01-06 10:42:28.202398",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
- "name": "LAB DIP REPORT",
+ "name": "Lab Dip Report",
  "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [

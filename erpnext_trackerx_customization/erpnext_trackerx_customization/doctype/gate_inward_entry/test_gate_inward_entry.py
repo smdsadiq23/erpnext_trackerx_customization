@@ -5,5 +5,5 @@
 from frappe.tests.utils import FrappeTestCase
 
 
-class TestLabDipReport(FrappeTestCase):
+class TestGateInwardEntry(FrappeTestCase):
 	pass
