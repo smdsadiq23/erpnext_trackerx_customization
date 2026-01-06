@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class LabDipReport(Document):
+class DeliveryChallan(Document):
 	pass

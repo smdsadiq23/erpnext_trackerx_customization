@@ -1,0 +1,149 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{customer}-{style_name}",
+ "creation": "2026-01-05 19:08:22.237039",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_zbyl",
+  "amended_from",
+  "sample_type",
+  "customer",
+  "style_name",
+  "column_break_denw",
+  "yarn",
+  "counts",
+  "gauge_ply",
+  "custom_colour",
+  "section_break_hkev",
+  "setting_status",
+  "setting_remarks",
+  "final_status",
+  "final_remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_zbyl",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Master Program",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "style_name",
+   "fieldtype": "Link",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Style",
+   "options": "Style Master"
+  },
+  {
+   "fieldname": "yarn",
+   "fieldtype": "Data",
+   "label": "Yarn"
+  },
+  {
+   "fieldname": "custom_colour",
+   "fieldtype": "Select",
+   "label": "Colour",
+   "options": "Available\nActual"
+  },
+  {
+   "fieldname": "column_break_denw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sample_type",
+   "fieldtype": "Select",
+   "in_filter": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Sample Type",
+   "options": "Proto Sample\nRevised Proto\nFIT Sample\nSize Set\nPhoto Shoot\nSMS\nPP Sample\nBulk"
+  },
+  {
+   "fieldname": "gauge_ply",
+   "fieldtype": "Data",
+   "label": "Gauge/Ply"
+  },
+  {
+   "fieldname": "counts",
+   "fieldtype": "Data",
+   "label": "Counts"
+  },
+  {
+   "fieldname": "section_break_hkev",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "setting_status",
+   "fieldtype": "Table",
+   "label": "Setting Status",
+   "options": "Master Program Item"
+  },
+  {
+   "fieldname": "final_status",
+   "fieldtype": "Table",
+   "label": "Final Status",
+   "options": "Master Program Item"
+  },
+  {
+   "fieldname": "setting_remarks",
+   "fieldtype": "Small Text",
+   "label": "Setting Remarks"
+  },
+  {
+   "fieldname": "final_remarks",
+   "fieldtype": "Small Text",
+   "label": "Final Remarks"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-01-06 16:23:52.849367",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Master Program",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

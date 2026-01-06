@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class LabDipReport(Document):
+class MasterProgram(Document):
 	pass

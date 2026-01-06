@@ -1,0 +1,103 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-01-05 22:50:19.324621",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "setting_status_section",
+  "sample_size_setting",
+  "sample_qty",
+  "section",
+  "operator_setting",
+  "status",
+  "final_status",
+  "sample_size_final",
+  "sample_qty_final",
+  "section_final",
+  "operator_final",
+  "status_final"
+ ],
+ "fields": [
+  {
+   "fieldname": "section",
+   "fieldtype": "Select",
+   "label": "Section",
+   "options": "Designing\nKnitting\nLinking"
+  },
+  {
+   "fieldname": "sample_qty",
+   "fieldtype": "Int",
+   "label": "Sample Qty"
+  },
+  {
+   "fieldname": "setting_status_section",
+   "fieldtype": "Section Break",
+   "label": "Setting Status"
+  },
+  {
+   "fieldname": "sample_size_setting",
+   "fieldtype": "Data",
+   "label": "Sample Size"
+  },
+  {
+   "fieldname": "final_status",
+   "fieldtype": "Section Break",
+   "label": "Final Status"
+  },
+  {
+   "fieldname": "sample_qty_final",
+   "fieldtype": "Int",
+   "label": "Sample Qty"
+  },
+  {
+   "fieldname": "sample_size_final",
+   "fieldtype": "Data",
+   "label": "Sample Size"
+  },
+  {
+   "fieldname": "section_final",
+   "fieldtype": "Select",
+   "label": "Section",
+   "options": "Designing\nKnitting\nLinking"
+  },
+  {
+   "fieldname": "operator_setting",
+   "fieldtype": "Data",
+   "label": "Master/Operator"
+  },
+  {
+   "fieldname": "operator_final",
+   "fieldtype": "Data",
+   "label": "Master/Operator"
+  },
+  {
+   "fieldname": "status_final",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "In-Progress\nCompleted"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "In-Progress\nCompleted"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-01-06 16:09:55.818042",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Master Program Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
