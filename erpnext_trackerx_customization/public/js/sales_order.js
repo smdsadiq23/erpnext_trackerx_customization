@@ -464,7 +464,9 @@ function render_tree_view(frm) {
                     
                     <div class="header-field">
                         <label>Item:</label>
-                        <div class="item-link-wrapper" style="width: 180px;" data-item-index="${item_index}"></div>
+                        <select class="form-control item-code-select" style="width: 180px;" data-item-index="${item_index}">
+                            <option value="">Select Item</option>
+                        </select>
                     </div>
 
                     <div class="header-field">
@@ -553,43 +555,6 @@ function render_tree_view(frm) {
     
     // Bind events
     bind_tree_events(frm);
-}
-
-function create_link_field(frm, wrapper, item_index, initial_value) {
-    // Create a unique fieldname for this link field
-    const fieldname = `tree_item_${item_index}`;
-    
-    // Create the link field using Frappe's field factory
-    const field = frappe.ui.form.make_control({
-        parent: wrapper,
-        df: {
-            fieldtype: 'Link',
-            fieldname: fieldname,
-            options: 'Item',
-            placeholder: 'Search Item...',
-            default: initial_value,
-            get_query: function() {
-                return {
-                    filters: {
-                        'custom_select_master': 'Finished Goods'
-                    }
-                };
-            },
-            change: function() {
-                const item_code = this.get_value();
-                handle_item_selection(frm, item_index, item_code);
-            }
-        },
-        render_input: true
-    });
-    
-    // Store reference to the field
-    wrapper.data('link-field', field);
-    
-    // Set initial value
-    if (initial_value) {
-        field.set_value(initial_value);
-    }
 }
 
 function render_sizes(container, sizes, item_index) {

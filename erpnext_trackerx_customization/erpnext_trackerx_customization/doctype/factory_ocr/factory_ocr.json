@@ -7,23 +7,32 @@
  "field_order": [
   "section_break_psl6",
   "amended_from",
+  "status",
   "buyer",
   "ocn",
   "ocn_details_section",
   "table_ocn_details",
   "totals_section",
   "total_order_qty",
-  "total_good_garments",
-  "cut_to_ship_of_order",
+  "total_ship_qty",
+  "cumulative_total",
   "column_break_jbzz",
   "total_cut_qty",
   "total_rejected_garments",
+  "cut_to_ship_of_order",
   "column_break_dmzw",
+  "total_scan_qty",
+  "total_good_garments",
+  "order_to_ship_total",
+  "column_break_caxu",
   "total_pack_qty",
   "total_rejected_panels",
-  "column_break_caxu",
-  "total_ship_qty",
-  "cumulative_total"
+  "requester_remarks",
+  "approval_section",
+  "column_break_kivv",
+  "approver_remarks",
+  "with_replenishment",
+  "approval_card_html"
  ],
  "fields": [
   {
@@ -111,7 +120,8 @@
   {
    "fieldname": "cut_to_ship_of_order",
    "fieldtype": "Percent",
-   "label": "Cut to Ship of Order",
+   "label": "Cut to Ship",
+   "precision": "1",
    "read_only": 1
   },
   {
@@ -136,13 +146,66 @@
    "fieldtype": "Int",
    "label": "Total Pack Qty",
    "read_only": 1
+  },
+  {
+   "fieldname": "total_scan_qty",
+   "fieldtype": "Int",
+   "label": "Total Scan Qty"
+  },
+  {
+   "fieldname": "order_to_ship_total",
+   "fieldtype": "Percent",
+   "label": "Order to Ship",
+   "precision": "1",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Status",
+   "options": "\nDraft\nPending for Approval\nApproved\nRejected"
+  },
+  {
+   "fieldname": "requester_remarks",
+   "fieldtype": "Small Text",
+   "label": "Requester Remarks"
+  },
+  {
+   "fieldname": "approver_remarks",
+   "fieldtype": "Small Text",
+   "label": "Approver Remarks",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "with_replenishment",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "With Replenishment"
+  },
+  {
+   "fieldname": "approval_card_html",
+   "fieldtype": "HTML",
+   "hidden": 1,
+   "label": "Approval Card",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_kivv",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "approval_section",
+   "fieldtype": "Section Break",
+   "label": "Approval Section",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "is_submittable": 1,
  "links": [],
- "modified": "2025-12-09 16:29:28.106499",
+ "modified": "2026-01-01 12:59:19.931697",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Factory OCR",
@@ -158,7 +221,6 @@
    "report": 1,
    "role": "Custom Admin",
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {
@@ -171,7 +233,6 @@
    "report": 1,
    "role": "System Manager",
    "share": 1,
-   "submit": 1,
    "write": 1
   },
   {
@@ -184,7 +245,6 @@
    "report": 1,
    "role": "New Admin",
    "share": 1,
-   "submit": 1,
    "write": 1
   }
  ],
