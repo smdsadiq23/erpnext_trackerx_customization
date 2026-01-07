@@ -239,6 +239,11 @@ function setup_tree_view(frm) {
                 font-weight: 600;
                 font-size: 14px;
             }
+            
+            /* Link field wrapper */
+            .item-link-wrapper {
+                width: 180px;
+            }
         </style>
     `;
     
@@ -524,8 +529,6 @@ function render_tree_view(frm) {
                                value="${item.conversion_factor}" data-item-index="${item_index}" readonly>
                     </div>
                     
-                   
-                    
                     <div class="header-controls">
                         <button class="btn-icon btn-add add-size-btn" data-item-index="${item_index}" title="Add Size">
                             <i class="fa fa-plus"></i>
@@ -541,8 +544,8 @@ function render_tree_view(frm) {
         
         tree_content.append(item_html);
         
-        // Populate item code dropdown and set selected value
-        populate_item_dropdown(item_html.find('.item-code-select'), item_code_val);
+        // Create Frappe Link field for item selection
+        create_link_field(frm, item_html.find('.item-link-wrapper'), item_index, item_code_val);
         
         // Render sizes
         if (!is_collapsed) {
@@ -602,32 +605,6 @@ function render_sizes(container, sizes, item_index) {
     });
 }
 
-function populate_item_dropdown(select_element, selected_value) {
-    frappe.call({
-        method: 'frappe.client.get_list',
-        args: {
-            doctype: 'Item',
-            fields: ['name', 'item_name'],
-            filters: {
-                custom_select_master: 'Finished Goods'
-            },
-            limit_page_length: 999
-        },
-        callback: function(r) {
-            if (r.message) {
-                r.message.forEach(item => {
-                    const item_display = item.item_name ? `${item.name} - ${item.item_name}` : item.name;
-                    const option = $(`<option value="${item.name}">${item_display}</option>`);
-                    select_element.append(option);
-                });
-                if (selected_value) {
-                    select_element.val(selected_value);
-                }
-            }
-        }
-    });
-}
-
 function update_summary_display(frm, item_index) {
     const item = frm.tree_data[item_index];
     const summary = calculate_summary(item.sizes);
@@ -636,13 +613,61 @@ function update_summary_display(frm, item_index) {
     item_element.find('.total-qty-display').val(summary.total_qty);
     item_element.find('.total-rows-display').val(summary.total_rows);
     item_element.find('.total-order-qty-display').val(summary.total_order_qty);
+}
 
+async function handle_item_selection(frm, item_index, item_code) {
+    // Reset fields
+    frm.tree_data[item_index].item_code = item_code;
+    frm.tree_data[item_index].custom_style = '';
+    frm.tree_data[item_index].custom_color = '';
+    frm.tree_data[item_index].sizes = [];
+
+    if (item_code) {
+        try {
+            // Fetch UOM/conversion
+            const attributes = await get_item_attributes(item_code);
+            frm.tree_data[item_index].uom = attributes.uom;
+            frm.tree_data[item_index].conversion_factor = attributes.conversion_factor;
+
+            // Fetch style and color from Item
+            const item_data = await frappe.db.get_value('Item', item_code, 
+                ['custom_style_master', 'custom_colour_name']
+            );
+            if (item_data.message) {
+                frm.tree_data[item_index].custom_style = item_data.message.custom_style_master || '';
+                frm.tree_data[item_index].custom_color = item_data.message.custom_colour_name || '';
+            }
+        } catch (error) {
+            console.warn('Failed to fetch item details:', error);
+            frm.tree_data[item_index].uom = 'Nos';
+            frm.tree_data[item_index].conversion_factor = 1;
+            frm.tree_data[item_index].custom_style = '';
+            frm.tree_data[item_index].custom_color = '';
+        }
+    } else {
+        frm.tree_data[item_index].uom = 'Nos';
+        frm.tree_data[item_index].conversion_factor = 1;
+        frm.tree_data[item_index].custom_style = '';
+        frm.tree_data[item_index].custom_color = '';
+    }
+
+    // Update display for the specific item
+    const header = $(`.tree-item-header[data-item-index="${item_index}"]`);
+    header.find('.style-display').val(frm.tree_data[item_index].custom_style);
+    header.find('.custom-color-input').val(frm.tree_data[item_index].custom_color);
+    header.find('.uom-display').val(frm.tree_data[item_index].uom);
+    header.find('.conversion-factor-display').val(frm.tree_data[item_index].conversion_factor);
+    
+    // Update summary information
+    update_summary_display(frm, item_index);
+    
+    frm.dirty();
 }
 
 function bind_tree_events(frm) {
     // Collapse/Expand functionality
     $('.tree-item-header').off('click').on('click', function(e) {
-        if ($(e.target).is('input, select, button, i')) return;
+        if ($(e.target).is('input, select, button, i, .form-control, .awesomplete')) return;
         
         const item_index = $(this).data('item-index');
         const icon = $(this).find('.collapse-icon');
@@ -661,46 +686,6 @@ function bind_tree_events(frm) {
             // Re-render sizes when expanding
             render_sizes(content, frm.tree_data[item_index].sizes, item_index);
         }
-    });
-    
-    // Item code change with async item attributes
-    $('.item-code-select').off('change').on('change', async function() {
-        const item_index = $(this).data('item-index');
-        const item_code = $(this).val();
-        
-        // Reset fields
-        frm.tree_data[item_index].item_code = item_code;
-        frm.tree_data[item_index].custom_style = '';
-        frm.tree_data[item_index].custom_color = '';
-        frm.tree_data[item_index].sizes = [];
-
-        if (item_code) {
-            // Fetch UOM, style, and color in parallel
-            try {
-                // Fetch UOM/conversion
-                const attributes = await get_item_attributes(item_code);
-                frm.tree_data[item_index].uom = attributes.uom;
-                frm.tree_data[item_index].conversion_factor = attributes.conversion_factor;
-
-                // Fetch style and color from Item
-                const item_data = await frappe.db.get_value('Item', item_code, 
-                    ['custom_style_master', 'custom_colour_name']
-                );
-                if (item_data.message) {
-                    frm.tree_data[item_index].custom_style = item_data.message.custom_style_master || '';
-                    frm.tree_data[item_index].custom_color = item_data.message.custom_colour_name || '';
-                }
-            } catch (error) {
-                console.warn('Failed to fetch item details:', error);
-                frm.tree_data[item_index].uom = 'Nos';
-                frm.tree_data[item_index].conversion_factor = 1;
-                frm.tree_data[item_index].custom_style = '';
-                frm.tree_data[item_index].custom_color = '';
-            }
-        }
-
-        render_tree_view(frm);
-        frm.dirty();
     });
     
     // Item level field changes
@@ -739,8 +724,7 @@ function bind_tree_events(frm) {
     $('.order-qty-input, .tolerance-input').off('input').on('input', function() {
         const item_index = $(this).data('item-index');
         const size_index = $(this).data('size-index');
-        uom = $('#uom-input').val()
-        console.log(uom)
+        const uom = frm.tree_data[item_index].uom;
         
         const size_obj = frm.tree_data[item_index].sizes[size_index];
         
@@ -751,13 +735,11 @@ function bind_tree_events(frm) {
         }
         
         // Calculate final qty
-        final_qty = size_obj.custom_order_qty + (size_obj.custom_order_qty * size_obj.custom_tolerance_percentage / 100);
-        if(uom === "Nos")
-        {
-            final_qty = Math.ceil(final_qty)
+        let final_qty = size_obj.custom_order_qty + (size_obj.custom_order_qty * size_obj.custom_tolerance_percentage / 100);
+        if(uom === "Nos") {
+            final_qty = Math.ceil(final_qty);
         }
         size_obj.qty = final_qty;
-        
         
         // Update display
         $(this).closest('.size-item').find('.qty-display').val(final_qty.toFixed(2));
@@ -837,7 +819,7 @@ function remove_size(frm, item_index, size_index) {
     render_tree_view(frm);
 }
 
-// Work Order functions (keeping your existing functionality)
+// Work Order functions (keeping your existing functionality - unchanged)
 function open_custom_work_order_dialog(frm) {
   const items = frm.doc.items.map(item => ({
     item_code: item.item_code,
