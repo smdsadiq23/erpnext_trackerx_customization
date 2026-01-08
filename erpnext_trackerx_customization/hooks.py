@@ -331,8 +331,7 @@ doc_events= {
         # "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.set_item_code_before_insert",
         "autoname": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.autoname",
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.validate_item",
-        "on_update": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.sync_bom_images"
-        "on_update": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.on_update"
+        "on_update": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.sync_bom_images"        
     },
     "BOM": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.validate_bom",
