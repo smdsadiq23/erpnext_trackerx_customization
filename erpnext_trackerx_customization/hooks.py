@@ -332,6 +332,7 @@ doc_events= {
         "autoname": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.autoname",
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.validate_item",
         "on_update": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.sync_bom_images"
+        "on_update": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.on_update"
     },
     "BOM": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.validate_bom",
