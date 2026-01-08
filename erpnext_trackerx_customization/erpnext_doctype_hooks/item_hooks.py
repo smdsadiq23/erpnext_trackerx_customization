@@ -292,19 +292,16 @@ def validate_for_fg_components(doc, method):
                 if not parent.tracking_required:
                     frappe.throw(f"Tracking Required must be checked for all ancestors of leaf component '{row.component_name}'.")
                 current = parent
+                
 
-def sync_bom_images(doc, method):
-    """
-    When Item image is added/updated,
-    sync it to all related BOMs.
-    This is called from Item's on_update hook.
-    """
-    sync_item_image_to_boms(doc, method)
-# Updating Colour from Item to all related downstream doctypes
-
+# Updating Colour and Image from Item to all related downstream doctypes
 def on_update(doc, method=None):
     if doc.doctype != "Item" or doc.is_new():
         return
+    
+    # When Item image is added/updated sync it to all related BOMs.
+    if doc.has_value_changed("image"):
+        sync_item_image_to_boms(doc, method)
 
     # Enqueue background job only if any relevant field changed
     if (
