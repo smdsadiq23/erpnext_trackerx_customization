@@ -188,8 +188,8 @@ function setFieldsToReadyOnly(frm) {
                 "custom_select_master",
                 "item_group",
                 "item_name",
-                "custom_colour_name",
-                "custom_colour_code",
+                // "custom_colour_name",
+                // "custom_colour_code",
                 "custom_item_number",
                 "custom_style_master"
             ]
