@@ -1,11 +1,27 @@
-
 import frappe
 import re
 
 def validate_bom(doc, method):
     # validate_for_duplicate_bom_item_size(doc);
     generate_panel_code(doc, method)
-    
+   
+
+
+def set_bom_image_from_item(doc):
+    if not doc.item:
+        return
+
+    # Fetch image from Item
+    item_image = frappe.db.get_value("Item", doc.item, "image")
+
+    # Set it into BOM.image (Attach Image field)
+    if item_image:
+        doc.image = item_image
+    else:
+        doc.image = None
+
+def after_save(doc):
+     set_bom_image_from_item(doc)
 
 def before_save_bom(doc, method):
     #calculate_custom_material_costs(doc);
