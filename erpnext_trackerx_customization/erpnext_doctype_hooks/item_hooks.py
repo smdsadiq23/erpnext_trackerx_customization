@@ -3,6 +3,7 @@
 import frappe
 from erpnext_trackerx_customization.utils.constants import get_constants 
 from erpnext_trackerx_customization.erpnext_doctype_hooks.item_settings import generate_item_code_from_settings
+from erpnext_trackerx_customization.utils.bom_image_sync import sync_item_image_to_boms
 
 def get_item_permission_query_conditions(user):
     if not user:
@@ -35,7 +36,6 @@ def get_item_permission_query_conditions(user):
         frappe.log_error("Item Permission Check", "No matching roles found — access restricted (1=0)")
         return "1=1" # do not restrict if the role doesnt have any item types (empty)
 
-
 ## ITS PART OF BELOW autonam_item method now
 # def set_item_code_before_insert(doc, method):
 #     """
@@ -48,7 +48,6 @@ def get_item_permission_query_conditions(user):
 #         frappe.throw("custom_select_master is required to generate item_code")
 
 #     doc.item_code = generate_item_code(doc)
-
 
 def autoname(doc, method=None):
     # 1) Manual override
@@ -294,6 +293,13 @@ def validate_for_fg_components(doc, method):
                     frappe.throw(f"Tracking Required must be checked for all ancestors of leaf component '{row.component_name}'.")
                 current = parent
 
+def sync_bom_images(doc, method):
+    """
+    When Item image is added/updated,
+    sync it to all related BOMs.
+    This is called from Item's on_update hook.
+    """
+    sync_item_image_to_boms(doc, method)
 # Updating Colour from Item to all related downstream doctypes
 
 def on_update(doc, method=None):
