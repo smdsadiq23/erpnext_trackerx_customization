@@ -423,7 +423,6 @@ function filterCustomSelectMasterOptionsBasedOnRole(frm) {
     
 }
 
-
 function setItemMasterOptions(frm){
     console.log("Getting Item Master from the constants")
     if (frappe.boot.item_constants && frappe.boot.item_constants.item_master) {
@@ -439,7 +438,6 @@ function setItemMasterOptions(frm){
     
 }
     
-
 function copy_operations_from_style_master(frm) {
     // Clear existing BOM Operations in the BOM
     frm.clear_table("custom_bom_operations");

@@ -8,11 +8,7 @@ def sync_item_image_to_boms(doc, method):
     sync it to all related BOMs (except cancelled).
     Called from Item's after_save hook.
     """
-    
-    # Only proceed if image has changed
-    if not doc.has_value_changed("image"):
-        return
-    
+
     # Fetch all BOMs linked to this Item
     bom_list = frappe.get_all(
         "BOM",
