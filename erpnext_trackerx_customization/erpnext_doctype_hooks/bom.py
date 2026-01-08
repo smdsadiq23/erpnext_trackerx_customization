@@ -2,29 +2,34 @@ import frappe
 import re
 
 def validate_bom(doc, method):
+    """Validate BOM and sync image from Item"""
     # validate_for_duplicate_bom_item_size(doc);
     generate_panel_code(doc, method)
-   
+    # Always sync image during validation
+    sync_bom_image_from_item(doc)
 
-
-def set_bom_image_from_item(doc):
+def sync_bom_image_from_item(doc):
+    """Sync image from Item to BOM"""
     if not doc.item:
         return
-
-    # Fetch image from Item
+    
+    # Fetch latest image from Item
     item_image = frappe.db.get_value("Item", doc.item, "image")
-
+    
     # Set it into BOM.image (Attach Image field)
     if item_image:
         doc.image = item_image
     else:
         doc.image = None
 
-def after_save(doc):
-     set_bom_image_from_item(doc)
+def on_update(doc, method):
+    """Sync image when BOM is updated (in case Item image changed)"""
+    sync_bom_image_from_item(doc)
+    # Force update the image field in database
+    frappe.db.set_value("BOM", doc.name, "image", doc.image, update_modified=False)
 
 def before_save_bom(doc, method):
-    #calculate_custom_material_costs(doc);
+    # calculate_custom_material_costs(doc);
     pass
 
 def on_submit(doc, method):
@@ -66,7 +71,6 @@ def on_submit(doc, method):
             child_items = getattr(doc, table_name, [])
             # if not child_items:
             #     frappe.throw(f"At least 1 {item_tables_to_name[table_name]} required")
-    
 
 def validate_for_duplicate_bom_item_size(doc):
     seen_items = set()
@@ -86,8 +90,6 @@ def validate_for_duplicate_bom_item_size(doc):
             if item_code in seen_item_codes_no_size:
                 frappe.throw(f"Item Code {item_code} without Size can be added only once. Increase the quantity instead")
             seen_item_codes_no_size.add(item_code)
-
-
 
 @frappe.whitelist()
 def generate_panel_code(doc, method):
@@ -144,8 +146,8 @@ def generate_panel_code(doc, method):
                 parts.append(item_number)
             if color_code:
                 parts.append(color_code)
-            # if size:
-            #     parts.append(size)
+          # if size:
+          #     parts.append(size)
 
             base_code = "-".join(parts)
     
@@ -166,7 +168,6 @@ def generate_panel_code(doc, method):
 
             panel_code_map[key]=item.custom_panel_code 
 
-
     # copy panel code for items
     for item in doc.items:
         key = item.custom_item_uuid
@@ -174,4 +175,30 @@ def generate_panel_code(doc, method):
         if(panel_code_from_other_item):
             item.custom_panel_code = panel_code_from_other_item
 
+# ==============================================
+# ADDITIONAL FUNCTIONS FOR COMPLETE SOLUTION
+# ==============================================
 
+# def after_insert(doc, method):
+#     """Sync image when BOM is first created"""
+#     sync_bom_image_from_item(doc)
+#     if doc.image:
+#         frappe.db.set_value("BOM", doc.name, "image", doc.image, update_modified=False)
+
+# @frappe.whitelist()
+# def sync_image_from_item(bom_name):
+#     """Manual sync button for BOM - API endpoint"""
+#     bom = frappe.get_doc("BOM", bom_name)
+#     if bom.item:
+#         item_image = frappe.db.get_value("Item", bom.item, "image")
+#         frappe.db.set_value("BOM", bom_name, "image", item_image)
+#         frappe.msgprint("Image synced from Item")
+#         bom.reload()  # Reload to show updated image
+#         return item_image
+#     else:
+#         frappe.msgprint("No Item linked to this BOM")
+#     return None
+
+# def before_save(doc, method):
+#     """Ensure image is synced before every save"""
+#     sync_bom_image_from_item(doc)
