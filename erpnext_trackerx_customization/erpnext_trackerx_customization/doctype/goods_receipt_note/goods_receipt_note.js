@@ -37,7 +37,9 @@ frappe.ui.form.on("Goods Receipt Note", {
 
             frm.refresh_field('document_checklist');
         }
-        set_item_code_query(frm);
+        
+        // Apply current filters on refresh
+        apply_item_code_filters(frm);
 
         // Set up click handler for selected_warehouse after grid is rendered
         const grid = frm.fields_dict["items"]?.grid;
@@ -129,7 +131,7 @@ frappe.ui.form.on("Goods Receipt Note", {
 
                     Promise.all(promises).then(() => {
                         frm.refresh_field('items');
-                        set_item_code_query(frm);
+                        apply_item_code_filters(frm);
                     });
                 }
             }
@@ -159,7 +161,7 @@ frappe.ui.form.on("Goods Receipt Note", {
         if (frm.doc.set_warehouse) {
             frappe.model.set_value(cdt, cdn, 'accepted_warehouse', frm.doc.set_warehouse);
         }
-        set_item_code_query(frm);
+        apply_item_code_filters(frm);
         update_total_received_quantity(frm);
     },
 
@@ -212,11 +214,15 @@ frappe.ui.form.on("Goods Receipt Note", {
             callback: function(r) {
                 const allowed_items = r.message || [];
 
+                // Set the filter for item_code in child table
                 frm.set_query('item_code', 'items', () => ({
                     filters: allowed_items.length 
                         ? { name: ['in', allowed_items] } 
                         : { name: ['=', ''] }
                 }));
+
+                // CRITICAL: Refresh the grid after setting the query
+                frm.fields_dict['items'].grid.refresh();
 
                 if (allowed_items.length === 0) {
                     frappe.msgprint(__('No fabric items found in the default BOM for {0}', [frm.doc.fg_item]));
@@ -226,35 +232,47 @@ frappe.ui.form.on("Goods Receipt Note", {
     }
 });
 
-function set_item_code_query(frm) {
-    // If fg_item is selected, DO NOT override the BOM-based filter
+// FIXED: New function to centrally apply filters
+function apply_item_code_filters(frm) {
+    // Priority 1: If fg_item is selected, use BOM-based filter (already set by fg_item event)
     if (frm.doc.fg_item) {
-        return;
-    }
-
-    let po = frm.doc.purchase_order;
-    if (!po) {
-        // Only reset to "all items" if we're NOT in fg_item mode
-        // But we want EMPTY when no context → so set empty filter
-        frm.set_query('item_code', 'items', () => ({
-            filters: { name: ['=', ''] }
-        }));
-        return;
-    }
-
-    frappe.call({
-        method: "frappe.client.get",
-        args: { doctype: "Purchase Order", name: po },
-        callback: function (r) {
-            if (r.message) {
-                let valid_items = (r.message.items || []).map(item => item.item_code);
-                frm.set_query('item_code', 'items', () => ({
-                    filters: { name: ['in', valid_items] }
-                }));
-                frm.refresh_field('items');
-            }
+        // Refresh to ensure filter is applied
+        if (frm.fields_dict['items'] && frm.fields_dict['items'].grid) {
+            frm.fields_dict['items'].grid.refresh();
         }
-    });
+        return;
+    }
+
+    // Priority 2: If purchase_order is selected, use PO-based filter
+    if (frm.doc.purchase_order) {
+        frappe.call({
+            method: "frappe.client.get",
+            args: { doctype: "Purchase Order", name: frm.doc.purchase_order },
+            callback: function (r) {
+                if (r.message) {
+                    let valid_items = (r.message.items || []).map(item => item.item_code);
+                    frm.set_query('item_code', 'items', () => ({
+                        filters: { name: ['in', valid_items] }
+                    }));
+                    // Refresh grid after setting query
+                    if (frm.fields_dict['items'] && frm.fields_dict['items'].grid) {
+                        frm.fields_dict['items'].grid.refresh();
+                    }
+                }
+            }
+        });
+        return;
+    }
+
+    // Priority 3: Default - empty filter
+    frm.set_query('item_code', 'items', () => ({
+        filters: { name: ['=', ''] }
+    }));
+    
+    // Refresh grid
+    if (frm.fields_dict['items'] && frm.fields_dict['items'].grid) {
+        frm.fields_dict['items'].grid.refresh();
+    }
 }
 
 // --- Goods Receipt Item Child Table Events ---
@@ -276,7 +294,6 @@ frappe.ui.form.on("Goods Receipt Item", {
         const amount = (row.received_quantity || 0) * (row.rate || 0);
         frappe.model.set_value(cdt, cdn, 'amount', amount);
     },
-    // 👇 NEW: Auto-fill color & composition when item_code changes
     item_code(frm, cdt, cdn) {
         const row = locals[cdt][cdn];
         const item_code = row.item_code;
@@ -296,7 +313,6 @@ frappe.ui.form.on("Goods Receipt Item", {
             })
             .catch(err => {
                 console.warn("Could not fetch Item details for:", item_code, err);
-                // Optionally show a message
                 frappe.msgprint({
                     title: __("Item Not Found"),
                     indicator: "orange",
@@ -338,6 +354,7 @@ frappe.ui.form.on('Goods Receipt Document Checklist', {
         }
     }
 });
+
 
 // --- Warehouse Selection Dialog ---
 // function openLocationDialog(frm, cdt, cdn) {
@@ -505,6 +522,7 @@ frappe.ui.form.on('Goods Receipt Document Checklist', {
 //     });
 // }
 
+// --- Warehouse Selection Dialog ---
 function openLocationDialog(frm, cdt, cdn) {
     let ROOT = "";
 
@@ -615,100 +633,13 @@ function isLeaf(nodeName) {
     frappe.call({
         method: "frappe.desk.treeview.get_children",
         args: { doctype: "Warehouse", parent: nodeName },
-        async: false,  // block check (safe because it’s just a small call)
+        async: false,
         callback(res) {
             hasChild = !(res && res.message && res.message.length);
         }
     });
     return hasChild;
 }
-
-
-function zoneSelected(dialog, zone) {
-    dialog.selected_zone = zone;
-    dialog.selected_rack = null;
-    dialog.selected_level = null;
-    dialog.selected_bin = null;
-    dialog.fields_dict.html_level.$wrapper.empty();
-    dialog.fields_dict.html_bin.$wrapper.empty();
-    console.log("Zone selected:", zone);
-
-    loadChildren(zone, (racks) => {
-        renderBoxes(dialog, dialog.fields_dict.html_rack.$wrapper, racks, "Rack", rackSelected);
-    });
-}
-
-function rackSelected(dialog, rack) {
-    dialog.selected_rack = rack;
-    dialog.selected_level = null;
-    dialog.selected_bin = null;
-    dialog.fields_dict.html_level.$wrapper.empty();
-    dialog.fields_dict.html_bin.$wrapper.empty();
-    console.log("Rack selected:", rack);
-
-    loadChildren(rack, (levels) => {
-        renderBoxes(dialog, dialog.fields_dict.html_level.$wrapper, levels, "Level", levelSelected);
-    });
-}
-
-function levelSelected(dialog, level) {
-    dialog.selected_level = level;
-    dialog.selected_bin = null;
-    console.log("Level selected:", level);
-
-    loadChildren(level, (bins) => {
-        renderBoxes(dialog, dialog.fields_dict.html_bin.$wrapper, bins, "Bin", binSelected); // Fixed to html_bin
-    });
-}
-
-function binSelected(dialog, bin) {
-    dialog.selected_bin = bin;
-    console.log("Bin selected:", bin);
-}
-
-function loadChildren(parentName, callback) {
-    frappe.call({
-        method: "frappe.desk.treeview.get_children",
-        args: { doctype: "Warehouse", parent: parentName },
-        callback(res2) {
-            let opts = (res2 && res2.message) ? res2.message.map(x => x.value) : [];
-            callback(opts);
-        },
-        error() {
-            frappe.msgprint({
-                title: __("Error"),
-                indicator: "red",
-                message: __("Failed to load children for {0}", [parentName])
-            });
-            callback([]);
-        }
-    });
-}
-
-function detectLabelFromNames(names) {
-    const labelMap = {
-        zone: ["zone", "area", "section"],
-        rack: ["rack", "shelf", "stand"],
-        level: ["level", "floor", "tier"],
-        bin: ["bin", "slot", "cell"]
-    };
-    const low = names.join(" ").toLowerCase();
-    for (let [label, keywords] of Object.entries(labelMap)) {
-        if (keywords.some(k => low.includes(k))) return label.charAt(0).toUpperCase() + label.slice(1);
-    }
-    return "Zone";
-}
-
-function buildLabelSequence(start) {
-    const seq = ["Zone", "Rack", "Level", "Bin"];
-    const idx = seq.indexOf(start);
-    if (idx === -1) return seq;
-    const out = [];
-    for (let i = idx; i < seq.length; i++) out.push(seq[i]);
-    while (out.length < 4) out.push("Level");
-    return out;
-}
-
 
 function buildHierarchy(parent, childKey, callback) {
     frappe.call({
@@ -744,8 +675,4 @@ function buildHierarchy(parent, childKey, callback) {
             callback({ name: parent });
         }
     });
-}
-
-function reset_item_filter(frm) {
-    frm.set_query('item_code', 'items', () => ({ filters: {} }));
 }
