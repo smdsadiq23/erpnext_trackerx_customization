@@ -215,6 +215,7 @@ frappe.ui.form.on("Goods Receipt Note", {
                 if (allowed_items.length === 0) {
                     frappe.msgprint(__('No fabric items found in the default BOM for {0}', [frm.doc.fg_item]));
                 }
+                console.log(allowed_items);
             }
         });
     }
