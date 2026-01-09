@@ -804,6 +804,23 @@ def get_goods_receipt_putaway_summary(doc_name):
         frappe.log_error(f"Error getting putaway summary: {str(e)}")
         return {"success": False, "error": str(e)}
     
+
+@frappe.whitelist()
+def get_fg_items_by_ocn(ocn):
+    """
+    Returns list of item_code (Finished Goods) from Sales Order Items.
+    Used for dynamic filtering of fg_item in GRN.
+    """
+    if not ocn or not frappe.db.exists("Sales Order", ocn):
+        return []
+
+    return frappe.db.sql_list("""
+        SELECT DISTINCT item_code
+        FROM `tabSales Order Item`
+        WHERE parent = %s
+        ORDER BY item_code
+    """, ocn)
+    
     
 @frappe.whitelist()
 def get_fabric_items_from_fg_bom(fg_item):
