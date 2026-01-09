@@ -56,15 +56,11 @@ frappe.ui.form.on("Goods Receipt Note", {
     onload(frm) {
         buildHierarchy("Test Warehouse - Logic", "zones", function (tree) {
             console.log("Final Warehouse Hierarchy:", tree);
-        });
-
-        frm.set_query('fg_item', () => {
-            return {
-                filters: {
-                    custom_select_master: 'Finished Goods'
-                }
-            };
-        });        
+        }); 
+        
+        frm.set_query('fg_item', () => ({
+            filters: { name: ['=', ''] } // Impossible filter → empty list
+        }));
     },
 
     validate(frm) {
@@ -161,12 +157,46 @@ frappe.ui.form.on("Goods Receipt Note", {
         update_total_received_quantity(frm);
     },
 
+    ocn: function(frm) {
+        // Clear fg_item when ocn changes (good UX)
+        frm.set_value('fg_item', '');
+
+        if (!frm.doc.ocn) {
+            // Blank filter if no OCN
+            frm.set_query('fg_item', () => ({ filters: { name: ['=', ''] } }));
+            return;
+        }
+
+        // Fetch FG items linked to this OCN (Sales Order)
+        frappe.call({
+            method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.doctype.goods_receipt_note.goods_receipt_note.get_fg_items_by_ocn',
+            args: { ocn: frm.doc.ocn },
+            callback: function(r) {
+                const allowed_items = r.message || [];
+
+                // Apply dynamic filter on fg_item
+                frm.set_query('fg_item', () => ({
+                    filters: allowed_items.length 
+                        ? { name: ['in', allowed_items] } 
+                        : { name: ['=', ''] }
+                }));
+
+                if (allowed_items.length === 0) {
+                    frappe.msgprint(__('No finished goods items found for OCN {0}', [frm.doc.ocn]));
+                }
+            }
+        });
+    },
+
     fg_item: function(frm) {
         frm.clear_table('items');
         frm.refresh_field('items');
 
         if (!frm.doc.fg_item) {
-            frm.set_query('item_code', 'items', () => ({ filters: {} }));
+            // Show nothing when fg_item is cleared
+            frm.set_query('item_code', 'items', () => ({
+                filters: { name: ['=', ''] }
+            }));
             return;
         }
 
@@ -175,11 +205,11 @@ frappe.ui.form.on("Goods Receipt Note", {
             args: { fg_item: frm.doc.fg_item },
             callback: function(r) {
                 const allowed_items = r.message || [];
-                
+
                 frm.set_query('item_code', 'items', () => ({
                     filters: allowed_items.length 
                         ? { name: ['in', allowed_items] } 
-                        : {}
+                        : { name: ['=', ''] }
                 }));
 
                 if (allowed_items.length === 0) {
