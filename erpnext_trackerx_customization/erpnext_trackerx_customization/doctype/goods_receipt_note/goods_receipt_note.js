@@ -355,6 +355,173 @@ frappe.ui.form.on('Goods Receipt Document Checklist', {
     }
 });
 
+
+// --- Warehouse Selection Dialog ---
+// function openLocationDialog(frm, cdt, cdn) {
+//     let ROOT = ""; // Empty by default
+
+//     frappe.call({
+//         method: "frappe.client.get_list",
+//         args: {
+//             doctype: "Warehouse",
+//             fields: ["name"],
+//             filters: {
+//                 "warehouse_type": "Main Warehouse"
+//             },
+//             limit_page_length: 100
+//         },
+//         callback: function(res) {
+//             const warehouses = res.message || [];
+//             console.log("Warehouse list:", warehouses);
+
+//             let d = new frappe.ui.Dialog({
+//                 title: __("Select Warehouse Location"),
+//                 size: "large",
+//                 fields: [
+//                     {
+//                         fieldname: "root_warehouse",
+//                         fieldtype: "Select",
+//                         label: __("Root Warehouse"),
+//                         options: warehouses.map(w => w.name),
+//                         default: ROOT,
+//                         onchange: function() {
+//                             ROOT = d.get_value("root_warehouse");
+//                             console.log("Selected root warehouse:", ROOT);
+//                             if (!ROOT) {
+//                                 // Clear all fields if ROOT is empty
+//                                 console.log("ROOT is empty, clearing fields");
+//                                 d.fields_dict.html_zone.$wrapper.html(`<div><b>Zone:</b> ${__("No options available")}</div>`);
+//                                 d.fields_dict.html_rack.$wrapper.empty();
+//                                 d.fields_dict.html_level.$wrapper.empty();
+//                                 d.fields_dict.html_bin.$wrapper.empty();
+//                                 return;
+//                             }
+//                             // Fetch and render children
+//                             frappe.call({
+//                                 method: "frappe.desk.treeview.get_children",
+//                                 args: { doctype: "Warehouse", parent: ROOT },
+//                                 callback: function(res2) {
+//                                     console.log("Children response for", ROOT, ":", res2);
+//                                     const top = (res2 && res2.message) ? res2.message : [];
+//                                     if (!top.length) {
+//                                         frappe.msgprint(__('No children found under {0}', [ROOT]));
+//                                         d.fields_dict.html_zone.$wrapper.html(`<div><b>Zone:</b> ${__("No options available")}</div>`);
+//                                         d.fields_dict.html_rack.$wrapper.empty();
+//                                         d.fields_dict.html_level.$wrapper.empty();
+//                                         d.fields_dict.html_bin.$wrapper.empty();
+//                                         return;
+//                                     }
+//                                     const firstLabel = detectLabelFromNames(top.map(n => n.value));
+//                                     const labels = buildLabelSequence(firstLabel);
+//                                     console.log("Rendering zones with label:", firstLabel, "items:", top.map(x => x.value));
+//                                     d.fields_dict.html_zone.$wrapper.empty();
+//                                     d.fields_dict.html_rack.$wrapper.empty();
+//                                     d.fields_dict.html_level.$wrapper.empty();
+//                                     d.fields_dict.html_bin.$wrapper.empty();
+//                                     renderBoxes(d, d.fields_dict.html_zone.$wrapper, top.map(x => x.value), labels[0], zoneSelected);
+//                                 },
+//                                 error: function(err) {
+//                                     console.error("Error fetching children for", ROOT, ":", err);
+//                                     frappe.msgprint({
+//                                         title: __("Error"),
+//                                         indicator: "red",
+//                                         message: __("Failed to load children for {0}", [ROOT])
+//                                     });
+//                                 }
+//                             });
+//                         }
+//                     },
+//                     { fieldname: "html_zone", fieldtype: "HTML" },
+//                     { fieldname: "html_rack", fieldtype: "HTML" },
+//                     { fieldname: "html_level", fieldtype: "HTML" },
+//                     { fieldname: "html_bin", fieldtype: "HTML" }
+//                 ],
+//                 primary_action_label: __("Set Warehouse"),
+//                 primary_action(values) {
+//                     let warehouse = d.selected_bin || "";
+//                     if (!warehouse) {
+//                         frappe.msgprint(__("Please select a location"));
+//                         return;
+//                     }
+//                     // Set both selected_warehouse and accepted_warehouse to the same bin value
+//                     frappe.model.set_value(cdt, cdn, "selected_warehouse", warehouse);
+//                     frappe.model.set_value(cdt, cdn, "accepted_warehouse", warehouse);
+//                     d.hide();
+//                 }
+//             });
+
+//             d.show();
+
+//             // Only fetch children if ROOT is not empty
+//             if (ROOT) {
+//                 frappe.call({
+//                     method: "frappe.desk.treeview.get_children",
+//                     args: { doctype: "Warehouse", parent: ROOT },
+//                     callback: function(res) {
+//                         console.log("Initial children response for", ROOT, ":", res);
+//                         const top = (res && res.message) ? res.message : [];
+//                         if (!top.length) {
+//                             frappe.msgprint(__('No children found under {0}', [ROOT]));
+//                             return;
+//                         }
+//                         const firstLabel = detectLabelFromNames(top.map(n => n.value));
+//                         const labels = buildLabelSequence(firstLabel);
+//                         console.log("Initial rendering zones with label:", firstLabel, "items:", top.map(x => x.value));
+//                         renderBoxes(d, d.fields_dict.html_zone.$wrapper, top.map(x => x.value), labels[0], zoneSelected);
+//                     },
+//                     error: function(err) {
+//                         console.error("Error fetching initial children for", ROOT, ":", err);
+//                         frappe.msgprint({
+//                             title: __("Error"),
+//                             indicator: "red",
+//                             message: __("An error occurred while loading warehouse data")
+//                         });
+//                     }
+//                 });
+//             } else {
+//                 // Display "No options available" for all fields if ROOT is empty
+//                 console.log("ROOT is empty on load, setting no options");
+//                 d.fields_dict.html_zone.$wrapper.html(`<div><b>Zone:</b> ${__("No options available")}</div>`);
+//                 d.fields_dict.html_rack.$wrapper.empty();
+//                 d.fields_dict.html_level.$wrapper.empty();
+//                 d.fields_dict.html_bin.$wrapper.empty();
+//             }
+//         },
+//         error: function(err) {
+//             console.error("Error fetching warehouse list:", err);
+//         }
+//     });
+// }
+
+// --- Supporting Functions ---
+// function renderBoxes(dialog, wrapper, items, label, clickHandler, selected) {
+//     if (!items || !items.length) {
+//         wrapper.html(`<div><b>${label}:</b> ${__("No options available")}</div>`);
+//         return;
+//     }
+//     let html = `<div><b>${label}:</b></div><div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; margin-bottom:10px">`;
+//     html += items.map(i => `
+//         <div class="wh-box ${selected === i ? "active" : ""}" 
+//              data-value="${i}"
+//              style="padding: 10px 15px; border: 1px solid #ccc; border-radius: 6px; 
+//                     cursor: pointer; text-align: center;
+//                     background: ${selected === i ? '#4B7BEC' : '#fff'};
+//                     color: ${selected === i ? '#fff' : '#000'};">
+//             ${i}
+//         </div>`
+//     ).join("");
+//     html += "</div>";
+//     wrapper.html(html);
+
+//     wrapper.find(".wh-box").on("click", function() {
+//         wrapper.find(".wh-box").removeClass("active")
+//             .css({ background: "#fff", color: "#000" });
+//         $(this).addClass("active")
+//             .css({ background: "#96be37", color: "#fff" });
+//         clickHandler(dialog, $(this).data("value"));
+//     });
+// }
+
 // --- Warehouse Selection Dialog ---
 function openLocationDialog(frm, cdt, cdn) {
     let ROOT = "";
