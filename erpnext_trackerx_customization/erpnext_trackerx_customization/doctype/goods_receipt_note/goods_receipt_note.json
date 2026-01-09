@@ -59,6 +59,8 @@
   "is_subcontracted",
   "supplier_warehouse",
   "items_section",
+  "fg_item",
+  "fg_item_color",
   "items",
   "section_break0",
   "total_qty",
@@ -1388,13 +1390,26 @@
    "fieldname": "total_received_quantity",
    "fieldtype": "Float",
    "label": "Total Received Quantity"
+  },
+  {
+   "fieldname": "fg_item",
+   "fieldtype": "Link",
+   "label": "FG Item",
+   "options": "Item"
+  },
+  {
+   "fetch_from": "fg_item.custom_colour_name",
+   "fieldname": "fg_item_color",
+   "fieldtype": "Data",
+   "label": "FG Item Color",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "icon": "fa fa-truck",
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-06 19:14:21.165735",
+ "modified": "2026-01-09 15:28:18.657085",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Note",

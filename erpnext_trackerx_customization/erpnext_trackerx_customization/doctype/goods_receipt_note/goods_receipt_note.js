@@ -57,6 +57,14 @@ frappe.ui.form.on("Goods Receipt Note", {
         buildHierarchy("Test Warehouse - Logic", "zones", function (tree) {
             console.log("Final Warehouse Hierarchy:", tree);
         });
+
+        frm.set_query('fg_item', () => {
+            return {
+                filters: {
+                    custom_select_master: 'Finished Goods'
+                }
+            };
+        });        
     },
 
     validate(frm) {
@@ -151,6 +159,34 @@ frappe.ui.form.on("Goods Receipt Note", {
         }
         set_item_code_query(frm);
         update_total_received_quantity(frm);
+    },
+
+    fg_item: function(frm) {
+        frm.clear_table('items');
+        frm.refresh_field('items');
+
+        if (!frm.doc.fg_item) {
+            frm.set_query('item_code', 'items', () => ({ filters: {} }));
+            return;
+        }
+
+        frappe.call({
+            method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.doctype.goods_receipt_note.goods_receipt_note.get_fabric_items_from_fg_bom',
+            args: { fg_item: frm.doc.fg_item },
+            callback: function(r) {
+                const allowed_items = r.message || [];
+                
+                frm.set_query('item_code', 'items', () => ({
+                    filters: allowed_items.length 
+                        ? { name: ['in', allowed_items] } 
+                        : {}
+                }));
+
+                if (allowed_items.length === 0) {
+                    frappe.msgprint(__('No fabric items found in the default BOM for {0}', [frm.doc.fg_item]));
+                }
+            }
+        });
     }
 });
 
@@ -670,4 +706,8 @@ function buildHierarchy(parent, childKey, callback) {
             callback({ name: parent });
         }
     });
+}
+
+function reset_item_filter(frm) {
+    frm.set_query('item_code', 'items', () => ({ filters: {} }));
 }

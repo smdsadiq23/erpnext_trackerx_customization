@@ -803,3 +803,40 @@ def get_goods_receipt_putaway_summary(doc_name):
     except Exception as e:
         frappe.log_error(f"Error getting putaway summary: {str(e)}")
         return {"success": False, "error": str(e)}
+    
+    
+@frappe.whitelist()
+def get_fabric_items_from_fg_bom(fg_item):
+    """
+    Given a Finished Goods item, return item_code list from its default BOM's
+    'custom_fabrics_items' child table.
+    
+    Args:
+        fg_item (str): Name of the Finished Goods Item
+        
+    Returns:
+        list: List of item_code strings
+    """
+    if not fg_item:
+        return []
+
+    # Optional: Validate user has read access to the fg_item
+    if not frappe.has_permission("Item", doc=fg_item, ptype="read"):
+        frappe.throw(_("Not permitted to access item {0}").format(fg_item))
+
+    # Get default BOM
+    default_bom = frappe.db.get_value("Item", fg_item, "default_bom")
+    if not default_bom:
+        frappe.throw(_("No default BOM found for item {0}").format(fg_item))
+
+    # Fetch fabric items from custom_fabrics_items
+    fabric_items = frappe.db.get_all(
+        "BOM Item",
+        filters={
+            "parent": default_bom,
+            "parentfield": "custom_fabrics_items"
+        },
+        pluck="item_code"  # returns list of item_code directly
+    )
+
+    return fabric_items
