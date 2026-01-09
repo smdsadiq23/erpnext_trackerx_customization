@@ -58,9 +58,15 @@ frappe.ui.form.on("Goods Receipt Note", {
             console.log("Final Warehouse Hierarchy:", tree);
         }); 
         
+        // 1. Ensure fg_item is empty-filtered until ocn is set
         frm.set_query('fg_item', () => ({
-            filters: { name: ['=', ''] } // Impossible filter → empty list
+            filters: { name: ['=', ''] }
         }));
+
+        // 2. Ensure item_code in child table is empty until fg_item is set
+        frm.set_query('item_code', 'items', () => ({
+            filters: { name: ['=', ''] }
+        }));        
     },
 
     validate(frm) {
@@ -215,35 +221,36 @@ frappe.ui.form.on("Goods Receipt Note", {
                 if (allowed_items.length === 0) {
                     frappe.msgprint(__('No fabric items found in the default BOM for {0}', [frm.doc.fg_item]));
                 }
-                console.log(allowed_items);
             }
         });
     }
 });
 
-// Only allow PO items as item_code
 function set_item_code_query(frm) {
-    let po = frm.doc.purchase_order;
-    if (!po) {
-        frm.fields_dict['items'].grid.get_field('item_code').get_query = function () { return {}; };
+    // If fg_item is selected, DO NOT override the BOM-based filter
+    if (frm.doc.fg_item) {
         return;
     }
+
+    let po = frm.doc.purchase_order;
+    if (!po) {
+        // Only reset to "all items" if we're NOT in fg_item mode
+        // But we want EMPTY when no context → so set empty filter
+        frm.set_query('item_code', 'items', () => ({
+            filters: { name: ['=', ''] }
+        }));
+        return;
+    }
+
     frappe.call({
         method: "frappe.client.get",
-        args: {
-            doctype: "Purchase Order",
-            name: po
-        },
+        args: { doctype: "Purchase Order", name: po },
         callback: function (r) {
             if (r.message) {
                 let valid_items = (r.message.items || []).map(item => item.item_code);
-                frm.fields_dict['items'].grid.get_field('item_code').get_query = function (doc, cdt, cdn) {
-                    return {
-                        filters: [
-                            ['Item', 'item_code', 'in', valid_items]
-                        ]
-                    };
-                };
+                frm.set_query('item_code', 'items', () => ({
+                    filters: { name: ['in', valid_items] }
+                }));
                 frm.refresh_field('items');
             }
         }
