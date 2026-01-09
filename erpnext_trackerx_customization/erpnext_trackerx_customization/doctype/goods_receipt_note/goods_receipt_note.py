@@ -837,9 +837,9 @@ def get_fabric_items_from_fg_bom(fg_item):
     if not fg_item:
         return []
 
-    # Optional: Validate user has read access to the fg_item
-    if not frappe.has_permission("Item", doc=fg_item, ptype="read"):
-        frappe.throw(_("Not permitted to access item {0}").format(fg_item))
+    # # Optional: Validate user has read access to the fg_item
+    # if not frappe.has_permission("Item", doc=fg_item, ptype="read"):
+    #     frappe.throw(_("Not permitted to access item {0}").format(fg_item))
 
     # Get default BOM
     default_bom = frappe.db.get_value("Item", fg_item, "default_bom")
@@ -853,7 +853,8 @@ def get_fabric_items_from_fg_bom(fg_item):
             "parent": default_bom,
             "parentfield": "custom_fabrics_items"
         },
-        pluck="item_code"  # returns list of item_code directly
+        pluck="item_code",
+        distinct=True
     )
 
     return fabric_items
