@@ -3,7 +3,6 @@
 import frappe
 from erpnext_trackerx_customization.utils.constants import get_constants 
 from erpnext_trackerx_customization.erpnext_doctype_hooks.item_settings import generate_item_code_from_settings
-from erpnext_trackerx_customization.utils.bom_image_sync import sync_item_image_to_boms
 
 def get_item_permission_query_conditions(user):
     if not user:
@@ -291,18 +290,13 @@ def validate_for_fg_components(doc, method):
                     frappe.throw(f"Parent component '{current.parent_component}' not found.")
                 if not parent.tracking_required:
                     frappe.throw(f"Tracking Required must be checked for all ancestors of leaf component '{row.component_name}'.")
-                current = parent
-                
+                current = parent         
 
-# Updating Colour and Image from Item to all related downstream doctypes
+# Updating Colour from Item to all related downstream doctypes
 def on_update(doc, method=None):
     if doc.doctype != "Item" or doc.is_new():
         return
     
-    # When Item image is added/updated sync it to all related BOMs.
-    if doc.has_value_changed("image"):
-        sync_item_image_to_boms(doc, method)
-
     # Enqueue background job only if any relevant field changed
     if (
         doc.has_value_changed("custom_colour_name") or

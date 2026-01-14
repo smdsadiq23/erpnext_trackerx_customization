@@ -7,10 +7,10 @@
  "engine": "InnoDB",
  "field_order": [
   "details_section",
+  "image",
   "style_name",
   "style_number",
   "brand",
-  "image",
   "style_group",
   "bu",
   "sbu",
@@ -72,7 +72,11 @@
   {
    "fieldname": "image",
    "fieldtype": "Attach Image",
-   "label": "Image"
+   "hidden": 1,
+   "in_preview": 1,
+   "label": "Image",
+   "options": "image",
+   "print_hide": 1
   },
   {
    "default": "0",
@@ -111,9 +115,10 @@
   }
  ],
  "grid_page_length": 50,
+ "image_field": "image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-11-19 10:25:44.049089",
+ "modified": "2026-01-13 20:25:09.398296",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Style Master",
@@ -128,7 +133,31 @@
    "print": 1,
    "read": 1,
    "report": 1,
+   "role": "Custom Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
    "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "New Admin",
    "share": 1,
    "write": 1
   }

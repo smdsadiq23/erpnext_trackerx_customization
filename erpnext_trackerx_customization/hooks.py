@@ -328,14 +328,12 @@ doc_events= {
         "on_trash": "erpnext_trackerx_customization.erpnext_doctype_hooks.role_hooks.prevent_role_deletion"
     },
 	"Item": {
-        # "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.set_item_code_before_insert",
         "autoname": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.autoname",
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.validate_item",
         "on_update": "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.on_update"
     },
     "BOM": {
         "validate": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.validate_bom",
-        "before_insert": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.before_save_bom",
         "on_submit": "erpnext_trackerx_customization.erpnext_doctype_hooks.bom.on_submit"
     },
     "Purchase Order": {
