@@ -61,6 +61,7 @@
   "items_section",
   "fg_item",
   "fg_item_color",
+  "table_ocn_fg_mapping",
   "items",
   "section_break0",
   "total_qty",
@@ -1394,6 +1395,7 @@
   {
    "fieldname": "fg_item",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "FG Item",
    "options": "Item"
   },
@@ -1401,15 +1403,22 @@
    "fetch_from": "fg_item.custom_colour_name",
    "fieldname": "fg_item_color",
    "fieldtype": "Data",
+   "hidden": 1,
    "label": "FG Item Color",
    "read_only": 1
+  },
+  {
+   "fieldname": "table_ocn_fg_mapping",
+   "fieldtype": "Table",
+   "label": "OCN FG Mapping",
+   "options": "GRN OCN FG Mapping"
   }
  ],
  "grid_page_length": 50,
  "icon": "fa fa-truck",
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-09 15:28:18.657085",
+ "modified": "2026-01-22 14:07:23.335301",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Goods Receipt Note",
