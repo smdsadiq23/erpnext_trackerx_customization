@@ -805,56 +805,85 @@ def get_goods_receipt_putaway_summary(doc_name):
         return {"success": False, "error": str(e)}
     
 
+# @frappe.whitelist()
+# def get_fg_items_by_ocn(ocn):
+#     """
+#     Returns list of item_code (Finished Goods) from Sales Order Items.
+#     Used for dynamic filtering of fg_item in GRN.
+#     """
+#     if not ocn or not frappe.db.exists("Sales Order", ocn):
+#         return []
+
+#     return frappe.db.sql_list("""
+#         SELECT DISTINCT item_code
+#         FROM `tabSales Order Item`
+#         WHERE parent = %s
+#         ORDER BY item_code
+#     """, ocn)
+    
+    
+# @frappe.whitelist()
+# def get_fabric_items_from_fg_bom(fg_item):
+#     """
+#     Given a Finished Goods item, return item_code list from its default BOM's
+#     'custom_fabrics_items' child table.
+    
+#     Args:
+#         fg_item (str): Name of the Finished Goods Item
+        
+#     Returns:
+#         list: List of item_code strings
+#     """
+#     if not fg_item:
+#         return []
+
+#     # # Optional: Validate user has read access to the fg_item
+#     # if not frappe.has_permission("Item", doc=fg_item, ptype="read"):
+#     #     frappe.throw(_("Not permitted to access item {0}").format(fg_item))
+
+#     # Get default BOM
+#     default_bom = frappe.db.get_value("Item", fg_item, "default_bom")
+#     if not default_bom:
+#         frappe.throw(_("No default BOM found for item {0}").format(fg_item))
+
+#     # Fetch fabric items from custom_fabrics_items
+#     fabric_items = frappe.db.get_all(
+#         "BOM Item",
+#         filters={
+#             "parent": default_bom,
+#             "parentfield": "custom_fabrics_items"
+#         },
+#         pluck="item_code",
+#         distinct=True
+#     )
+
+#     return fabric_items
+
+
 @frappe.whitelist()
 def get_fg_items_by_ocn(ocn):
     """
-    Returns list of item_code (Finished Goods) from Sales Order Items.
-    Used for dynamic filtering of fg_item in GRN.
+    Simple function to get FG items by OCN (Sales Order)
+    Returns list of dicts with item details
     """
     if not ocn or not frappe.db.exists("Sales Order", ocn):
         return []
-
-    return frappe.db.sql_list("""
-        SELECT DISTINCT item_code
-        FROM `tabSales Order Item`
-        WHERE parent = %s
-        ORDER BY item_code
-    """, ocn)
     
+    items = frappe.db.sql("""
+        SELECT DISTINCT 
+            soi.item_code,
+            i.item_name,
+            i.item_group,
+            i.stock_uom,
+            soi.qty as ordered_qty,
+            soi.uom as order_uom,
+            soi.description
+        FROM `tabSales Order Item` soi
+        INNER JOIN `tabItem` i ON soi.item_code = i.name
+        WHERE 
+            soi.parent = %s
+            AND i.disabled = 0
+        ORDER BY soi.idx, soi.item_code
+    """, ocn, as_dict=True)
     
-@frappe.whitelist()
-def get_fabric_items_from_fg_bom(fg_item):
-    """
-    Given a Finished Goods item, return item_code list from its default BOM's
-    'custom_fabrics_items' child table.
-    
-    Args:
-        fg_item (str): Name of the Finished Goods Item
-        
-    Returns:
-        list: List of item_code strings
-    """
-    if not fg_item:
-        return []
-
-    # # Optional: Validate user has read access to the fg_item
-    # if not frappe.has_permission("Item", doc=fg_item, ptype="read"):
-    #     frappe.throw(_("Not permitted to access item {0}").format(fg_item))
-
-    # Get default BOM
-    default_bom = frappe.db.get_value("Item", fg_item, "default_bom")
-    if not default_bom:
-        frappe.throw(_("No default BOM found for item {0}").format(fg_item))
-
-    # Fetch fabric items from custom_fabrics_items
-    fabric_items = frappe.db.get_all(
-        "BOM Item",
-        filters={
-            "parent": default_bom,
-            "parentfield": "custom_fabrics_items"
-        },
-        pluck="item_code",
-        distinct=True
-    )
-
-    return fabric_items
+    return items

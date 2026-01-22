@@ -163,67 +163,67 @@ frappe.ui.form.on("Goods Receipt Note", {
         update_total_received_quantity(frm);
     },
 
-    ocn: function(frm) {
-        // Clear fg_item when ocn changes (good UX)
-        frm.set_value('fg_item', '');
+    // ocn: function(frm) {
+    //     // Clear fg_item when ocn changes (good UX)
+    //     frm.set_value('fg_item', '');
 
-        if (!frm.doc.ocn) {
-            // Blank filter if no OCN
-            frm.set_query('fg_item', () => ({ filters: { name: ['=', ''] } }));
-            return;
-        }
+    //     if (!frm.doc.ocn) {
+    //         // Blank filter if no OCN
+    //         frm.set_query('fg_item', () => ({ filters: { name: ['=', ''] } }));
+    //         return;
+    //     }
 
-        // Fetch FG items linked to this OCN (Sales Order)
-        frappe.call({
-            method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.doctype.goods_receipt_note.goods_receipt_note.get_fg_items_by_ocn',
-            args: { ocn: frm.doc.ocn },
-            callback: function(r) {
-                const allowed_items = r.message || [];
+    //     // Fetch FG items linked to this OCN (Sales Order)
+    //     frappe.call({
+    //         method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.doctype.goods_receipt_note.goods_receipt_note.get_fg_items_by_ocn',
+    //         args: { ocn: frm.doc.ocn },
+    //         callback: function(r) {
+    //             const allowed_items = r.message || [];
 
-                // Apply dynamic filter on fg_item
-                frm.set_query('fg_item', () => ({
-                    filters: allowed_items.length 
-                        ? { name: ['in', allowed_items] } 
-                        : { name: ['=', ''] }
-                }));
+    //             // Apply dynamic filter on fg_item
+    //             frm.set_query('fg_item', () => ({
+    //                 filters: allowed_items.length 
+    //                     ? { name: ['in', allowed_items] } 
+    //                     : { name: ['=', ''] }
+    //             }));
 
-                if (allowed_items.length === 0) {
-                    frappe.msgprint(__('No finished goods items found for OCN {0}', [frm.doc.ocn]));
-                }
-            }
-        });
-    },
+    //             if (allowed_items.length === 0) {
+    //                 frappe.msgprint(__('No finished goods items found for OCN {0}', [frm.doc.ocn]));
+    //             }
+    //         }
+    //     });
+    // },
 
-    fg_item: function(frm) {
-        frm.clear_table('items');
-        frm.refresh_field('items');
+    // fg_item: function(frm) {
+    //     frm.clear_table('items');
+    //     frm.refresh_field('items');
 
-        if (!frm.doc.fg_item) {
-            // Show nothing when fg_item is cleared
-            frm.set_query('item_code', 'items', () => ({
-                filters: { name: ['=', ''] }
-            }));
-            return;
-        }
+    //     if (!frm.doc.fg_item) {
+    //         // Show nothing when fg_item is cleared
+    //         frm.set_query('item_code', 'items', () => ({
+    //             filters: { name: ['=', ''] }
+    //         }));
+    //         return;
+    //     }
 
-        frappe.call({
-            method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.doctype.goods_receipt_note.goods_receipt_note.get_fabric_items_from_fg_bom',
-            args: { fg_item: frm.doc.fg_item },
-            callback: function(r) {
-                const allowed_items = r.message || [];
+    //     frappe.call({
+    //         method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.doctype.goods_receipt_note.goods_receipt_note.get_fabric_items_from_fg_bom',
+    //         args: { fg_item: frm.doc.fg_item },
+    //         callback: function(r) {
+    //             const allowed_items = r.message || [];
 
-                frm.set_query('item_code', 'items', () => ({
-                    filters: allowed_items.length 
-                        ? { name: ['in', allowed_items] } 
-                        : { name: ['=', ''] }
-                }));
+    //             frm.set_query('item_code', 'items', () => ({
+    //                 filters: allowed_items.length 
+    //                     ? { name: ['in', allowed_items] } 
+    //                     : { name: ['=', ''] }
+    //             }));
 
-                if (allowed_items.length === 0) {
-                    frappe.msgprint(__('No fabric items found in the default BOM for {0}', [frm.doc.fg_item]));
-                }
-            }
-        });
-    }
+    //             if (allowed_items.length === 0) {
+    //                 frappe.msgprint(__('No fabric items found in the default BOM for {0}', [frm.doc.fg_item]));
+    //             }
+    //         }
+    //     });
+    // }
 });
 
 function set_item_code_query(frm) {
@@ -748,3 +748,62 @@ function buildHierarchy(parent, childKey, callback) {
 function reset_item_filter(frm) {
     frm.set_query('item_code', 'items', () => ({ filters: {} }));
 }
+
+frappe.ui.form.on('GRN OCN FG Mapping', {
+    ocn: function(frm, cdt, cdn) {        
+        let row = locals[cdt][cdn];
+        
+        if (row.ocn) {
+            // Clear fg_item when OCN changes
+            frappe.model.set_value(cdt, cdn, 'fg_item', '');
+            
+            // Fetch FG items for the selected OCN
+            frappe.call({
+                method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.doctype.goods_receipt_note.goods_receipt_note.get_fg_items_by_ocn',
+                args: {
+                    ocn: row.ocn
+                },
+                callback: function(response) {
+                    if (response.message) {
+                        // Store the items for later use
+                        row._fg_items_list = response.message;
+                        
+                        // Create a custom filter function
+                        frm.fields_dict['table_ocn_fg_mapping'].grid.update_docfield_property(
+                            'fg_item',
+                            'get_query',
+                            function() {
+                                return {
+                                    filters: [
+                                        // Filter items to only those from this OCN
+                                        ['name', 'in', response.message.map(item => item.item_code)]
+                                    ]
+                                };
+                            }
+                        );
+                        
+                        // Alternative: Set get_query directly
+                        frappe.meta.get_docfield(cdt, 'fg_item', frm.doc.name).get_query = function() {
+                            return {
+                                filters: [
+                                    ['name', 'in', response.message.map(item => item.item_code)]
+                                ]
+                            };
+                        };
+                        
+                        // Refresh the field to apply the new filter
+                        frm.fields_dict['table_ocn_fg_mapping'].grid.grid_rows_by_docname[cdn].refresh_field('fg_item');
+                    }
+                }
+            });
+        } else {
+            // Clear the filter if OCN is empty
+            frappe.meta.get_docfield(cdt, 'fg_item', frm.doc.name).get_query = null;
+            frm.fields_dict['table_ocn_fg_mapping'].grid.update_docfield_property(
+                'fg_item',
+                'get_query',
+                null
+            );
+        }
+    }
+});
