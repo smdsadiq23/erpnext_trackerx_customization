@@ -1,29 +1,28 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format: 25-26/CPI-.#####.",
+ "autoname": "naming_series:",
  "creation": "2026-01-03 11:20:56.884459",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "section_break_pcac",
+  "amended_from",
+  "naming_series",
   "date",
   "buyer",
   "po_number",
-  "linked_sales_orders",
   "currency",
   "quality",
   "payment_terms",
   "delivery_terms",
   "section_break",
-  "items",
-  "amended_from"
+  "items"
  ],
  "fields": [
   {
    "fieldname": "section_break_pcac",
-   "fieldtype": "Section Break",
-   "label": "KEY FIELDS"
+   "fieldtype": "Section Break"
   },
   {
    "description": "One PI per Customer PO",
@@ -31,6 +30,7 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "PO Number",
+   "reqd": 1,
    "unique": 1
   },
   {
@@ -46,13 +46,6 @@
    "fieldtype": "Link",
    "label": "Currency",
    "options": "Currency",
-   "read_only": 1
-  },
-  {
-   "fieldname": "linked_sales_orders",
-   "fieldtype": "Table",
-   "label": "Linked Sales Orders",
-   "options": "Proforma Invoice Sales Order",
    "read_only": 1
   },
   {
@@ -97,17 +90,26 @@
    "fieldname": "delivery_terms",
    "fieldtype": "Data",
    "label": "Delivery terms"
+  },
+  {
+   "default": "25-26/CPI-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Naming Series",
+   "options": "25-26/CPI-.#####",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-09 12:19:39.933913",
+ "modified": "2026-01-27 15:50:10.731369",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Proforma Invoice",
- "naming_rule": "Expression",
+ "naming_rule": "By \"Naming Series\" field",
  "owner": "vishal@cognitionx.tech",
  "permissions": [
   {
@@ -125,7 +127,6 @@
   }
  ],
  "row_format": "Dynamic",
- "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
