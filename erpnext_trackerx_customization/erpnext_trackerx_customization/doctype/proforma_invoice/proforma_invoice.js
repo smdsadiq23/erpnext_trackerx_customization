@@ -2,9 +2,6 @@
 // For license information, please see license.txt
 
 
-// Copyright (c) 2026, CognitionX and contributors
-// For license information, please see license.txt
-
 frappe.ui.form.on('Proforma Invoice', {
     refresh: function(frm) {
         setup_child_table(frm);
@@ -89,6 +86,12 @@ function setup_child_table(frm) {
                     callback: function(r) {
                         if (r.message) {
                             frm.refresh_field('items');
+                            
+                            // Refresh delivery_date field if populated
+                            if (r.message.delivery_date) {
+                                frm.refresh_field('delivery_date');
+                            }
+                            
                             frappe.show_alert({
                                 message: __('✅ Loaded {0} items from {1} Sales Order(s)', 
                                     [r.message.item_count, r.message.sales_order_count]),
