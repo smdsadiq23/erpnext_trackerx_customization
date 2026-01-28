@@ -32,11 +32,10 @@
   {
    "description": "One PI per Customer PO",
    "fieldname": "po_number",
-   "fieldtype": "Data",
+   "fieldtype": "Select",
    "in_list_view": 1,
    "label": "PO Number",
-   "reqd": 1,
-   "unique": 1
+   "reqd": 1
   },
   {
    "fieldname": "buyer",
@@ -141,7 +140,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-28 11:21:28.505822",
+ "modified": "2026-01-28 12:06:24.233287",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Proforma Invoice",

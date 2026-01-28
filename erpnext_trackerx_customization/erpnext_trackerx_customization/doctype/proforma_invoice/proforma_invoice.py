@@ -11,9 +11,11 @@ class ProformaInvoice(Document):
     def validate(self):
         """
         Server-side validation: Ensure at least one valid item row exists before save/submit
+        Also validates PO number availability
         """
         self._validate_items_table()
         self._validate_required_fields_in_items()
+        self._validate_po_availability()
     
     def _validate_items_table(self):
         """Ensure items table is not empty"""
@@ -46,6 +48,26 @@ class ProformaInvoice(Document):
                 title=_("Incomplete Items")
             )
     
+    def _validate_po_availability(self):
+        """Validate PO number is not already used in another submitted Proforma Invoice"""
+        if not self.po_number:
+            frappe.throw(_("PO Number is required"))
+        
+        # Check if already used in another submitted Proforma Invoice
+        existing = frappe.db.exists("Proforma Invoice", {
+            "po_number": self.po_number,
+            "docstatus": 1,
+            "name": ("!=", self.name) if self.name else None
+        })
+        
+        if existing:
+            frappe.throw(
+                _("PO Number '{0}' is already used in another submitted Proforma Invoice: {1}").format(
+                    self.po_number, existing
+                ),
+                title=_("Duplicate PO Number")
+            )
+    
     @frappe.whitelist()
     def fetch_items_from_sales_orders(self):
         """
@@ -54,7 +76,7 @@ class ProformaInvoice(Document):
         Sets delivery_date as the maximum delivery date from all matching Sales Orders.
         """
         if not self.po_number:
-            frappe.throw(_("Please enter a PO Number first"))
+            frappe.throw(_("Please select a PO Number first"))
 
         # Fetch Sales Orders with matching po_no (including delivery_date)
         sales_orders = frappe.get_all(
@@ -75,7 +97,7 @@ class ProformaInvoice(Document):
         if delivery_dates:
             self.delivery_date = max(delivery_dates)
         else:
-            self.delivery_date = None  # or frappe.utils.today() if you want default
+            self.delivery_date = None
 
         # Clear existing items BEFORE adding new ones (prevents duplicates)
         self.set("items", [])
@@ -123,7 +145,6 @@ class ProformaInvoice(Document):
             "delivery_date": str(self.delivery_date) if self.delivery_date else None
         }
     
-
     @frappe.whitelist()
     def get_grouped_items_for_print(self):
         """
@@ -191,4 +212,50 @@ class ProformaInvoice(Document):
             'sizes': sorted(all_sizes),
             'total_qty': sum(item['total_qty'] for item in grouped_items),
             'total_amount': sum(item['amount'] for item in grouped_items)
-        } 
+        }
+
+
+@frappe.whitelist()
+def get_available_po_numbers():
+    """
+    Get unique PO numbers from submitted Sales Orders 
+    that don't have a submitted Proforma Invoice
+    Returns: List of available PO numbers
+    """
+    # Get all PO numbers used in submitted Proforma Invoices
+    used_po_numbers = frappe.get_all(
+        "Proforma Invoice",
+        filters={"docstatus": 1},
+        fields=["po_number"],
+        pluck="po_number"
+    )
+    
+    # Filter out empty values and make unique set
+    used_po_set = set([po for po in used_po_numbers if po])
+    
+    # Build SQL query with dynamic IN clause
+    if used_po_set:
+        placeholders = ",".join(["%s"] * len(used_po_set))
+        query = f"""
+            SELECT DISTINCT po_no
+            FROM `tabSales Order`
+            WHERE docstatus = 1
+              AND po_no IS NOT NULL
+              AND po_no != ''
+              AND po_no NOT IN ({placeholders})
+            ORDER BY po_no DESC
+        """
+        results = frappe.db.sql(query, list(used_po_set), as_dict=False)
+    else:
+        query = """
+            SELECT DISTINCT po_no
+            FROM `tabSales Order`
+            WHERE docstatus = 1
+              AND po_no IS NOT NULL
+              AND po_no != ''
+            ORDER BY po_no DESC
+        """
+        results = frappe.db.sql(query, as_dict=False)
+    
+    # Flatten and return list
+    return [row[0] for row in results if row[0]]
