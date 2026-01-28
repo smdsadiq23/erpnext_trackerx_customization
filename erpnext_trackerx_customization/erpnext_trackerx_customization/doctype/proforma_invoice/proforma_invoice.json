@@ -115,7 +115,7 @@
    "label": "Declaration"
   },
   {
-   "default": "Bank Name:UNION BANK OF INDIA\nBranch :TIRUPUR(SSI) BRANCH\nA/C Name: CLASSIC APPAREL\nA/c No: 5601 01 00001 9491\nSWIFT Code: UBININBBTIR\nIFSC CODE : UBIN0904830",
+   "default": "Bank Name: UNION BANK OF INDIA\nBranch: TIRUPUR(SSI) BRANCH\nA/C Name: CLASSIC APPAREL\nA/c No: 5601 01 00001 9491\nSWIFT Code: UBININBBTIR\nIFSC CODE : UBIN0904830",
    "fieldname": "bank_details",
    "fieldtype": "Small Text",
    "label": "Bank Details",
@@ -141,7 +141,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-28 10:18:38.789698",
+ "modified": "2026-01-28 11:21:28.505822",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Proforma Invoice",
