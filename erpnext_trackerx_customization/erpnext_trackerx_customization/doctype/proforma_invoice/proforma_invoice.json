@@ -9,15 +9,20 @@
   "section_break_pcac",
   "amended_from",
   "naming_series",
-  "date",
-  "buyer",
   "po_number",
+  "buyer",
+  "date",
+  "delivery_date",
   "currency",
   "quality",
   "payment_terms",
   "delivery_terms",
+  "remarks",
   "section_break",
-  "items"
+  "items",
+  "section_dcbd",
+  "declaration",
+  "bank_details"
  ],
  "fields": [
   {
@@ -78,18 +83,21 @@
   {
    "fieldname": "quality",
    "fieldtype": "Data",
-   "label": "Quality"
+   "label": "Quality",
+   "reqd": 1
   },
   {
    "fieldname": "payment_terms",
    "fieldtype": "Link",
    "label": "Payment terms",
-   "options": "Sales Order"
+   "options": "Payment Term",
+   "reqd": 1
   },
   {
    "fieldname": "delivery_terms",
    "fieldtype": "Data",
-   "label": "Delivery terms"
+   "label": "Delivery terms",
+   "reqd": 1
   },
   {
    "default": "25-26/CPI-.#####",
@@ -99,13 +107,41 @@
    "label": "Naming Series",
    "options": "25-26/CPI-.#####",
    "read_only": 1
+  },
+  {
+   "default": "Our Products are GOTS Certified, \nFabric to fabric and lot to lot colour variation might occur by 5%. \nWe hereby confirm that all our products are produced according to basic quality standards",
+   "fieldname": "declaration",
+   "fieldtype": "Small Text",
+   "label": "Declaration"
+  },
+  {
+   "default": "Bank Name:UNION BANK OF INDIA\nBranch :TIRUPUR(SSI) BRANCH\nA/C Name: CLASSIC APPAREL\nA/c No: 5601 01 00001 9491\nSWIFT Code: UBININBBTIR\nIFSC CODE : UBIN0904830",
+   "fieldname": "bank_details",
+   "fieldtype": "Small Text",
+   "label": "Bank Details",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_dcbd",
+   "fieldtype": "Section Break",
+   "label": "Declaration and Bank Details"
+  },
+  {
+   "fieldname": "delivery_date",
+   "fieldtype": "Date",
+   "label": "Delivery Date"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-27 15:50:10.731369",
+ "modified": "2026-01-28 10:18:38.789698",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Proforma Invoice",
