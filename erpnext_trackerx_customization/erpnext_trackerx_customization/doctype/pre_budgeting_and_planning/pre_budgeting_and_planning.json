@@ -1,0 +1,227 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2026-01-21 14:42:18.637738",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_sztl",
+  "amended_from",
+  "naming_series",
+  "date",
+  "style",
+  "customer",
+  "sales_order",
+  "total_qty",
+  "column_break_gtwn",
+  "total_yarn_cost",
+  "total_accessories_cost",
+  "process_cost",
+  "total_cost",
+  "overhead_",
+  "grand_total",
+  "budget_price",
+  "salepack",
+  "column_break_iicl",
+  "profitpack",
+  "actual_sales_amount",
+  "actual_profit",
+  "actual_profit_",
+  "status",
+  "yarn_accessories",
+  "table_itma",
+  "process_budget",
+  "table_wfui",
+  "colour_wise",
+  "table_hwmy"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_sztl",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Pre-Budgeting and Planning",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Datetime",
+   "label": "Date"
+  },
+  {
+   "fieldname": "style",
+   "fieldtype": "Link",
+   "label": "Style",
+   "options": "Style Master"
+  },
+  {
+   "fetch_from": "style.brand",
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "label": "Sales Order",
+   "options": "Sales Order"
+  },
+  {
+   "fetch_from": "sales_order.total_qty",
+   "fieldname": "total_qty",
+   "fieldtype": "Float",
+   "label": "Total Qty",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_cost",
+   "fieldtype": "Currency",
+   "label": "Total Cost"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nApproved"
+  },
+  {
+   "fieldname": "column_break_gtwn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_yarn_cost",
+   "fieldtype": "Currency",
+   "label": "Total Yarn Cost"
+  },
+  {
+   "fieldname": "total_accessories_cost",
+   "fieldtype": "Currency",
+   "label": "Total Accessories Cost"
+  },
+  {
+   "fieldname": "process_cost",
+   "fieldtype": "Currency",
+   "label": "Total Process Cost"
+  },
+  {
+   "fieldname": "overhead_",
+   "fieldtype": "Float",
+   "label": "Overhead %"
+  },
+  {
+   "fieldname": "grand_total",
+   "fieldtype": "Currency",
+   "label": "Grand Total"
+  },
+  {
+   "fieldname": "budget_price",
+   "fieldtype": "Currency",
+   "label": "Budget Price"
+  },
+  {
+   "fieldname": "salepack",
+   "fieldtype": "Currency",
+   "label": "Sale/Pack"
+  },
+  {
+   "fieldname": "column_break_iicl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "profitpack",
+   "fieldtype": "Currency",
+   "label": "Profit/Pack"
+  },
+  {
+   "fieldname": "actual_sales_amount",
+   "fieldtype": "Currency",
+   "label": "Actual Sales Amount"
+  },
+  {
+   "fieldname": "actual_profit",
+   "fieldtype": "Currency",
+   "label": "Actual Profit"
+  },
+  {
+   "fieldname": "actual_profit_",
+   "fieldtype": "Float",
+   "label": "Actual Profit %"
+  },
+  {
+   "fieldname": "yarn_accessories",
+   "fieldtype": "Section Break",
+   "label": "Pre-Budget - Yarn and Accessories"
+  },
+  {
+   "fieldname": "table_itma",
+   "fieldtype": "Table",
+   "options": "Pre-Budget - Yarn and Accessories"
+  },
+  {
+   "fieldname": "process_budget",
+   "fieldtype": "Section Break",
+   "label": "Pre-Budget - Process"
+  },
+  {
+   "fieldname": "table_wfui",
+   "fieldtype": "Table",
+   "options": "Pre-Budget- Process"
+  },
+  {
+   "fieldname": "colour_wise",
+   "fieldtype": "Section Break",
+   "label": "Pre-Budget - Colour Wise"
+  },
+  {
+   "fieldname": "table_hwmy",
+   "fieldtype": "Table",
+   "options": "Pre-Budget FG Wise"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "CA/25-26/BUD-.####"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-01-21 17:42:50.876778",
+ "modified_by": "Administrator",
+ "module": "Erpnext Trackerx Customization",
+ "name": "Pre-Budgeting and Planning",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
