@@ -343,6 +343,11 @@ def sync_item_colour_to_downstream_docs(item_name, colour_name=None, colour_code
                 UPDATE `tabGoods Receipt Item` SET color = %s WHERE item_code = %s
             """, (colour_name, item_name))
 
+            # Goods Receipt Item
+            frappe.db.sql("""
+                UPDATE `tabGRN OCN FG Mapping` SET fg_item_colour = %s WHERE fg_item = %s
+            """, (colour_name, item_name))            
+
             # Get affected Cut Dockets first
             cut_dockets = frappe.db.sql("""
                 SELECT name FROM `tabCut Docket` WHERE style = %s
