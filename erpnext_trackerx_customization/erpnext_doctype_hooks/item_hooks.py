@@ -221,76 +221,76 @@ def validate_item(doc, method):
         # Shade can be optional if business allows
 
 
-def validate_for_fg_components(doc, method):
-    components = doc.custom_fg_components or []
+# def validate_for_fg_components(doc, method):
+#     components = doc.custom_fg_components or []
 
-    # 1. At least one row should be present
-    if not components:
-        frappe.throw("At least one FG Component must be added.")
+#     # 1. At least one row should be present
+#     if not components:
+#         frappe.throw("At least one FG Component must be added.")
 
-    # Mapping
-    leaf_rows = set()
-    parent_map = {}
-    main_found = None
-    fg_root_found = None
-    parent_references = set()
+#     # Mapping
+#     leaf_rows = set()
+#     parent_map = {}
+#     main_found = None
+#     fg_root_found = None
+#     parent_references = set()
 
-    # Build maps
-    for row in components:
-        parent_map[row.name] = row.parent_component
-        if row.parent_component:
-            parent_references.add(row.parent_component)
+#     # Build maps
+#     for row in components:
+#         parent_map[row.name] = row.parent_component
+#         if row.parent_component:
+#             parent_references.add(row.parent_component)
 
-    # 2. Only one row should have parent_component as None (FG root)
-    roots = [row for row in components if not row.parent_component]
-    if len(roots) != 1:
-        frappe.throw("Exactly one FG Component must have no parent (i.e., the Finished Good root).")
+#     # 2. Only one row should have parent_component as None (FG root)
+#     roots = [row for row in components if not row.parent_component]
+#     if len(roots) != 1:
+#         frappe.throw("Exactly one FG Component must have no parent (i.e., the Finished Good root).")
 
-    fg_root = roots[0]
-    fg_root_found = fg_root.name
+#     fg_root = roots[0]
+#     fg_root_found = fg_root.name
 
-    # 4.a FG (root) must have tracking_required = True
-    if not fg_root.tracking_required:
-        frappe.throw("FG Component (root without parent) must have Tracking Required checked.")
+#     # 4.a FG (root) must have tracking_required = True
+#     if not fg_root.tracking_required:
+#         frappe.throw("FG Component (root without parent) must have Tracking Required checked.")
 
-    # Identify leaves (those not parent of any other)
-    for row in components:
-        if row.name not in parent_references:
-            leaf_rows.add(row.name)
+#     # Identify leaves (those not parent of any other)
+#     for row in components:
+#         if row.name not in parent_references:
+#             leaf_rows.add(row.name)
 
-    # 3. Only one component can be marked as main
-    mains = [row for row in components if row.is_main_component]
-    if len(mains) != 1:
-        frappe.throw("Exactly one FG Component must be marked as Main Component.")
+#     # 3. Only one component can be marked as main
+#     mains = [row for row in components if row.is_main_component]
+#     if len(mains) != 1:
+#         frappe.throw("Exactly one FG Component must be marked as Main Component.")
 
-    main_row = mains[0]
+#     main_row = mains[0]
 
-    # 3.a Main must be a leaf
-    if main_row.name in parent_references:
-        frappe.throw("Main Component must be a leaf component (cannot have children).")
+#     # 3.a Main must be a leaf
+#     if main_row.name in parent_references:
+#         frappe.throw("Main Component must be a leaf component (cannot have children).")
 
-    # 4.b Main must have tracking_required = True
-    if not main_row.tracking_required:
-        frappe.throw("Main Component must have Tracking Required checked.")
+#     # 4.b Main must have tracking_required = True
+#     if not main_row.tracking_required:
+#         frappe.throw("Main Component must have Tracking Required checked.")
 
-    # 4.c For any leaf with tracking_required = True, all ancestors must also have it
-    name_to_row = {row.name: row for row in components}
+#     # 4.c For any leaf with tracking_required = True, all ancestors must also have it
+#     name_to_row = {row.name: row for row in components}
 
-    for row in components:
-        if row.name in leaf_rows and row.tracking_required:
-            current = row
-            visited = set()
-            while current.parent_component:
-                if current.parent_component in visited:
-                    frappe.throw("Cycle detected in parent_component references.")
-                visited.add(current.parent_component)
+#     for row in components:
+#         if row.name in leaf_rows and row.tracking_required:
+#             current = row
+#             visited = set()
+#             while current.parent_component:
+#                 if current.parent_component in visited:
+#                     frappe.throw("Cycle detected in parent_component references.")
+#                 visited.add(current.parent_component)
 
-                parent = name_to_row.get(current.parent_component)
-                if not parent:
-                    frappe.throw(f"Parent component '{current.parent_component}' not found.")
-                if not parent.tracking_required:
-                    frappe.throw(f"Tracking Required must be checked for all ancestors of leaf component '{row.component_name}'.")
-                current = parent         
+#                 parent = name_to_row.get(current.parent_component)
+#                 if not parent:
+#                     frappe.throw(f"Parent component '{current.parent_component}' not found.")
+#                 if not parent.tracking_required:
+#                     frappe.throw(f"Tracking Required must be checked for all ancestors of leaf component '{row.component_name}'.")
+#                 current = parent         
 
 # Updating Colour from Item to all related downstream doctypes
 def on_update(doc, method=None):
