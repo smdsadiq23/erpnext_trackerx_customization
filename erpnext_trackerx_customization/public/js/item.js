@@ -321,19 +321,19 @@ function updateItemLabels(frm) {
 function machinesAndSparePartsChanges(frm)
 {
     isMachineOrSpareParts = ['Machines', 'Spare Parts'].includes(frm.doc.custom_select_master);
+    isYarn = ['Yarns'].includes(frm.doc.custom_select_master);
 
-    if(isMachineOrSpareParts){
+    if(isMachineOrSpareParts || isYarn){
         frm.set_df_property('item_group', 'label', 'Item Group');
         frm.toggle_reqd("item_name", false);
         frm.set_df_property('item_name', 'hidden', true);
         
         frm.refresh_field('item_group');
         frm.refresh_field('item_name');
-    }
+    }    
     else{
         frm.toggle_reqd("item_name", true);
-        frm.set_df_property('item_name', 'hidden', false);
-        
+        frm.set_df_property('item_name', 'hidden', false);        
         frm.refresh_field('item_name');
     }
 }
