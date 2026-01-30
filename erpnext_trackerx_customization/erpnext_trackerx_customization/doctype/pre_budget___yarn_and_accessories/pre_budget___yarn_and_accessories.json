@@ -71,8 +71,7 @@
    "fieldname": "rate",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Rate",
-   "read_only": 1
+   "label": "Rate"
   },
   {
    "columns": 1,
@@ -87,7 +86,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2026-01-30 11:49:23.170926",
+ "modified": "2026-01-30 13:03:02.698315",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Pre-Budget - Yarn and Accessories",
