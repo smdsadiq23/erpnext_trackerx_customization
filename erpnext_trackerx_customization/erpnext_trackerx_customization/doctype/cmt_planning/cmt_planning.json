@@ -6,7 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "section_break_6y1e",
-  "custom_category",
+  "category",
   "cmt_planning",
   "amended_from"
  ],
@@ -16,15 +16,9 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "custom_category",
-   "fieldtype": "Select",
-   "label": "Category",
-   "options": "Normal - Bulk\nNormal - SMS\nCap - Bulk\nCap - SMS\nScarf - Bulk\nScarf - SMS\nKids - Bulk\nKids - SMS"
-  },
-  {
    "fieldname": "cmt_planning",
    "fieldtype": "Table",
-   "label": "CMT Planning",
+   "label": "CMT Process Costing",
    "options": "CMT Process Costing"
   },
   {
@@ -36,13 +30,19 @@
    "print_hide": 1,
    "read_only": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "label": "Category",
+   "options": "\nNormal - Bulk\nNormal - SMS\nCap - Bulk\nCap - SMS\nScarf - Bulk\nScarf - SMS\nKids - Bulk\nKids - SMS"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-29 16:11:21.156332",
+ "modified": "2026-01-29 19:02:37.823243",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "CMT Planning",
@@ -63,7 +63,6 @@
   }
  ],
  "row_format": "Dynamic",
- "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

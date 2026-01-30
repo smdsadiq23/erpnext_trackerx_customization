@@ -21,19 +21,20 @@
   "total_cost",
   "overhead_",
   "grand_total",
-  "budget_price",
+  "actual_sales_amount",
   "salepack",
   "column_break_iicl",
-  "profitpack",
-  "actual_sales_amount",
+  "budget_price_per_pack",
   "actual_profit",
-  "actual_profit_",
+  "profitpack",
+  "actual_profit_percent",
   "status",
   "yarn_accessories",
   "table_itma",
   "process_budget",
+  "category",
   "table_wfui",
-  "colour_wise",
+  "fg_wise",
   "table_hwmy"
  ],
  "fields": [
@@ -77,7 +78,6 @@
    "options": "Sales Order"
   },
   {
-   "fetch_from": "sales_order.total_qty",
    "fieldname": "total_qty",
    "fieldtype": "Float",
    "label": "Total Qty",
@@ -86,9 +86,11 @@
   {
    "fieldname": "total_cost",
    "fieldtype": "Currency",
-   "label": "Total Cost"
+   "label": "Total Cost",
+   "read_only": 1
   },
   {
+   "default": "Draft",
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
@@ -101,17 +103,20 @@
   {
    "fieldname": "total_yarn_cost",
    "fieldtype": "Currency",
-   "label": "Total Yarn Cost"
+   "label": "Total Yarn Cost",
+   "read_only": 1
   },
   {
    "fieldname": "total_accessories_cost",
    "fieldtype": "Currency",
-   "label": "Total Accessories Cost"
+   "label": "Total Accessories Cost",
+   "read_only": 1
   },
   {
    "fieldname": "process_cost",
    "fieldtype": "Currency",
-   "label": "Total Process Cost"
+   "label": "Total Process Cost",
+   "read_only": 1
   },
   {
    "fieldname": "overhead_",
@@ -121,17 +126,14 @@
   {
    "fieldname": "grand_total",
    "fieldtype": "Currency",
-   "label": "Grand Total"
-  },
-  {
-   "fieldname": "budget_price",
-   "fieldtype": "Currency",
-   "label": "Budget Price"
+   "label": "Grand Total",
+   "read_only": 1
   },
   {
    "fieldname": "salepack",
    "fieldtype": "Currency",
-   "label": "Sale/Pack"
+   "label": "Sale per Pack",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_iicl",
@@ -140,22 +142,20 @@
   {
    "fieldname": "profitpack",
    "fieldtype": "Currency",
-   "label": "Profit/Pack"
+   "label": "Profit per Pack",
+   "read_only": 1
   },
   {
    "fieldname": "actual_sales_amount",
    "fieldtype": "Currency",
-   "label": "Actual Sales Amount"
+   "label": "Actual Sales Amount",
+   "read_only": 1
   },
   {
    "fieldname": "actual_profit",
    "fieldtype": "Currency",
-   "label": "Actual Profit"
-  },
-  {
-   "fieldname": "actual_profit_",
-   "fieldtype": "Float",
-   "label": "Actual Profit %"
+   "label": "Actual Profit",
+   "read_only": 1
   },
   {
    "fieldname": "yarn_accessories",
@@ -165,7 +165,8 @@
   {
    "fieldname": "table_itma",
    "fieldtype": "Table",
-   "options": "Pre-Budget - Yarn and Accessories"
+   "options": "Pre-Budget - Yarn and Accessories",
+   "read_only": 1
   },
   {
    "fieldname": "process_budget",
@@ -175,30 +176,55 @@
   {
    "fieldname": "table_wfui",
    "fieldtype": "Table",
-   "options": "Pre-Budget- Process"
-  },
-  {
-   "fieldname": "colour_wise",
-   "fieldtype": "Section Break",
-   "label": "Pre-Budget - Colour Wise"
+   "options": "Pre-Budget- Process",
+   "read_only": 1
   },
   {
    "fieldname": "table_hwmy",
    "fieldtype": "Table",
-   "options": "Pre-Budget FG Wise"
+   "options": "Pre-Budget FG Wise",
+   "read_only": 1
   },
   {
+   "default": "CA/25-26/BUD-.####",
    "fieldname": "naming_series",
    "fieldtype": "Select",
+   "hidden": 1,
    "label": "Naming Series",
-   "options": "CA/25-26/BUD-.####"
+   "options": "CA/25-26/BUD-.####",
+   "read_only": 1
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Category",
+   "options": "\nNormal - Bulk\nNormal - SMS\nCap - Bulk\nCap - SMS\nScarf - Bulk\nScarf - SMS\nKids - Bulk\nKids - SMS",
+   "reqd": 1
+  },
+  {
+   "fieldname": "fg_wise",
+   "fieldtype": "Section Break",
+   "label": "Pre-Budget - FG Wise"
+  },
+  {
+   "fieldname": "budget_price_per_pack",
+   "fieldtype": "Currency",
+   "label": "Budget Price per Pack",
+   "read_only": 1
+  },
+  {
+   "fieldname": "actual_profit_percent",
+   "fieldtype": "Float",
+   "label": "Actual Profit %",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-21 17:42:50.876778",
+ "modified": "2026-01-30 11:48:19.249356",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Pre-Budgeting and Planning",
@@ -220,7 +246,6 @@
   }
  ],
  "row_format": "Dynamic",
- "rows_threshold_for_grid_search": 20,
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []
