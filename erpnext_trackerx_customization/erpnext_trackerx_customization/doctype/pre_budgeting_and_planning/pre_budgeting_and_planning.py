@@ -21,53 +21,98 @@ class PreBudgetingandPlanning(Document):
 
 
 @frappe.whitelist()
-def get_sales_orders_by_style(doctype, txt, searchfield, start, page_len, filters, as_dict=False):
+def get_sales_orders_not_in_pre_budgeting(doctype, txt, searchfield, start, page_len, filters, as_dict=False):
     """
-    Custom search for Sales Orders filtered by custom_style in Sales Order Item
-    Used for dynamic link field filtering in Pre-Budgeting and Planning
+    Get Sales Orders NOT already used in non-cancelled Pre-Budgeting documents
+    - Excludes SOs used in Draft/Submitted Pre-Budgeting docs
+    - Includes SOs used only in Cancelled Pre-Budgeting docs (allowed to recreate)
     """
-    # Handle filters - can be dict or string
+    # Get SOs used in non-cancelled Pre-Budgeting docs (Draft=0, Submitted=1)
+    used_sos = frappe.db.sql_list("""
+        SELECT DISTINCT sales_order 
+        FROM `tabPre-Budgeting and Planning` 
+        WHERE docstatus < 2  -- Draft (0) or Submitted (1), NOT Cancelled (2)
+          AND sales_order IS NOT NULL 
+          AND sales_order != ''
+    """)
+    
+    conditions = ["so.docstatus = 1"]  # Only submitted SOs
+    params = {
+        "txt": f"%{txt}%",
+        "start": start,
+        "page_len": page_len
+    }
+    
+    if txt:
+        conditions.append("(so.name LIKE %(txt)s OR so.customer LIKE %(txt)s)")
+    
+    # CRITICAL FIX: Removed extra closing parenthesis AND conditionally add param
+    if used_sos:
+        conditions.append("so.name NOT IN %(used_sos)s")  # ✅ FIXED: No extra ")"
+        params["used_sos"] = tuple(used_sos)  # Only add param if condition exists
+    
+    query = """
+        SELECT so.name, so.customer, so.transaction_date, so.grand_total
+        FROM `tabSales Order` so
+        WHERE {conditions}
+        ORDER BY so.transaction_date DESC, so.name DESC
+        LIMIT %(start)s, %(page_len)s
+    """.format(conditions=" AND ".join(conditions))
+    
+    return frappe.db.sql(query, params, as_dict=as_dict)
+
+
+@frappe.whitelist()
+def get_styles_for_sales_order(doctype, txt, searchfield, start, page_len, filters, as_dict=False):
+    """
+    Get distinct custom_style values from Sales Order Items for selected Sales Order
+    """
+    # Handle filters (could be string or dict)
     if isinstance(filters, str):
         import json
         filters = json.loads(filters)
     
-    style = filters.get("style") if isinstance(filters, dict) else None
+    sales_order = filters.get("sales_order") if isinstance(filters, dict) else None
+    if not sales_order:
+        return []
     
-    if not style:
-        # Fallback to default search if no style filter
+    # CRITICAL FIX: Handle case where Style Master might not exist OR custom_style is not linked
+    # Try to get styles directly from SO Items first (without Style Master join)
+    try:
+        # First attempt: Join with Style Master (for validation)
         return frappe.db.sql("""
-            SELECT name, customer, transaction_date, grand_total
-            FROM `tabSales Order`
-            WHERE docstatus = 1
-                AND (name LIKE %(txt)s OR customer LIKE %(txt)s)
-            ORDER BY transaction_date DESC, name DESC
+            SELECT DISTINCT soi.custom_style AS name, soi.custom_style AS label
+            FROM `tabSales Order Item` soi
+            INNER JOIN `tabStyle Master` sm ON sm.name = soi.custom_style
+            WHERE soi.parent = %(sales_order)s
+              AND soi.custom_style IS NOT NULL
+              AND soi.custom_style != ''
+              AND (soi.custom_style LIKE %(txt)s OR sm.style_name LIKE %(txt)s)
+            ORDER BY soi.custom_style
             LIMIT %(start)s, %(page_len)s
         """, {
+            "sales_order": sales_order,
             "txt": f"%{txt}%",
             "start": start,
             "page_len": page_len
         }, as_dict=as_dict)
-    
-    # Filter SOs by custom_style in child table using JOIN
-    return frappe.db.sql("""
-        SELECT DISTINCT 
-            so.name, 
-            so.customer, 
-            so.transaction_date, 
-            so.grand_total
-        FROM `tabSales Order` so
-        INNER JOIN `tabSales Order Item` soi ON soi.parent = so.name
-        WHERE so.docstatus = 1
-            AND soi.custom_style = %(style)s
-            AND (so.name LIKE %(txt)s OR so.customer LIKE %(txt)s)
-        ORDER BY so.transaction_date DESC, so.name DESC
-        LIMIT %(start)s, %(page_len)s
-    """, {
-        "txt": f"%{txt}%",
-        "style": style,
-        "start": start,
-        "page_len": page_len
-    }, as_dict=as_dict)
+    except Exception:
+        # Fallback: Get styles directly from SO Items (if Style Master doesn't exist)
+        return frappe.db.sql("""
+            SELECT DISTINCT soi.custom_style AS name, soi.custom_style AS label
+            FROM `tabSales Order Item` soi
+            WHERE soi.parent = %(sales_order)s
+              AND soi.custom_style IS NOT NULL
+              AND soi.custom_style != ''
+              AND soi.custom_style LIKE %(txt)s
+            ORDER BY soi.custom_style
+            LIMIT %(start)s, %(page_len)s
+        """, {
+            "sales_order": sales_order,
+            "txt": f"%{txt}%",
+            "start": start,
+            "page_len": page_len
+        }, as_dict=as_dict)
 
 
 @frappe.whitelist()

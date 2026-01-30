@@ -10,9 +10,9 @@
   "amended_from",
   "naming_series",
   "date",
+  "sales_order",
   "style",
   "customer",
-  "sales_order",
   "total_qty",
   "column_break_gtwn",
   "total_yarn_cost",
@@ -165,8 +165,7 @@
   {
    "fieldname": "table_itma",
    "fieldtype": "Table",
-   "options": "Pre-Budget - Yarn and Accessories",
-   "read_only": 1
+   "options": "Pre-Budget - Yarn and Accessories"
   },
   {
    "fieldname": "process_budget",
@@ -176,8 +175,7 @@
   {
    "fieldname": "table_wfui",
    "fieldtype": "Table",
-   "options": "Pre-Budget- Process",
-   "read_only": 1
+   "options": "Pre-Budget- Process"
   },
   {
    "fieldname": "table_hwmy",
@@ -224,7 +222,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2026-01-30 11:48:19.249356",
+ "modified": "2026-01-30 13:04:47.460447",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Pre-Budgeting and Planning",

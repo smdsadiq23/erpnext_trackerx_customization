@@ -3,35 +3,79 @@
 
 
 frappe.ui.form.on('Pre-Budgeting and Planning', {
-    // Trigger when Style field changes
-    style: function(frm) {
+    // Initialize on form load
+    refresh: function(frm) {
+        // Set Sales Order filter (exclude already-used SOs)
         set_sales_order_filter(frm);
         
-        // Clear dependent fields when style changes
+        // If SO already selected, set Style filter
         if (frm.doc.sales_order) {
-            frm.set_value('sales_order', '');
+            set_style_filter(frm);
+        }
+        
+        // Visual status indicator
+        frm.page.set_indicator(frm.doc.status, {
+            'Draft': 'orange',
+            'Approved': 'green'
+        });
+        
+        // Disable submit if not Approved
+        if (frm.doc.status !== 'Approved' && frm.page.can_submit()) {
+            frm.page.set_primary_action(__('Submit'), null, null, true);
+        }
+    },
+
+    onload: function(frm) {
+        if (!frm.doc.sales_order && !frm.doc.style) {
             frm.clear_table('table_itma');
             frm.clear_table('table_wfui');
+            frm.clear_table('table_hwmy');
             frm.refresh_field('table_itma');
             frm.refresh_field('table_wfui');
-            clear_cost_fields(frm);
+            frm.refresh_field('table_hwmy');
         }
     },
 
     // Trigger when Sales Order is selected
     sales_order: function(frm) {
-        if (!frm.doc.sales_order) {
-            frm.clear_table('table_itma');
-            frm.clear_table('table_wfui'); 
-            frm.refresh_field('table_itma');
-            frm.refresh_field('table_wfui');
-            clear_cost_fields(frm);
-            return;
+        // Clear ALL dependent fields and tables
+        frm.set_value('style', '');
+        frm.set_value('category', '');
+        frm.clear_table('table_itma');
+        frm.clear_table('table_wfui');
+        frm.clear_table('table_hwmy');
+        frm.refresh_field('table_itma');
+        frm.refresh_field('table_wfui');
+        frm.refresh_field('table_hwmy');
+        clear_cost_fields(frm);
+        
+        if (frm.doc.sales_order) {
+            // Set Style filter based on selected SO
+            set_style_filter(frm);
+            
+            // Optional: Auto-open Style field for selection
+            setTimeout(() => {
+                frm.scroll_to_field('style');
+                frm.focus_on('style');
+            }, 300);
         }
+    },
 
-        // First fetch SO totals BEFORE loading components
+    // Trigger when Style is selected (NOW FILTERED BY SO)
+    style: function(frm) {
+        if (!frm.doc.sales_order || !frm.doc.style) return;
+        
+        // Clear tables that depend on style
+        frm.clear_table('table_itma');
+        frm.clear_table('table_wfui');
+        frm.clear_table('table_hwmy');
+        frm.refresh_field('table_itma');
+        frm.refresh_field('table_wfui');
+        frm.refresh_field('table_hwmy');
+        
+        // Fetch SO totals FIRST (for this style)
         fetch_so_totals(frm, function() {
-            // Then fetch yarn/accessories data
+            // Then fetch yarn/accessories
             frm.call({
                 method: 'erpnext_trackerx_customization.erpnext_trackerx_customization.doctype.pre_budgeting_and_planning.pre_budgeting_and_planning.fetch_yarn_accessories_from_sales_order',
                 args: {
@@ -41,40 +85,29 @@ frappe.ui.form.on('Pre-Budgeting and Planning', {
                 freeze: true,
                 freeze_message: __('Loading yarn and accessories data...'),
                 callback: function(r) {
-                    frm.clear_table('table_itma');
-                    
                     if (r.message && r.message.length > 0) {
-                        r.message.forEach(row => {
-                            frm.add_child('table_itma', row);
-                        });
+                        r.message.forEach(row => frm.add_child('table_itma', row));
                         frm.refresh_field('table_itma');
-                        
-                        // Recalculate all totals including profit fields
                         recalculate_totals(frm);
                         recalculate_fg_wise(frm);
                         
                         // Show success message
                         const fgItemCount = [...new Set(r.message.map(r => r.fg_item))].length;
                         const itemsWithZeroRate = r.message.filter(r => !r.rate || r.rate === 0).length;
-                        
                         let alertMsg = __('Loaded {0} component rows from {1} FG items', [r.message.length, fgItemCount]);
                         if (itemsWithZeroRate > 0) {
-                            alertMsg += __('<br><small style="color:orange">{0} items have zero/no rate - please verify pricing</small>', [itemsWithZeroRate]);
+                            alertMsg += __('<br><small style="color:orange">{0} items have zero/no rate</small>', [itemsWithZeroRate]);
                         }
+                        frappe.show_alert({message: alertMsg, indicator: itemsWithZeroRate > 0 ? 'orange' : 'green'});
                         
-                        frappe.show_alert({
-                            message: alertMsg,
-                            indicator: itemsWithZeroRate > 0 ? 'orange' : 'green'
-                        });
-                        
-                        // Auto-fetch process data if category is already selected
+                        // Auto-fetch process if category selected
                         if (frm.doc.category) {
                             fetch_process_data(frm);
                         }
                     } else {
                         frappe.msgprint({
                             title: __('No Data Found'),
-                            message: __('No yarn/accessories data found. Please verify:<br>1. BOMs exist for FG items<br>2. Items have matching style<br>3. Item Prices exist for components'),
+                            message: __('Verify: BOMs exist, Items have matching style, Item Prices configured'),
                             indicator: 'orange'
                         });
                     }
@@ -116,31 +149,28 @@ frappe.ui.form.on('Pre-Budgeting and Planning', {
             recalculate_fg_wise(frm);
         }
     },    
-
-    // Initialize on form load
-    refresh: function(frm) {
-        if (frm.doc.style && frm.doc.__islocal) {
-            set_sales_order_filter(frm);
-        }
-        
-        // // Recalculate all totals for existing documents
-        // if (!frm.doc.__islocal) {
-        //     recalculate_totals(frm);
-        //     if (frm.doc.table_itma && frm.doc.table_itma.length > 0) {
-        //         recalculate_fg_wise(frm);
-        //     }
-        // }
-    },
-
-    onload: function(frm) {
-        if (!frm.doc.sales_order && !frm.doc.style) {
-            frm.clear_table('table_itma');
-            frm.clear_table('table_wfui');
-            frm.refresh_field('table_itma');
-            frm.refresh_field('table_wfui');
-        }
-    }
 });
+
+// Set Sales Order filter (exclude used SOs)
+function set_sales_order_filter(frm) {
+    frm.set_query('sales_order', function() {
+        return {
+            query: 'erpnext_trackerx_customization.erpnext_trackerx_customization.doctype.pre_budgeting_and_planning.pre_budgeting_and_planning.get_sales_orders_not_in_pre_budgeting'
+        };
+    });
+}
+
+// Set Style filter based on selected Sales Order
+function set_style_filter(frm) {
+    frm.set_query('style', function() {
+        return {
+            query: 'erpnext_trackerx_customization.erpnext_trackerx_customization.doctype.pre_budgeting_and_planning.pre_budgeting_and_planning.get_styles_for_sales_order',
+            filters: {
+                sales_order: frm.doc.sales_order
+            }
+        };
+    });
+}
 
 // Helper: Fetch SO totals (qty and amount) for the selected style
 function fetch_so_totals(frm, callback) {
@@ -167,26 +197,6 @@ function fetch_so_totals(frm, callback) {
             }
             if (callback) callback();
         }
-    });
-}
-
-// Helper function to set dynamic query on Sales Order field
-function set_sales_order_filter(frm) {
-    frm.set_query('sales_order', function() {
-        if (!frm.doc.style) {
-            return {
-                filters: {
-                    docstatus: 1
-                }
-            };
-        }
-        
-        return {
-            query: 'erpnext_trackerx_customization.erpnext_trackerx_customization.doctype.pre_budgeting_and_planning.pre_budgeting_and_planning.get_sales_orders_by_style',
-            filters: {
-                style: frm.doc.style
-            }
-        };
     });
 }
 
@@ -380,7 +390,7 @@ function recalculate_totals(frm) {
 }
 
 // Child table: Pre-Budget - Process
-frappe.ui.form.on('Pre-Budget - Process', {
+frappe.ui.form.on('Pre-Budget- Process', {
     rate: function(frm, cdt, cdn) {
         calculate_process_row_amount(cdt, cdn);
         recalculate_totals(frm);
