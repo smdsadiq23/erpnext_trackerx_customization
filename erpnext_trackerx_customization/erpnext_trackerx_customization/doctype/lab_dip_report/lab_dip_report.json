@@ -9,18 +9,23 @@
   "date_time",
   "merchant",
   "supplier",
-  "buyer",
+  "ldsent_date",
+  "column_break_ajpm",
+  "brand",
+  "season",
   "yarn_content",
   "count_ply",
+  "ply",
+  "column_break_wyle",
   "colour_no",
   "colour_name",
   "shade_reference",
   "approved_option",
+  "column_break_bnbz",
   "approved_date",
-  "column_break_ajpm",
-  "ldsent_date",
+  "comments",
   "status",
-  "comments"
+  "final_colour_reference"
  ],
  "fields": [
   {
@@ -38,13 +43,15 @@
   },
   {
    "fieldname": "yarn_content",
-   "fieldtype": "Data",
-   "label": "Yarn Content"
+   "fieldtype": "Link",
+   "label": "Yarn Content",
+   "options": "Yarn Content Master"
   },
   {
    "fieldname": "count_ply",
-   "fieldtype": "Data",
-   "label": "Counts and Ply",
+   "fieldtype": "Link",
+   "label": "Yarn Counts",
+   "options": "Yarn Count Master",
    "reqd": 1
   },
   {
@@ -101,16 +108,41 @@
    "options": "Gowri\nKowsalya\nMeena\nRemya\nSushma\nSaranya"
   },
   {
-   "fieldname": "buyer",
+   "fieldname": "brand",
    "fieldtype": "Link",
    "label": "Buyer",
-   "options": "Customer"
+   "options": "Brand"
+  },
+  {
+   "fieldname": "season",
+   "fieldtype": "Link",
+   "label": "Season",
+   "options": "Season Master"
+  },
+  {
+   "fieldname": "ply",
+   "fieldtype": "Select",
+   "label": "Ply",
+   "options": "\n1\n2\n3\n4"
+  },
+  {
+   "fieldname": "column_break_wyle",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_bnbz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "final_colour_reference",
+   "fieldtype": "Data",
+   "label": "Final Colour Reference"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-06 10:42:28.202398",
+ "modified": "2026-02-06 10:28:55.014919",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Lab Dip Report",
