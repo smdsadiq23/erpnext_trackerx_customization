@@ -292,92 +292,92 @@ def validate_item(doc, method):
 #                     frappe.throw(f"Tracking Required must be checked for all ancestors of leaf component '{row.component_name}'.")
 #                 current = parent         
 
-# Updating Colour from Item to all related downstream doctypes
-def on_update(doc, method=None):
-    if doc.doctype != "Item" or doc.is_new():
-        return
+# # Updating Colour from Item to all related downstream doctypes
+# def on_update(doc, method=None):
+#     if doc.doctype != "Item" or doc.is_new():
+#         return
     
-    # Enqueue background job only if any relevant field changed
-    if (
-        doc.has_value_changed("custom_colour_name") or
-        doc.has_value_changed("custom_colour_code")
-    ):
-        frappe.enqueue(
-            "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.sync_item_colour_to_downstream_docs",
-            item_name=doc.name,
-            colour_name=doc.custom_colour_name if doc.has_value_changed("custom_colour_name") else None,
-            colour_code=doc.custom_colour_code if doc.has_value_changed("custom_colour_code") else None,
-            queue="long",  # or "default"
-            timeout=600  # 10 minutes
-        )
+#     # Enqueue background job only if any relevant field changed
+#     if (
+#         doc.has_value_changed("custom_colour_name") or
+#         doc.has_value_changed("custom_colour_code")
+#     ):
+#         frappe.enqueue(
+#             "erpnext_trackerx_customization.erpnext_doctype_hooks.item_hooks.sync_item_colour_to_downstream_docs",
+#             item_name=doc.name,
+#             colour_name=doc.custom_colour_name if doc.has_value_changed("custom_colour_name") else None,
+#             colour_code=doc.custom_colour_code if doc.has_value_changed("custom_colour_code") else None,
+#             queue="long",  # or "default"
+#             timeout=600  # 10 minutes
+#         )
 
-def sync_item_colour_to_downstream_docs(item_name, colour_name=None, colour_code=None):
-    """
-    Background job to sync Item colour changes to all dependent documents.
-    Accepts only serializable args (no doc objects).
-    """
-    try:
-        if colour_code is not None:
-            frappe.db.sql("""
-                UPDATE `tabBOM` SET custom_colour_code = %s WHERE item = %s
-            """, (colour_code, item_name))
+# def sync_item_colour_to_downstream_docs(item_name, colour_name=None, colour_code=None):
+#     """
+#     Background job to sync Item colour changes to all dependent documents.
+#     Accepts only serializable args (no doc objects).
+#     """
+#     try:
+#         if colour_code is not None:
+#             frappe.db.sql("""
+#                 UPDATE `tabBOM` SET custom_colour_code = %s WHERE item = %s
+#             """, (colour_code, item_name))
 
-        if colour_name is not None:
-            # BOM
-            frappe.db.sql("""
-                UPDATE `tabBOM` SET custom_colour = %s WHERE item = %s
-            """, (colour_name, item_name))
+#         if colour_name is not None:
+#             # BOM
+#             frappe.db.sql("""
+#                 UPDATE `tabBOM` SET custom_colour = %s WHERE item = %s
+#             """, (colour_name, item_name))
 
-            # Sales Order Item
-            frappe.db.sql("""
-                UPDATE `tabSales Order Item` SET custom_color = %s WHERE item_code = %s
-            """, (colour_name, item_name))
+#             # Sales Order Item
+#             frappe.db.sql("""
+#                 UPDATE `tabSales Order Item` SET custom_color = %s WHERE item_code = %s
+#             """, (colour_name, item_name))
 
-            # Goods Receipt Note
-            frappe.db.sql("""
-                UPDATE `tabGoods Receipt Note` SET fg_item_color = %s WHERE fg_item = %s
-            """, (colour_name, item_name))
+#             # Goods Receipt Note
+#             frappe.db.sql("""
+#                 UPDATE `tabGoods Receipt Note` SET fg_item_color = %s WHERE fg_item = %s
+#             """, (colour_name, item_name))
 
-            # Goods Receipt Item
-            frappe.db.sql("""
-                UPDATE `tabGoods Receipt Item` SET color = %s WHERE item_code = %s
-            """, (colour_name, item_name))
+#             # Goods Receipt Item
+#             frappe.db.sql("""
+#                 UPDATE `tabGoods Receipt Item` SET color = %s WHERE item_code = %s
+#             """, (colour_name, item_name))
 
-            # Goods Receipt Item
-            frappe.db.sql("""
-                UPDATE `tabGRN OCN FG Mapping` SET fg_item_colour = %s WHERE fg_item = %s
-            """, (colour_name, item_name))            
+#             # Goods Receipt Item
+#             frappe.db.sql("""
+#                 UPDATE `tabGRN OCN FG Mapping` SET fg_item_colour = %s WHERE fg_item = %s
+#             """, (colour_name, item_name))            
 
-            # Get affected Cut Dockets first
-            cut_dockets = frappe.db.sql("""
-                SELECT name FROM `tabCut Docket` WHERE style = %s
-            """, (item_name,), as_dict=True)
+#             # Get affected Cut Dockets first
+#             cut_dockets = frappe.db.sql("""
+#                 SELECT name FROM `tabCut Docket` WHERE style = %s
+#             """, (item_name,), as_dict=True)
 
-            # Cut Docket
-            frappe.db.sql("""
-                UPDATE `tabCut Docket` SET color = %s WHERE style = %s
-            """, (colour_name, item_name))
+#             # Cut Docket
+#             frappe.db.sql("""
+#                 UPDATE `tabCut Docket` SET color = %s WHERE style = %s
+#             """, (colour_name, item_name))
 
-            # Cut Kit Plan
-            frappe.db.sql("""
-                UPDATE `tabCut Kit Plan` SET colour = %s WHERE fg_item = %s
-            """, (colour_name, item_name))
+#             # Cut Kit Plan
+#             frappe.db.sql("""
+#                 UPDATE `tabCut Kit Plan` SET colour = %s WHERE fg_item = %s
+#             """, (colour_name, item_name))
 
-            # Can Cut & Cutting Lay Record (via Cut Docket names)
-            for cd in cut_dockets:
-                frappe.db.sql("""
-                    UPDATE `tabCan Cut` SET colour = %s WHERE cutting_kanban = %s
-                """, (colour_name, cd.name))
+#             # Can Cut & Cutting Lay Record (via Cut Docket names)
+#             for cd in cut_dockets:
+#                 frappe.db.sql("""
+#                     UPDATE `tabCan Cut` SET colour = %s WHERE cutting_kanban = %s
+#                 """, (colour_name, cd.name))
 
-                frappe.db.sql("""
-                    UPDATE `tabCutting Lay Record` SET colour = %s WHERE cut_kanban_no = %s
-                """, (colour_name, cd.name))
+#                 frappe.db.sql("""
+#                     UPDATE `tabCutting Lay Record` SET colour = %s WHERE cut_kanban_no = %s
+#                 """, (colour_name, cd.name))
 
-        frappe.db.commit()  # Ensure changes are saved in background job
+#         frappe.db.commit()  # Ensure changes are saved in background job
 
-    except Exception as e:
-        frappe.log_error(
-            message=frappe.get_traceback(),
-            title=f"Colour Sync Failed for Item {item_name}"
-        )
-        raise  # Optional: re-raise to mark job as failed
+#     except Exception as e:
+#         frappe.log_error(
+#             message=frappe.get_traceback(),
+#             title=f"Colour Sync Failed for Item {item_name}"
+#         )
+#         raise  # Optional: re-raise to mark job as failed
