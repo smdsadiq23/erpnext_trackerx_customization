@@ -41,6 +41,16 @@ frappe.ui.form.on('Sales Order', {
           }, __('Create'));
         }
 
+        // Clear existing tree view when loading a new form
+        $('.tree-view-container').remove();
+        
+        // Reset initialization flag for new forms
+        if (frm.doc.__islocal) {
+            frm.tree_view_initialized = false;
+            frm.tree_data = [];
+            frm._last_items_hash = '';
+        }
+
         // Initialize tree view only once after form is loaded
         if (!frm.tree_view_initialized) {
             setTimeout(() => {
@@ -72,7 +82,16 @@ frappe.ui.form.on('Sales Order', {
         frm._last_items_hash = JSON.stringify(frm.doc.items.map(i => 
             `${i.item_code}_${i.custom_lineitem}_${i.custom_size}_${i.qty}`
         ));
-    }  
+    },
+    
+    // Add this new event handler to clear tree view when form is unloaded
+    before_unload(frm) {
+        // Clean up tree view when navigating away from the form
+        $('.tree-view-container').remove();
+        frm.tree_view_initialized = false;
+        frm.tree_data = [];
+        frm._last_items_hash = '';
+    }
 });
 
 function update_total_qty(frm){
@@ -91,14 +110,16 @@ function update_total_qty(frm){
 function setup_tree_view(frm) {
     // Prevent duplicate initialization
     if ($('.tree-view-container').length > 0) {
-        return;
+        $('.tree-view-container').remove(); // Remove any existing tree view
     }
     
     // Hide the original items table
     $(frm.fields_dict.items.wrapper).hide();
     
-    // Remove any existing tree view
-    $('.tree-view-container').remove();
+    // For new forms, ensure tree_data is empty
+    if (frm.doc.__islocal) {
+        frm.tree_data = [];
+    }
     
     // Add enhanced CSS styles with app theme colors
     const css = `
