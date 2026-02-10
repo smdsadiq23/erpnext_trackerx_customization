@@ -5,7 +5,8 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from collections import defaultdict
-from frappe.utils import cint, get_url_to_form
+from frappe.utils import cint, get_url_to_form, flt
+from notificationx.api.whatsapp_api import send_whatsapp_template
 
 FACTORY_MANAGER_ROLE = "Factory Manager"
 
@@ -230,10 +231,102 @@ class FactoryOCR(Document):
         _freeze_if_locked(self)
 
     def after_insert(self):
-        _notify_factory_managers_on_pending(self)
+        if self.docstatus == 1:
+            return
+        elif self.status == 'Pending for Approval' and self._action == 'save':    
+            _notify_factory_managers_on_pending(self)
+
+            frappe.enqueue_doc(
+                doctype=self.doctype,
+                name=self.name,
+                method="send_whatsapp_notification",
+                queue="short",
+                enqueue_after_commit=True
+            )             
 
     def before_submit(self):
         frappe.throw(_("Manual Submit is not allowed for Factory OCR. Use Approve/Reject only."))
+
+    def send_whatsapp_notification(self):
+        """
+        Send WhatsApp notification using already aggregated parent totals.
+        """
+
+        notif_name = "factory_ocr_approval"
+
+        try:
+            notif_doc = frappe.get_doc("Whatsapp Notification", notif_name)
+        except frappe.DoesNotExistError:
+            frappe.log_error(
+                title="Factory OCR WhatsApp Config Missing",
+                message=f"Notification config '{notif_name}' not found."
+            )
+            return
+
+        # Get first style from child (if exists)
+        style = None
+        if self.table_ocn_details:
+            style = self.table_ocn_details[0].style
+
+        # Sanitize remarks
+        raw_remarks = self.requester_remarks or "–"
+        remarks = " ".join(raw_remarks.split())[:1024]
+
+        # -----------------------------
+        # Body Params (ONLY PARAMS)
+        # -----------------------------
+        body_params = [
+            {"name": "ocn", "value": self.ocn or "–"},
+            {"name": "buyer", "value": self.buyer or "–"},
+            {"name": "style", "value": style or "–"},
+            {"name": "request_id", "value": self.name},
+            {"name": "request_date", "value": frappe.utils.formatdate(self.creation.date() if self.creation else frappe.utils.nowdate(), "dd-mm-yyyy")},
+            {"name": "order_qty", "value": str(int(self.total_order_qty or 0))},
+            {"name": "cut_qty", "value": str(int(self.total_cut_qty or 0))},
+            {"name": "scan_qty", "value": str(int(self.total_scan_qty or 0))},
+            {"name": "pack_qty", "value": str(int(self.total_pack_qty or 0))},
+            {"name": "ship_qty", "value": str(int(self.total_ship_qty or 0))},
+            {"name": "good_qty", "value": str(int(self.total_good_garments or 0))},
+            {"name": "rejected_garments", "value": str(int(self.total_rejected_garments or 0))},
+            {"name": "rejected_panels", "value": str(int(self.total_rejected_panels or 0))},
+            {"name": "cumulative_total", "value": str(int(self.cumulative_total or 0))},
+            {"name": "cut_ship_per", "value": f"{flt(self.cut_to_ship_of_order or 0):.2f}"},
+            {"name": "order_ship_per", "value": f"{flt(self.order_to_ship_total or 0):.2f}"},
+            {"name": "remarks", "value": remarks or "–"},
+        ]
+
+        # -----------------------------
+        # Collect Recipients
+        # -----------------------------
+        recipients = {}
+
+        for rec in notif_doc.whatsapp_recipients:
+            if rec.whatsapp_number:
+                recipients[rec.whatsapp_number] = rec.whatsapp_number
+
+        if not recipients:
+            frappe.log_error(
+                title="Factory OCR WhatsApp No Recipients",
+                message=f"{self.name}: No WhatsApp numbers configured."
+            )
+            return
+
+        # -----------------------------
+        # Send
+        # -----------------------------
+        for number in recipients.values():
+            result = send_whatsapp_template(
+                to=number,
+                template_name=notif_doc.template_name,
+                body_params=body_params,
+                button_params=[self.name]
+            )
+
+            if not result.get("success"):
+                frappe.log_error(
+                    title="Factory OCR WhatsApp Failed",
+                    message=f"Doc: {self.name}\nTo: {number}\nError: {result.get('error')}"
+                )
 
 
 @frappe.whitelist()
