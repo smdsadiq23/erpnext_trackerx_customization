@@ -16,6 +16,7 @@ class ProformaInvoice(Document):
         self._validate_items_table()
         self._validate_required_fields_in_items()
         self._validate_po_availability()
+        self._calculate_totals()
     
     def _validate_items_table(self):
         """Ensure items table is not empty"""
@@ -68,12 +69,24 @@ class ProformaInvoice(Document):
                 title=_("Duplicate PO Number")
             )
     
+    def _calculate_totals(self):
+        """Calculate total taxes and grand total"""
+        # Calculate total from items
+        item_total = sum(flt(item.amount) for item in self.items)
+        
+        # Calculate total taxes
+        tax_total = sum(flt(tax.tax_amount) for tax in self.taxes)
+        
+        self.total_taxes_and_charges = tax_total
+        self.grand_total = item_total + tax_total
+    
     @frappe.whitelist()
     def fetch_items_from_sales_orders(self):
         """
         Fetch items from Sales Orders matching the PO Number (po_no field)
         and populate the Proforma Invoice Item child table.
         Sets delivery_date as the maximum delivery date from all matching Sales Orders.
+        Also fetches and consolidates taxes from Sales Orders.
         """
         if not self.po_number:
             frappe.throw(_("Please select a PO Number first"))
@@ -139,11 +152,81 @@ class ProformaInvoice(Document):
                 pi_item.amount = item.custom_order_qty * item.rate
                 item_count += 1
 
+        # Fetch and consolidate taxes from Sales Orders
+        tax_count = self._fetch_and_consolidate_taxes(sales_orders)
+
+        # Calculate totals
+        self._calculate_totals()
+
         return {
             "sales_order_count": len(sales_orders),
             "item_count": item_count,
+            "tax_count": tax_count,
             "delivery_date": str(self.delivery_date) if self.delivery_date else None
         }
+    
+    def _fetch_and_consolidate_taxes(self, sales_orders):
+        """
+        Fetch taxes from all Sales Orders and consolidate them
+        Consolidation logic: Group by (account_head, charge_type, rate) and sum tax amounts
+        """
+        # Clear existing taxes
+        self.set("taxes", [])
+        
+        # Dictionary to consolidate taxes: key = (account_head, charge_type, rate)
+        tax_consolidation = defaultdict(lambda: {
+            'charge_type': '',
+            'account_head': '',
+            'description': '',
+            'rate': 0.0,
+            'tax_amount': 0.0
+        })
+        
+        # Fetch taxes from all Sales Orders
+        for so in sales_orders:
+            so_taxes = frappe.get_all(
+                "Sales Taxes and Charges",
+                filters={"parent": so.name},
+                fields=[
+                    "charge_type",
+                    "account_head",
+                    "description",
+                    "rate",
+                    "tax_amount"
+                ],
+                order_by="idx"
+            )
+            
+            for tax in so_taxes:
+                # Create consolidation key
+                key = (
+                    tax.account_head or "",
+                    tax.charge_type or "",
+                    round(float(tax.rate or 0.0), 2)
+                )
+                
+                # Initialize or update consolidated tax
+                if not tax_consolidation[key]['account_head']:
+                    tax_consolidation[key]['charge_type'] = tax.charge_type or ""
+                    tax_consolidation[key]['account_head'] = tax.account_head or ""
+                    tax_consolidation[key]['description'] = tax.description or ""
+                    tax_consolidation[key]['rate'] = round(float(tax.rate or 0.0), 2)
+                
+                # Sum tax amounts
+                tax_consolidation[key]['tax_amount'] += float(tax.tax_amount or 0.0)
+        
+        # Add consolidated taxes to Proforma Invoice
+        tax_count = 0
+        for (account_head, charge_type, rate), tax_data in sorted(tax_consolidation.items()):
+            pi_tax = self.append("taxes", {})
+            pi_tax.charge_type = tax_data['charge_type']
+            pi_tax.account_head = tax_data['account_head']
+            pi_tax.description = tax_data['description']
+            pi_tax.rate = tax_data['rate']
+            pi_tax.tax_amount = round(tax_data['tax_amount'], 2)
+            tax_count += 1
+        
+        return tax_count
     
     @frappe.whitelist()
     def get_grouped_items_for_print(self):
@@ -213,6 +296,14 @@ class ProformaInvoice(Document):
             'total_qty': sum(item['total_qty'] for item in grouped_items),
             'total_amount': sum(item['amount'] for item in grouped_items)
         }
+
+
+def flt(value, precision=2):
+    """Convert to float with precision"""
+    try:
+        return round(float(value or 0), precision)
+    except (ValueError, TypeError):
+        return 0.0
 
 
 @frappe.whitelist()
