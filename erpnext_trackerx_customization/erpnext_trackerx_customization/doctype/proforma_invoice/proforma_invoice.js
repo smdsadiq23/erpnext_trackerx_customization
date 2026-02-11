@@ -23,20 +23,23 @@ frappe.ui.form.on('Proforma Invoice', {
                 method: 'fetch_items_from_sales_orders',
                 doc: frm.doc,
                 freeze: true,
-                freeze_message: __('Fetching items from Sales Orders...'),
+                freeze_message: __('Fetching items and taxes from Sales Orders...'),
                 callback: function(r) {
                     if (r.message) {
                         frm.refresh_field('items');
+                        frm.refresh_field('taxes');
                         frm.refresh_field('buyer');
                         frm.refresh_field('currency');
                         frm.refresh_field('delivery_date');
                         frm.refresh_field('quality');
                         frm.refresh_field('payment_terms');
                         frm.refresh_field('delivery_terms');
+                        frm.refresh_field('total_taxes_and_charges');
+                        frm.refresh_field('grand_total');
                         
                         frappe.show_alert({
-                            message: __('✅ Loaded {0} items from {1} Sales Order(s)', 
-                                [r.message.item_count, r.message.sales_order_count]),
+                            message: __('✅ Loaded {0} items and {1} taxes from {2} Sales Order(s)', 
+                                [r.message.item_count, r.message.tax_count, r.message.sales_order_count]),
                             indicator: 'green'
                         });
                     } else {
@@ -174,9 +177,11 @@ function load_available_po_numbers(frm) {
 
 // Clear all linked fields when PO number changes
 function clear_linked_fields(frm) {
-    // Clear child table
+    // Clear child tables
     frm.clear_table('items');
+    frm.clear_table('taxes');
     frm.refresh_field('items');
+    frm.refresh_field('taxes');
     
     // Clear linked fields
     frm.set_value('buyer', '');
@@ -185,6 +190,8 @@ function clear_linked_fields(frm) {
     frm.set_value('quality', '');
     frm.set_value('payment_terms', '');
     frm.set_value('delivery_terms', '');
+    frm.set_value('total_taxes_and_charges', 0);
+    frm.set_value('grand_total', 0);
     
     // Refresh fields
     frm.refresh_field('buyer');
@@ -193,4 +200,6 @@ function clear_linked_fields(frm) {
     frm.refresh_field('quality');
     frm.refresh_field('payment_terms');
     frm.refresh_field('delivery_terms');
+    frm.refresh_field('total_taxes_and_charges');
+    frm.refresh_field('grand_total');
 }
