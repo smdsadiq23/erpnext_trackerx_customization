@@ -376,6 +376,11 @@ function get_factory_ocr_action_card_html(frm) {
   const cutColor = cutToShip >= kpiThreshold ? '#28a745' : '#dc3545';
   const orderColor = orderToShip >= kpiThreshold ? '#28a745' : '#dc3545';
 
+  // Get factory display name
+  const factoryName = frm.fields_dict.factory ? 
+    (frm.fields_dict.factory.get_label_value() || frm.doc.factory || '–') : 
+    (frm.doc.factory || '–');  
+
   return `
     <div class="approval-card" style="border: 1px solid #4c9658; padding: 20px; border-radius: 8px; max-width: 1200px; margin: 0 auto; background: white; font-family: Arial, sans-serif;">
       <h3 style="color:#4c9658; text-align:center; margin:0 0 15px;">Factory OCR – Approval</h3>
@@ -385,6 +390,7 @@ function get_factory_ocr_action_card_html(frm) {
         <b>Status:</b> ${frm.doc.status || '–'}<br>
         <b>Buyer:</b> ${frm.doc.buyer || '–'} &nbsp; | &nbsp;
         <b>OCN:</b> ${frm.doc.ocn || '–'}<br>
+        <b>Factory:</b> ${factoryName}<br>
         <b>On:</b> ${frappe.datetime.str_to_user(frm.doc.creation)}<br><br>
 
         <span style="color:#007bff;">
