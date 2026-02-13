@@ -10,6 +10,7 @@
   "status",
   "buyer",
   "ocn",
+  "factory",
   "ocn_details_section",
   "table_ocn_details",
   "totals_section",
@@ -200,12 +201,19 @@
    "fieldtype": "Section Break",
    "label": "Approval Section",
    "read_only": 1
+  },
+  {
+   "fieldname": "factory",
+   "fieldtype": "Link",
+   "label": "Factory",
+   "options": "Factory Business Unit",
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-01-01 12:59:19.931697",
+ "modified": "2026-02-13 13:10:25.059645",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Factory OCR",
