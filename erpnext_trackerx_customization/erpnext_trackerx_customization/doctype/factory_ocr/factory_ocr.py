@@ -537,12 +537,14 @@ def fetch_sales_order_items_for_factory_ocr(sales_order, factory_ocr=None):
             INNER JOIN `tabCut Kit Plan Bundle Details` ckpbd 
                 ON ckpbd.production_item_id = pi.name 
 			INNER JOIN `tabCut Kit Plan` ckp
-                ON ckp.name = ckpbd.parent                                 
+                ON ckp.name = ckpbd.parent 
+                AND ckp.last_operation IS NOT NULL                                                  
             INNER JOIN `tabItem Scan Log` isl
                 ON isl.production_item = pi.name
                 AND isl.operation = ckp.last_operation
                 AND isl.log_status = 'Completed'
                 AND isl.status IN ('Counted', 'Activated', 'Pass')
+            WHERE tbc.sales_order = %s
             GROUP BY itm.custom_style_master, itm.custom_colour_name
         """, (sales_order,), as_dict=1)
 
