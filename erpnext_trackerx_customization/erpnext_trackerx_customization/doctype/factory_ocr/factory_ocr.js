@@ -80,10 +80,34 @@ frappe.ui.form.on('Factory OCR', {
   refresh: function(frm) {
     if (!frm.doc || !frm.doc.name) return;
 
+    // ✅ Same guard as Can Cut — prevent duplicate execution polluting model cache
+    const docKey = `Factory OCR:${frm.doc.name}`;
+    if (!frm.doc.__islocal && window.factory_ocr_script.executed_for.has(docKey)) {
+      return;
+    }
+    if (!frm.doc.__islocal) {
+      window.factory_ocr_script.executed_for.add(docKey);
+    }    
+
     const status = frm.doc.status || 'Draft';
     const is_pending = (status === 'Pending for Approval');
     const is_done = (status === 'Approved' || status === 'Rejected');
     const is_factory_manager = frappe.user.has_role('Factory Manager');
+
+    // ✅ Set custom status indicator in form header (mirrors Can Cut pattern)
+    if (!frm.doc.__islocal) {
+      frm.page.clear_indicator();
+
+      if (status === 'Pending for Approval') {
+        frm.page.set_indicator(__('Pending for Approval'), 'orange');
+      } else if (status === 'Approved') {
+        frm.page.set_indicator(__('Approved'), 'green');
+      } else if (status === 'Rejected') {
+        frm.page.set_indicator(__('Rejected'), 'red');
+      } else if (frm.doc.docstatus === 2) {
+        frm.page.set_indicator(__('Cancelled'), 'red');
+      }
+    }
 
     // Default: show normal doctype
     show_all_sections(frm);
@@ -168,6 +192,22 @@ frappe.ui.form.on('Factory OCR', {
     } catch (e) {}
   }
 });
+
+// ==============================
+// List View — status colour badges
+// ==============================
+frappe.listview_settings['Factory OCR'] = {
+  get_indicator: function(doc) {
+    const map = {
+      'Pending for Approval': ['Pending for Approval', 'orange', 'status,=,Pending for Approval'],
+      'Approved':             ['Approved',             'green',  'status,=,Approved'],
+      'Rejected':             ['Rejected',             'red',    'status,=,Rejected'],
+    };
+    return map[doc.status] || ['Draft', 'gray', 'status,=,Draft'];
+  },
+  // ✅ Add status to list view columns so the badge renders
+  add_fields: ['status'],
+};
 
 // ==============================
 // Child Doctype Triggers
@@ -272,7 +312,6 @@ function calculate_totals(frm) {
   frm.set_value('total_order_qty', total_order_qty);
   frm.set_value('total_cut_qty', total_cut_qty);
   frm.set_value('total_scan_qty', total_scan_qty);
-  frm.set_value('total_scan_qty', total_scan_qty); // (kept)
   frm.set_value('total_pack_qty', total_pack_qty);
   frm.set_value('total_ship_qty', total_ship_qty);
   frm.set_value('total_good_garments', total_good_garments);
@@ -376,10 +415,9 @@ function get_factory_ocr_action_card_html(frm) {
   const cutColor = cutToShip >= kpiThreshold ? '#28a745' : '#dc3545';
   const orderColor = orderToShip >= kpiThreshold ? '#28a745' : '#dc3545';
 
-  // Get factory display name
-  const factoryName = frm.fields_dict.factory ? 
-    (frm.fields_dict.factory.get_label_value() || frm.doc.factory || '–') : 
-    (frm.doc.factory || '–');  
+  const factoryName = frm.fields_dict.factory ?
+    (frm.fields_dict.factory.get_label_value() || frm.doc.factory || '–') :
+    (frm.doc.factory || '–');
 
   return `
     <div class="approval-card" style="border: 1px solid #4c9658; padding: 20px; border-radius: 8px; max-width: 1200px; margin: 0 auto; background: white; font-family: Arial, sans-serif;">
@@ -567,3 +605,29 @@ function flt(value, precision) {
   const factor = precision ? Math.pow(10, precision) : 1000;
   return Math.round((val || 0) * factor) / factor;
 }
+
+
+frappe.listview_settings['Factory OCR'] = {
+    add_fields: ["status", "docstatus"],
+    has_indicator_for_draft: true,
+
+    get_indicator: function(doc) {
+
+        const status = (doc.status || "").trim();
+
+        if (status === "Approved") {
+            return ["Approved", "green"];
+        }
+
+        if (status === "Rejected") {
+            return ["Rejected", "red"];
+        }
+
+        if (status === "Pending for Approval") {
+            return ["Pending for Approval", "orange"];
+        }
+
+        // fallback
+        return ["Draft", "gray"];
+    }
+};

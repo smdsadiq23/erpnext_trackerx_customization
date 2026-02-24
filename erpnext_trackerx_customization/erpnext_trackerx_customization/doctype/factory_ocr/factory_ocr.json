@@ -11,6 +11,7 @@
   "buyer",
   "ocn",
   "factory",
+  "ocr_no",
   "ocn_details_section",
   "table_ocn_details",
   "totals_section",
@@ -164,6 +165,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "hidden": 1,
+   "in_list_view": 1,
    "label": "Status",
    "options": "\nDraft\nPending for Approval\nApproved\nRejected"
   },
@@ -208,12 +210,20 @@
    "label": "Factory",
    "options": "Factory Business Unit",
    "reqd": 1
+  },
+  {
+   "fieldname": "ocr_no",
+   "fieldtype": "Int",
+   "label": "OCR No",
+   "read_only": 1,
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
+ "is_submittable": 1,
  "links": [],
- "modified": "2026-02-13 13:10:25.059645",
+ "modified": "2026-02-24 09:40:06.625289",
  "modified_by": "Administrator",
  "module": "Erpnext Trackerx Customization",
  "name": "Factory OCR",
