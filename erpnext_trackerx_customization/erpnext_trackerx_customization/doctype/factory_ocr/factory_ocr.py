@@ -163,8 +163,6 @@ def _get_shipped_qty_map(ocn: str, exclude_factory_ocr: str | None = None) -> di
     if not ocr_names:
         return {}
 
-    # NOTE: assumes child doctype is "Factory OCR Item" and fieldnames:
-    # style, colour, line_item, ship_quantity
     rows = frappe.db.sql("""
         SELECT
             COALESCE(style, '') AS style,
@@ -185,11 +183,6 @@ def _get_shipped_qty_map(ocn: str, exclude_factory_ocr: str | None = None) -> di
 
 
 def _sales_order_has_remaining_groups(sales_order: str) -> bool:
-    """
-    A Sales Order should be selectable if ANY grouped key has remaining qty:
-      remaining = order_qty(group) - shipped_qty(group)
-      remaining > 0
-    """
     if not sales_order:
         return False
 
@@ -233,7 +226,7 @@ class FactoryOCR(Document):
     def after_insert(self):
         if self.docstatus == 1:
             return
-        elif self.status == 'Pending for Approval' and self._action == 'save':    
+        elif self.status == 'Pending for Approval' and self._action == 'save':
             _notify_factory_managers_on_pending(self)
 
             frappe.enqueue_doc(
@@ -242,16 +235,18 @@ class FactoryOCR(Document):
                 method="send_whatsapp_notification",
                 queue="short",
                 enqueue_after_commit=True
-            )             
+            )
 
     def before_submit(self):
-        frappe.throw(_("Manual Submit is not allowed for Factory OCR. Use Approve/Reject only."))
+        # ✅ Allow submission ONLY when triggered by approve/reject methods via flag.
+        # This prevents manual "Submit" from the form toolbar.
+        if not getattr(self.flags, "allow_approval_update", False):
+            frappe.throw(_("Manual Submit is not allowed for Factory OCR. Use Approve/Reject only."))
 
     def send_whatsapp_notification(self):
         """
         Send WhatsApp notification using already aggregated parent totals.
         """
-
         notif_name = "factory_ocr_approval"
 
         try:
@@ -263,18 +258,13 @@ class FactoryOCR(Document):
             )
             return
 
-        # Get first style from child (if exists)
         style = None
         if self.table_ocn_details:
             style = self.table_ocn_details[0].style
 
-        # Sanitize remarks
         raw_remarks = self.requester_remarks or "–"
         remarks = " ".join(raw_remarks.split())[:1024]
 
-        # -----------------------------
-        # Body Params (ONLY PARAMS)
-        # -----------------------------
         body_params = [
             {"name": "ocn", "value": self.ocn or "–"},
             {"name": "buyer", "value": self.buyer or "–"},
@@ -295,11 +285,7 @@ class FactoryOCR(Document):
             {"name": "remarks", "value": remarks or "–"},
         ]
 
-        # -----------------------------
-        # Collect Recipients
-        # -----------------------------
         recipients = {}
-
         for rec in notif_doc.whatsapp_recipients:
             if rec.whatsapp_number:
                 recipients[rec.whatsapp_number] = rec.whatsapp_number
@@ -311,9 +297,6 @@ class FactoryOCR(Document):
             )
             return
 
-        # -----------------------------
-        # Send
-        # -----------------------------
         for number in recipients.values():
             result = send_whatsapp_template(
                 to=number,
@@ -353,6 +336,12 @@ def approve(docname, approver_remarks=None, with_replenishment=0):
     doc.with_replenishment = cint(with_replenishment)
 
     doc.save()
+    if doc.docstatus == 0:
+        doc.submit()
+
+    action_by_name = frappe.db.get_value("User", frappe.session.user, "full_name")
+    _notify_owner_on_decision(doc, action_by=action_by_name, status="Approved")
+
     return {"status": doc.status}
 
 
@@ -380,17 +369,58 @@ def reject(docname, reason=None, with_replenishment=0):
     doc.with_replenishment = cint(with_replenishment)
 
     doc.save()
+    if doc.docstatus == 0:
+        doc.submit()
+
+    action_by_name = frappe.db.get_value("User", frappe.session.user, "full_name")
+    _notify_owner_on_decision(doc, action_by=action_by_name, status="Rejected", reason=remarks)
+
     return {"status": doc.status}
+
+
+def _notify_owner_on_decision(doc: Document, action_by: str, status: str, reason: str = None):
+    """Notify the document creator when their Factory OCR is approved or rejected."""
+    owner_email = frappe.db.get_value("User", doc.owner, "email")
+    if not owner_email:
+        return
+
+    url = get_url_to_form(doc.doctype, doc.name)
+    subject = f"Factory OCR {status}: {doc.name}"
+
+    message = f"""
+        <p>Your <b>Factory OCR</b> request <b>{doc.name}</b> has been <b>{status}</b>.</p>
+        <p>
+          <b>Buyer:</b> {doc.buyer or '–'}<br>
+          <b>OCN:</b> {doc.ocn or '–'}<br>
+        </p>
+        {f'<p><b>Reason:</b> {reason}</p>' if reason else ''}
+        <p><b>Action by:</b> {action_by}</p>
+        <p><a href="{url}" target="_blank">View Request</a></p>
+    """
+
+    try:
+        frappe.sendmail(
+            recipients=[owner_email],
+            subject=subject,
+            message=message,
+            reference_doctype=doc.doctype,
+            reference_name=doc.name,
+        )
+    except Exception:
+        frappe.log_error(
+            title="Factory OCR Owner Notify Failed",
+            message=frappe.get_traceback()
+        )
+
+    frappe.publish_realtime(
+        "msgprint",
+        message=f"Factory OCR {doc.name} was {status.lower()} by {action_by}",
+        user=doc.owner
+    )
 
 
 @frappe.whitelist()
 def sales_order_query_for_factory_ocr(doctype, txt, searchfield, start, page_len, filters):
-    """
-    Return Sales Orders for the given customer that:
-      - are submitted (docstatus = 1)
-      - match txt
-      - AND have at least one grouped SOI row (style||color||lineitem) with remaining qty > 0
-    """
     customer = filters.get("customer")
     if not customer:
         return []
@@ -422,18 +452,6 @@ def sales_order_query_for_factory_ocr(doctype, txt, searchfield, start, page_len
 
 @frappe.whitelist()
 def fetch_sales_order_items_for_factory_ocr(sales_order, factory_ocr=None):
-    """
-    Returns grouped rows for Factory OCR Item creation.
-
-    Rule:
-      A group (style||color||lineitem) is allowed multiple times
-      as long as total shipped qty (sum of ship_quantity) across previous OCRs
-      is < Sales Order grouped order qty.
-
-    Returned:
-      - order_quantity = FULL grouped SO qty
-      - ship_quantity  = REMAINING qty (order_qty - shipped_qty)  ✅
-    """
     if not sales_order:
         return []
 
@@ -448,7 +466,6 @@ def fetch_sales_order_items_for_factory_ocr(sales_order, factory_ocr=None):
     if not so_items:
         return []
 
-    # Group Sales Order qty by (style||color||lineitem)
     grouped = defaultdict(lambda: {"style": "", "custom_color": "", "custom_lineitem": "", "order_qty": 0.0})
     for row in so_items:
         style = row.custom_style or ""
@@ -464,7 +481,6 @@ def fetch_sales_order_items_for_factory_ocr(sales_order, factory_ocr=None):
         grouped[key]["custom_lineitem"] = lineitem
         grouped[key]["order_qty"] += float(row.qty or 0)
 
-    # Keep only keys with remaining > 0
     filtered_groups = {}
     remaining_map = {}
     for key, g in grouped.items():
@@ -479,7 +495,6 @@ def fetch_sales_order_items_for_factory_ocr(sales_order, factory_ocr=None):
 
     unique_styles = list(set(g["style"] for g in filtered_groups.values() if g.get("style")))
 
-    # 2. CUT qty per (style, color)  (Cut Docket field = style_no)
     cut_map = {}
     if unique_styles:
         cut_data = frappe.db.sql("""
@@ -501,7 +516,6 @@ def fetch_sales_order_items_for_factory_ocr(sales_order, factory_ocr=None):
             color = d.color or ""
             cut_map[f"{style_no}||{color}"] = d.cut_qty or 0
 
-    # 3. Scan qty per (style, color) using Item.custom_style_master and Item.custom_colour_name
     scan_map = {}
     if unique_styles:
         scan_data = frappe.db.sql("""
@@ -535,7 +549,6 @@ def fetch_sales_order_items_for_factory_ocr(sales_order, factory_ocr=None):
             color = d.color or ""
             scan_map[f"{style}||{color}"] = d.scan_qty or 0
 
-    # 4. Rejected garments (main component) per (style, color)
     rejection_garments_map = {}
     if unique_styles:
         rejection_data = frappe.db.sql("""
@@ -567,7 +580,6 @@ def fetch_sales_order_items_for_factory_ocr(sales_order, factory_ocr=None):
             color = d.color or ""
             rejection_garments_map[f"{style}||{color}"] = d.rejected_count or 0
 
-    # 5. Build result (order_quantity = full, ship_quantity = remaining)
     result = []
     for key, g in filtered_groups.items():
         style = g["style"]
@@ -590,7 +602,7 @@ def fetch_sales_order_items_for_factory_ocr(sales_order, factory_ocr=None):
             "colour": color,
             "lineitem": lineitem,
             "order_quantity": full_order_qty,
-            "ship_quantity": remaining_qty,  
+            "ship_quantity": remaining_qty,
             "cut_quantity": frappe.utils.flt(cut_qty, 2),
             "scan_quantity": frappe.utils.flt(scan_qty, 2),
             "rejected_garments": frappe.utils.flt(rejected_garments, 2),
