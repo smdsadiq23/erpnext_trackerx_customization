@@ -470,7 +470,7 @@ function get_factory_ocr_action_card_html(frm) {
             ${rowHTML('Good Garments', flt(frm.doc.total_good_garments))}
             ${rowHTML('Rejected Garments', flt(frm.doc.total_rejected_garments))}
             ${rowHTML('Rejected Panels', flt(frm.doc.total_rejected_panels))}
-            ${rowHTML('Missing Unites', flt(frm.doc.total_missing_units))}
+            ${rowHTML('Missing Units', flt(frm.doc.total_missing_units))}
             ${rowHTML('Cumulative Total', flt(frm.doc.cumulative_total))}
           </tbody>
         </table>
