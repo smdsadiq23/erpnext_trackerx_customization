@@ -279,6 +279,7 @@ class FactoryOCR(Document):
             {"name": "good_qty", "value": str(int(self.total_good_garments or 0))},
             {"name": "rejected_garments", "value": str(int(self.total_rejected_garments or 0))},
             {"name": "rejected_panels", "value": str(int(self.total_rejected_panels or 0))},
+            {"name": "missing_units", "value": str(int(self.total_missing_units or 0))},
             {"name": "cumulative_total", "value": str(int(self.cumulative_total or 0))},
             {"name": "cut_ship_per", "value": f"{flt(self.cut_to_ship_of_order or 0):.2f}"},
             {"name": "order_ship_per", "value": f"{flt(self.order_to_ship_total or 0):.2f}"},

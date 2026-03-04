@@ -241,6 +241,9 @@ frappe.ui.form.on('Factory OCR Item', {
   rejected_panels: function(frm) {
     calculate_totals(frm);
   },
+  missing_units: function(frm){
+    calculate_totals(frm);
+  },
   table_ocn_details_add: function(frm) {
     calculate_totals(frm);
   },
@@ -297,6 +300,7 @@ function calculate_totals(frm) {
   let total_good_garments = 0;
   let total_rejected_garments = 0;
   let total_rejected_panels = 0;
+  let total_missing_units = 0;
 
   (frm.doc.table_ocn_details || []).forEach(row => {
     total_order_qty += row.order_quantity || 0;
@@ -307,6 +311,7 @@ function calculate_totals(frm) {
     total_good_garments += row.good_garments || 0;
     total_rejected_garments += row.rejected_garments || 0;
     total_rejected_panels += row.rejected_panels || 0;
+    total_missing_units += row.missing_units || 0;
   });
 
   frm.set_value('total_order_qty', total_order_qty);
@@ -317,8 +322,9 @@ function calculate_totals(frm) {
   frm.set_value('total_good_garments', total_good_garments);
   frm.set_value('total_rejected_garments', total_rejected_garments);
   frm.set_value('total_rejected_panels', total_rejected_panels);
+  frm.set_value('total_missing_units', total_missing_units);
 
-  let cumulative_total = total_ship_qty + total_good_garments + total_rejected_garments + total_rejected_panels;
+  let cumulative_total = total_ship_qty + total_good_garments + total_rejected_garments + total_rejected_panels + total_missing_units;
   frm.set_value('cumulative_total', cumulative_total);
 
   let cut_to_ship_of_order = total_cut_qty > 0 ? (total_ship_qty / total_cut_qty * 100) : 0;
@@ -329,7 +335,7 @@ function calculate_totals(frm) {
 
   frm.refresh_fields([
     'total_order_qty', 'total_cut_qty', 'total_scan_qty', 'total_pack_qty', 'total_ship_qty',
-    'total_good_garments', 'total_rejected_garments', 'total_rejected_panels',
+    'total_good_garments', 'total_rejected_garments', 'total_rejected_panels', 'total_missing_units',
     'cumulative_total', 'cut_to_ship_of_order', 'order_to_ship_total'
   ]);
 
@@ -354,13 +360,14 @@ function clear_totals(frm) {
   frm.set_value('total_good_garments', 0);
   frm.set_value('total_rejected_garments', 0);
   frm.set_value('total_rejected_panels', 0);
+  frm.set_value('total_missing_units', 0);
   frm.set_value('cumulative_total', 0);
   frm.set_value('cut_to_ship_of_order', 0);
   frm.set_value('order_to_ship_total', 0);
 
   frm.refresh_fields([
     'total_order_qty', 'total_cut_qty', 'total_scan_qty', 'total_pack_qty', 'total_ship_qty',
-    'total_good_garments', 'total_rejected_garments', 'total_rejected_panels',
+    'total_good_garments', 'total_rejected_garments', 'total_rejected_panels', 'total_missing_units',
     'cumulative_total', 'cut_to_ship_of_order', 'order_to_ship_total'
   ]);
 }
@@ -419,6 +426,14 @@ function get_factory_ocr_action_card_html(frm) {
     (frm.fields_dict.factory.get_label_value() || frm.doc.factory || '–') :
     (frm.doc.factory || '–');
 
+  const uniqueStyles = [
+    ...new Set(
+      (frm.doc.table_ocn_details || [])
+        .map(r => (r.style || '').trim())
+        .filter(Boolean)
+    )
+  ].join(', ') || '–';    
+
   return `
     <div class="approval-card" style="border: 1px solid #4c9658; padding: 20px; border-radius: 8px; max-width: 1200px; margin: 0 auto; background: white; font-family: Arial, sans-serif;">
       <h3 style="color:#4c9658; text-align:center; margin:0 0 15px;">Factory OCR – Approval</h3>
@@ -427,9 +442,10 @@ function get_factory_ocr_action_card_html(frm) {
         <b>Request ID:</b> ${frm.doc.name} &nbsp; | &nbsp;
         <b>Status:</b> ${frm.doc.status || '–'}<br>
         <b>Buyer:</b> ${frm.doc.buyer || '–'} &nbsp; | &nbsp;
-        <b>OCN:</b> ${frm.doc.ocn || '–'}<br>
+        <b>OCN:</b> ${frm.doc.ocn || '–'} &nbsp; | &nbsp;
+        <b>Style(s):</b> ${uniqueStyles}<br> 
         <b>Factory:</b> ${factoryName}<br>
-        <b>On:</b> ${frappe.datetime.str_to_user(frm.doc.creation)}<br><br>
+        <b>Created On:</b> ${frappe.datetime.str_to_user(frm.doc.creation)}<br><br>
 
         <span style="color:#007bff;">
           <b>Requester Remarks:</b> ${frm.doc.requester_remarks ? frappe.utils.escape_html(String(frm.doc.requester_remarks)) : '–'}<br>
@@ -454,6 +470,7 @@ function get_factory_ocr_action_card_html(frm) {
             ${rowHTML('Good Garments', flt(frm.doc.total_good_garments))}
             ${rowHTML('Rejected Garments', flt(frm.doc.total_rejected_garments))}
             ${rowHTML('Rejected Panels', flt(frm.doc.total_rejected_panels))}
+            ${rowHTML('Missing Unites', flt(frm.doc.total_missing_units))}
             ${rowHTML('Cumulative Total', flt(frm.doc.cumulative_total))}
           </tbody>
         </table>
